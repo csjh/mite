@@ -1,4 +1,5 @@
 {
+    "type": "module",
     "name": "wc",
     "version": "0.0.1",
     "description": "a small wasm language",
