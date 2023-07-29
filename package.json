@@ -1,0 +1,25 @@
+{
+    "name": "wc",
+    "version": "0.0.1",
+    "description": "a small wasm language",
+    "main": "build/index.js",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "lint": "prettier --plugin-search-dir . --check . && eslint --ignore-path .gitignore --ext .js,.ts .",
+        "format": "prettier --write .",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "csjh",
+    "license": "MIT",
+    "dependencies": {
+        "binaryen": "^114.0.0"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^6.2.0",
+        "@typescript-eslint/parser": "^6.2.0",
+        "eslint": "^8.46.0",
+        "prettier": "^3.0.0",
+        "typescript": "^5.1.6"
+    }
+}
