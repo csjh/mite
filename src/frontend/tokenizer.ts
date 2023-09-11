@@ -77,6 +77,9 @@ export function tokenize(input: string): Token[] {
                         case "return":
                             tokens.push({ type: TokenType.RETURN, value });
                             break;
+                        case "fn":
+                            tokens.push({ type: TokenType.FN, value });
+                            break;
                         default:
                             tokens.push({ type: TokenType.IDENTIFIER, value });
                             break;
