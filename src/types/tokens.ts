@@ -6,6 +6,7 @@ export enum TokenType {
     RIGHT_PAREN, // )
     LEFT_BRACE, // {
     RIGHT_BRACE, // }
+    COLON, // :
     SEMICOLON, // ;
 
     PLUS, // +
@@ -24,12 +25,3 @@ export type Token = {
     type: TokenType;
     value: string;
 };
-
-export enum BinaryOperator {
-    PLUS,
-    MINUS,
-    SLASH,
-    STAR
-}
-
-export type Tree = unknown;
