@@ -42,6 +42,11 @@ export interface NodeMap {
 
 export type Node = NodeMap[keyof NodeMap];
 
+export interface Comment extends BaseNodeWithoutComments {
+    type: 'Line' | 'Block';
+    value: string;
+}
+
 export interface SourceLocation {
     source?: string | null | undefined;
     start: Position;
@@ -57,7 +62,6 @@ export interface Position {
 
 export interface Program extends BaseNode {
     type: 'Program';
-    sourceType: 'script' | 'module';
     body: Array<Directive | Statement | ModuleDeclaration>;
     comments?: Comment[] | undefined;
 }
