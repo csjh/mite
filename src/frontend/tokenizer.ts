@@ -1,4 +1,4 @@
-import { TokenType, type Token } from "../types.js";
+import { TokenType, type Token } from "../types/tokens.js";
 import fs from "fs/promises";
 
 export function tokenize(input: string): Token[] {
@@ -23,6 +23,10 @@ export function tokenize(input: string): Token[] {
                 break;
             case "}":
                 tokens.push({ type: TokenType.RIGHT_BRACE, value: "}" });
+                i++;
+                break;
+            case ":":
+                tokens.push({ type: TokenType.COLON, value: ":" });
                 i++;
                 break;
             case ";":
