@@ -1,5 +1,4 @@
 import { TokenType, type Token } from "../types/tokens.js";
-import fs from "fs/promises";
 
 export function tokenize(input: string): Token[] {
     const tokens = [];
@@ -105,7 +104,3 @@ function skipWhitespace(input: string, index: number): number {
     }
     return index;
 }
-
-const program = await fs.readFile(process.argv[2], "utf8");
-
-console.log(tokenize(program).map((x) => [TokenType[x.type], x.value]));
