@@ -1,0 +1,8 @@
+fn main(): void {
+    i32 a = 123;
+    i32 b = 456;
+
+    i32 c = a + b;
+
+    return c;
+}
