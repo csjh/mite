@@ -222,10 +222,3 @@ export class Parser {
         return binary_expression;
     }
 }
-
-import fs from "fs/promises";
-import { tokenize } from "./tokenizer.js";
-
-const program = await fs.readFile(process.argv[2], "utf8");
-
-console.log(Parser.parse(tokenize(program)));

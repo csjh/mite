@@ -1,4 +1,4 @@
-fn main(): void {
+fn main(): i32 {
     i32 a = 123;
     i32 b = 456;
 

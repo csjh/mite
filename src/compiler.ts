@@ -7,11 +7,9 @@ type CompileOptions = {
 };
 
 export function compile(source: string, options: CompileOptions & { as: "wat" }): string;
-export function compile(source: string, options: CompileOptions): Uint8Array;
-export function compile(source: string, options: CompileOptions): string | Uint8Array {
+export function compile(source: string, options?: CompileOptions): Uint8Array;
+export function compile(source: string, options: CompileOptions = {}): string | Uint8Array {
     options.as ??= "wasm";
-
-    const blah = options.as;
 
     const tokens = tokenize(source);
     const program = Parser.parse(tokens);
@@ -25,3 +23,15 @@ export function compile(source: string, options: CompileOptions): string | Uint8
 
     throw new Error(`Unknown output format: ${options.as}`);
 }
+
+import fs from "fs/promises";
+
+const program = await fs.readFile(process.argv[2], "utf8");
+
+const output = compile(program);
+
+const compiled = new WebAssembly.Module(output);
+const instance = new WebAssembly.Instance(compiled, {});
+
+// @ts-ignore
+console.log(instance.exports.main());
