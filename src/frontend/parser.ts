@@ -1,4 +1,3 @@
-import { tokenize } from "./tokenizer.js";
 import { TokenType, Token } from "../types/tokens.js";
 import type {
     Program,
@@ -21,7 +20,7 @@ export class Parser {
         this.idx = 0;
     }
 
-    static parse = (input: string) => new Parser(tokenize(input)).parse();
+    static parse = (input: Token[]) => new Parser(input).parse();
 
     parse(): Program {
         const program: Program = {
@@ -225,7 +224,8 @@ export class Parser {
 }
 
 import fs from "fs/promises";
+import { tokenize } from "./tokenizer.js";
 
 const program = await fs.readFile(process.argv[2], "utf8");
 
-console.log(Parser.parse(program));
+console.log(Parser.parse(tokenize(program)));
