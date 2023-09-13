@@ -27,7 +27,6 @@ export interface NodeMap {
     MethodDefinition: MethodDefinition;
     ModuleDeclaration: ModuleDeclaration;
     ModuleSpecifier: ModuleSpecifier;
-    Pattern: Pattern;
     PrivateIdentifier: PrivateIdentifier;
     Program: Program;
     Property: Property;
@@ -72,17 +71,22 @@ export interface Directive extends BaseNode {
     directive: string;
 }
 
+export interface TypedParameter extends BaseNode {
+    type: "TypedParameter";
+    name: Identifier;
+    typeAnnotation: Identifier;
+}
+
 export interface BaseFunction extends BaseNode {
-    params: Pattern[];
-    generator?: boolean | undefined;
-    async?: boolean | undefined;
+    params: Identifier[];
+    returnType: Identifier;
     // The body is either BlockStatement or Expression because arrow functions
     // can have a body that's either. FunctionDeclarations and
     // FunctionExpressions have only BlockStatement bodies.
     body: BlockStatement | Expression;
 }
 
-export type Function = FunctionDeclaration | FunctionExpression | ArrowFunctionExpression;
+export type Function = FunctionDeclaration | FunctionExpression;
 
 export type Statement =
     | ExpressionStatement
@@ -200,7 +204,7 @@ export interface ForStatement extends BaseStatement {
 }
 
 export interface BaseForXStatement extends BaseStatement {
-    left: VariableDeclaration | Pattern;
+    left: VariableDeclaration | Identifier;
     right: Expression;
     body: Statement;
 }
@@ -227,12 +231,12 @@ export interface FunctionDeclaration extends BaseFunction, BaseDeclaration {
 export interface VariableDeclaration extends BaseDeclaration {
     type: "VariableDeclaration";
     declarations: VariableDeclarator[];
-    kind: "var" | "let" | "const";
 }
 
 export interface VariableDeclarator extends BaseNode {
     type: "VariableDeclarator";
-    id: Pattern;
+    id: Identifier;
+    typeAnnotation: Identifier;
     init?: Expression | null | undefined;
 }
 
@@ -297,7 +301,7 @@ export interface PrivateIdentifier extends BaseNode {
 export interface Property extends BaseNode {
     type: "Property";
     key: Expression | PrivateIdentifier;
-    value: Expression | Pattern; // Could be an AssignmentProperty
+    value: Expression | Identifier; // Could be an AssignmentProperty
     kind: "init" | "get" | "set";
     method: boolean;
     shorthand: boolean;
@@ -340,7 +344,7 @@ export interface BinaryExpression extends BaseExpression {
 export interface AssignmentExpression extends BaseExpression {
     type: "AssignmentExpression";
     operator: AssignmentOperator;
-    left: Pattern | MemberExpression;
+    left: Identifier | MemberExpression;
     right: Expression;
 }
 
@@ -388,14 +392,6 @@ export interface MemberExpression extends BaseExpression, BasePattern {
     optional: boolean;
 }
 
-export type Pattern =
-    | Identifier
-    | ObjectPattern
-    | ArrayPattern
-    | RestElement
-    | AssignmentPattern
-    | MemberExpression;
-
 export interface BasePattern extends BaseNode {}
 
 export interface SwitchCase extends BaseNode {
@@ -406,7 +402,7 @@ export interface SwitchCase extends BaseNode {
 
 export interface CatchClause extends BaseNode {
     type: "CatchClause";
-    param: Pattern | null;
+    param: Identifier | null;
     body: BlockStatement;
 }
 
@@ -537,7 +533,7 @@ export interface TemplateElement extends BaseNode {
 }
 
 export interface AssignmentProperty extends Property {
-    value: Pattern;
+    value: Identifier;
     kind: "init";
     method: boolean; // false
 }
@@ -549,17 +545,17 @@ export interface ObjectPattern extends BasePattern {
 
 export interface ArrayPattern extends BasePattern {
     type: "ArrayPattern";
-    elements: Array<Pattern | null>;
+    elements: Array<Identifier | null>;
 }
 
 export interface RestElement extends BasePattern {
     type: "RestElement";
-    argument: Pattern;
+    argument: Identifier;
 }
 
 export interface AssignmentPattern extends BasePattern {
     type: "AssignmentPattern";
-    left: Pattern;
+    left: Identifier;
     right: Expression;
 }
 
