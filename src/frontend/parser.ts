@@ -48,7 +48,9 @@ export class Parser {
 
     private expectToken(type: TokenType) {
         if (this.tokens[this.idx].type !== type) {
-            throw new Error(`Expected token of type ${TokenType[type]}, got ${this.tokens[this.idx].value}`);
+            throw new Error(
+                `Expected token of type ${TokenType[type]}, got ${this.tokens[this.idx].value}`
+            );
         }
     }
 
