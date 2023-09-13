@@ -78,7 +78,7 @@ export interface TypedParameter extends BaseNode {
 }
 
 export interface BaseFunction extends BaseNode {
-    params: Identifier[];
+    params: TypedParameter[];
     returnType: Identifier;
     // The body is either BlockStatement or Expression because arrow functions
     // can have a body that's either. FunctionDeclarations and
@@ -223,8 +223,7 @@ export interface BaseDeclaration extends BaseStatement {}
 
 export interface FunctionDeclaration extends BaseFunction, BaseDeclaration {
     type: "FunctionDeclaration";
-    /** It is null when a function declaration is a part of the `export default function` statement */
-    id: Identifier | null;
+    id: Identifier;
     body: BlockStatement;
 }
 
