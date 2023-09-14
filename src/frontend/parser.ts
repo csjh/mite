@@ -13,7 +13,8 @@ import type {
     SimpleLiteral,
     AssignmentExpression,
     VariableDeclaration,
-    ExpressionStatement
+    ExpressionStatement,
+    VariableDeclarator
 } from "../types/nodes.js";
 
 export class Parser {
@@ -155,32 +156,37 @@ export class Parser {
         left?: Identifier
     ): AssignmentExpression | VariableDeclaration {
         if (type === "declaration") {
-            const variable_type = this.tokens[this.idx++].value,
-                variable_name = this.tokens[this.idx++].value;
-
             const variable: VariableDeclaration = {
                 type: "VariableDeclaration",
-                declarations: [
-                    {
-                        type: "VariableDeclarator",
-                        id: {
-                            type: "Identifier",
-                            name: variable_name
-                        },
-                        typeAnnotation: {
-                            type: "Identifier",
-                            name: variable_type
-                        },
-                        init: null
-                    }
-                ]
+                declarations: []
             };
 
-            // has initializer
-            if (this.tokens[this.idx].type === TokenType.ASSIGNMENT) {
-                this.idx++;
-                variable.declarations[0].init = this.parseExpression();
-            }
+            const variable_type = this.tokens[this.idx++].value;
+            do {
+                const variable_name = this.tokens[this.idx++].value;
+
+                const declaration: VariableDeclarator = {
+                    type: "VariableDeclarator",
+                    id: {
+                        type: "Identifier",
+                        name: variable_name
+                    },
+                    typeAnnotation: {
+                        type: "Identifier",
+                        name: variable_type
+                    },
+                    init: null
+                };
+
+                // has initializer
+                if (this.tokens[this.idx].type === TokenType.ASSIGNMENT) {
+                    this.idx++;
+                    declaration.init = this.parseExpression();
+                }
+
+                variable.declarations.push(declaration);
+                console.log(variable_name, this.tokens[this.idx])
+            } while (this.tokens[this.idx].type === TokenType.COMMA && ++this.idx);
 
             return variable;
         } else if (type === "assignment") {
@@ -207,6 +213,7 @@ export class Parser {
 
         switch (this.tokens[this.idx].value) {
             case TokenType.SEMICOLON:
+            case TokenType.COMMA: // todo: commas shouldn't *always* have this effect
                 return next;
             case TokenType.ASSIGNMENT:
                 if (next.type !== "Identifier") throw new Error("Expected identifier, got literal");
