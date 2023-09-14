@@ -114,34 +114,34 @@ export class Parser {
     }
 
     private parseStatement(): Statement {
-        // return statement
+        let statement: Statement;
+
         if (this.tokens[this.idx].type === TokenType.RETURN) {
             this.idx++;
             const expression = this.parseExpression();
-            return {
+            statement = {
                 type: "ReturnStatement",
                 argument: expression
-            } satisfies ReturnStatement;
-            // variable declaration
+            } as ReturnStatement;
         } else if (
             this.tokens[this.idx].type === TokenType.IDENTIFIER &&
             this.tokens[this.idx + 1].type === TokenType.IDENTIFIER &&
             this.tokens[this.idx + 2].type === TokenType.ASSIGNMENT
         ) {
-            return this.parseVariableDeclarationOrAssignment("declaration");
+            statement = this.parseVariableDeclarationOrAssignment("declaration");
         } else {
-            throw new Error("Unknown statement");
+            statement = {
+                type: "ExpressionStatement",
+                expression: this.parseExpression()
+            } as ExpressionStatement;
         }
+
+        // statements end with a semicolon
+        this.expectToken(TokenType.SEMICOLON);
+        this.idx++;
+
+        return statement;
     }
-
-    private parseVariableDeclarationOrAssignment(type: "declaration"): Declaration;
-    private parseVariableDeclarationOrAssignment(type: "assignment"): Declaration;
-    private parseVariableDeclarationOrAssignment(
-        type: "assignment" | "declaration"
-    ): AssignmentExpression | Declaration {
-        this.expectToken(TokenType.IDENTIFIER);
-
-        let variable: Declaration | AssignmentExpression;
 
         if (type === "declaration") {
             const variable_type = this.tokens[this.idx++].value,
