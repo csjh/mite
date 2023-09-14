@@ -8,6 +8,7 @@ export enum TokenType {
     LEFT_BRACE = "{",
     RIGHT_BRACE = "}",
     COLON = ":",
+    COMMA = ",",
     SEMICOLON = ";",
 
     PLUS = "+",

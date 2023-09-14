@@ -26,6 +26,10 @@ export function tokenize(input: string): Token[] {
                 tokens.push({ type: TokenType.COLON, value: ":" });
                 i++;
                 break;
+            case ",":
+                tokens.push({ type: TokenType.COMMA, value: "," });
+                i++;
+                break;
             case ";":
                 tokens.push({ type: TokenType.SEMICOLON, value: ";" });
                 i++;
