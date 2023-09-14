@@ -2,11 +2,11 @@ fn main(): f32 {
     i32 a = 123;
     i32 b = 456;
 
-    i32 c = a + b;
+    i32 c = a + b, e = b - a;
 
-    c = c + a;
+    c = c + a + e;
 
     f64 d = 1.5;
 
-    return a + d + b + 2.5 + c + 5 / 3;
+    return e;
 }

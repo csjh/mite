@@ -1,8 +1,6 @@
 import binaryen from "binaryen";
 import { bigintToLowAndHigh } from "./utils.js";
-import type {
-    Context
-} from "../types/code_gen.js";
+import type { Context } from "../types/code_gen.js";
 import { types } from "../types/code_gen.js";
 import type {
     Program,
@@ -52,15 +50,16 @@ export function program_to_module(program: Program): binaryen.Module {
                     );
                 }
 
+                let var_index = 0;
                 ctx.variables = new Map(
                     function_variables
-                        .map((variable, index) =>
+                        .map((variable) =>
                             variable.declarations.map(
                                 (declaration) =>
                                     [
                                         declaration.id.name,
                                         {
-                                            index,
+                                            index: var_index++,
                                             type: declaration.typeAnnotation.name as
                                                 | "i32"
                                                 | "i64"
@@ -82,12 +81,16 @@ export function program_to_module(program: Program): binaryen.Module {
                         node.params.map((param) => types.get(param.typeAnnotation.name)!)
                     ),
                     types.get(node.returnType.name)!,
-                    function_variables.map(
-                        (variable) => types.get(variable.declarations[0].typeAnnotation.name)!
+                    function_variables.flatMap((variable) =>
+                        variable.declarations.map(
+                            (declaration) => types.get(declaration.typeAnnotation.name)!
+                        )
                     ),
                     ctx.mod.block(
                         null,
-                        node.body.body.map((statement) => statement_to_expression(ctx, statement))
+                        node.body.body.flatMap((statement) =>
+                            statement_to_expression(ctx, statement)
+                        )
                     )
                 );
 
@@ -102,14 +105,20 @@ export function program_to_module(program: Program): binaryen.Module {
 
     return ctx.mod;
 }
-function statement_to_expression(ctx: Context, value: Statement): binaryen.ExpressionRef {
+function statement_to_expression(
+    ctx: Context,
+    value: Statement
+): binaryen.ExpressionRef | binaryen.ExpressionRef[] {
     switch (value.type) {
         case "VariableDeclaration":
-            const declaration = value.declarations[0];
-            ctx.expected = ctx.variables.get(declaration.id.name);
-            return ctx.mod.local.set(
-                ctx.variables.get(declaration.id.name)!.index,
-                expression_to_expression(ctx, declaration.init!)
+            return value.declarations.map((declaration) =>
+                ctx.mod.local.set(
+                    ctx.variables.get(declaration.id.name)!.index,
+                    expression_to_expression(
+                        { ...ctx, expected: ctx.variables.get(declaration.id.name) },
+                        declaration.init!
+                    )
+                )
             );
         case "ReturnStatement":
             return ctx.mod.return(
@@ -146,7 +155,16 @@ function expression_to_expression(ctx: Context, value: Expression): binaryen.Exp
             return ctx.mod.local.get(index, binaryenType);
         case "BinaryExpression":
             const [coerced_left, coerced_right] = coerceBinaryExpression(ctx, value);
-            const expected = ctx.expected!;
+            const expected = ctx.expected ?? {
+                type:
+                    binaryen.getExpressionType(coerced_left) === binaryen.i64
+                        ? "i64"
+                        : binaryen.getExpressionType(coerced_left) === binaryen.i32
+                        ? "i32"
+                        : binaryen.getExpressionType(coerced_left) === binaryen.f32
+                        ? "f32"
+                        : "f64"
+            };
 
             switch (value.operator) {
                 case "+":
