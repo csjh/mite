@@ -22,6 +22,13 @@ export enum TokenType {
     EOF = "EOF"
 }
 
+export const BINARY_OPERATORS = new Set([
+    TokenType.PLUS,
+    TokenType.MINUS,
+    TokenType.SLASH,
+    TokenType.STAR
+] as string[]);
+
 export type Token = {
     type: TokenType;
     value: string;

@@ -343,7 +343,7 @@ export interface BinaryExpression extends BaseExpression {
 export interface AssignmentExpression extends BaseExpression {
     type: "AssignmentExpression";
     operator: AssignmentOperator;
-    left: Identifier | MemberExpression;
+    left: Identifier;
     right: Expression;
 }
 

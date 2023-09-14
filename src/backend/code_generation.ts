@@ -79,6 +79,8 @@ function statement_to_expression(
             );
         case "ReturnStatement":
             return mod.return(expression_to_expression(mod, variable_indexes, value.argument!));
+        case "ExpressionStatement":
+            return expression_to_expression(mod, variable_indexes, value.expression!);
     }
 
     throw new Error(`Unknown statement type: ${value.type}`);
@@ -106,7 +108,25 @@ function expression_to_expression(
                         expression_to_expression(mod, variable_indexes, value.left),
                         expression_to_expression(mod, variable_indexes, value.right)
                     );
+                case "*":
+                    return mod.i32.mul(
+                        expression_to_expression(mod, variable_indexes, value.left),
+                        expression_to_expression(mod, variable_indexes, value.right)
+                    );
+                case "/":
+                    // todo: implement unsigned/signed
+                    return mod.i32.div_s(
+                        expression_to_expression(mod, variable_indexes, value.left),
+                        expression_to_expression(mod, variable_indexes, value.right)
+                    );
+                default:
+                    throw new Error(`Unknown binary operator: ${value.operator}`);
             }
+        case "AssignmentExpression":
+            return mod.local.set(
+                variable_indexes.get(value.left.name!)!,
+                expression_to_expression(mod, variable_indexes, value.right)
+            );
     }
 
     throw new Error(`Unknown statement type: ${value.type}`);

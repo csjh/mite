@@ -203,52 +203,36 @@ export class Parser {
 
     private parseExpression(): Expression {
         // only binary expressions and literals are supported right now
-        let left: Identifier | SimpleLiteral;
+        const next = this.getIdentifierOrLiteral();
 
-        if (this.tokens[this.idx].type === TokenType.IDENTIFIER) {
-            left = {
-                type: "Identifier",
-                name: this.tokens[this.idx].value
-            };
-            this.idx++;
-        } else if (this.tokens[this.idx].type === TokenType.NUMBER) {
-            left = {
-                type: "Literal",
-                value: this.tokens[this.idx].value
-            };
-            this.idx++;
-        } else {
-            throw new Error("Expected an identifier or a number");
+        switch (this.tokens[this.idx].value) {
+            case TokenType.SEMICOLON:
+                return next;
+            case TokenType.ASSIGNMENT:
+                if (next.type !== "Identifier") throw new Error("Expected identifier, got literal");
+                return this.parseVariableDeclarationOrAssignment("assignment", next);
+            case TokenType.PLUS:
+            case TokenType.MINUS:
+            case TokenType.SLASH:
+            case TokenType.STAR:
+                return this.parseBinaryExpression(next);
+            default:
+                throw new Error("Unknown expression");
         }
+    }
 
-        if (this.tokens[this.idx].value === ";") {
-            this.idx++;
-            return left;
-        }
-
-        if (this.tokens[this.idx].value !== "+" && this.tokens[this.idx].value !== "-") {
-            throw new Error("Expected a plus or minus, got " + this.tokens[this.idx].value);
+    private parseBinaryExpression(left: Identifier | SimpleLiteral): BinaryExpression {
+        if (!BINARY_OPERATORS.has(this.tokens[this.idx].value)) {
+            throw new Error(
+                `Expected binary operator in (${Array.from(BINARY_OPERATORS).join(", ")}), got ${
+                    this.tokens[this.idx].value
+                }`
+            );
         }
         const operator: BinaryOperator = this.tokens[this.idx].value as unknown as BinaryOperator;
         this.idx++;
 
-        let right: Identifier | SimpleLiteral;
-
-        if (this.tokens[this.idx].type === TokenType.IDENTIFIER) {
-            right = {
-                type: "Identifier",
-                name: this.tokens[this.idx].value
-            };
-            this.idx++;
-        } else if (this.tokens[this.idx].type === TokenType.NUMBER) {
-            right = {
-                type: "Literal",
-                value: this.tokens[this.idx].value
-            };
-            this.idx++;
-        } else {
-            throw new Error("Expected an identifier or a number");
-        }
+        const right = this.parseExpression();
 
         const binary_expression: BinaryExpression = {
             type: "BinaryExpression",
@@ -257,9 +241,24 @@ export class Parser {
             right
         };
 
-        this.expectToken(TokenType.SEMICOLON);
-        this.idx++;
-
         return binary_expression;
+    }
+
+    private getIdentifierOrLiteral(): Identifier | SimpleLiteral {
+        if (this.tokens[this.idx].type === TokenType.IDENTIFIER) {
+            return {
+                type: "Identifier",
+                name: this.tokens[this.idx++].value
+            };
+        } else if (this.tokens[this.idx].type === TokenType.NUMBER) {
+            return {
+                type: "Literal",
+                value: this.tokens[this.idx++].value
+            };
+        } else {
+            throw new Error(
+                `Expected an identifier or a number, got ${this.tokens[this.idx].value}`
+            );
+        }
     }
 }
