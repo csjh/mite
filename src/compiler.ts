@@ -30,6 +30,8 @@ const program = await fs.readFile(process.argv[2], "utf8");
 
 const output = compile(program);
 
+console.log(compile(program, { as: 'wat' }));
+
 const compiled = new WebAssembly.Module(output);
 const instance = new WebAssembly.Instance(compiled, {});
 
