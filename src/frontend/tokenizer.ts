@@ -4,9 +4,7 @@ export function tokenize(input: string): Token[] {
     const tokens = [];
 
     let i = 0;
-    while (i < input.length) {
-        i = skipWhitespace(input, i);
-
+    while ((i = skipWhitespace(input, i)) < input.length) {
         switch (input[i]) {
             case "(":
                 tokens.push({ type: TokenType.LEFT_PAREN, value: "(" });
@@ -92,6 +90,7 @@ export function tokenize(input: string): Token[] {
             }
         }
     }
+    tokens.push({ type: TokenType.EOF, value: "" });
 
     return tokens;
 }

@@ -19,7 +19,7 @@ export enum TokenType {
     FN = "fn",
     RETURN = "return",
 
-    EOF = ""
+    EOF = "EOF"
 }
 
 export type Token = {

@@ -40,16 +40,14 @@ export class Parser {
             }
         }
 
-        console.log("remaining", this.tokens.slice(this.idx));
+        this.expectToken(TokenType.EOF);
 
         return program;
     }
 
     private expectToken(type: TokenType) {
         if (this.tokens[this.idx].type !== type) {
-            throw new Error(
-                `Expected token of type ${TokenType[type]}, got ${this.tokens[this.idx].value}`
-            );
+            throw new Error(`Expected token of type ${type}, got ${this.tokens[this.idx].value}`);
         }
     }
 
