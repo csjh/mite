@@ -1,4 +1,4 @@
-import { TokenType, Token } from "../types/tokens.js";
+import { TokenType, Token, BINARY_OPERATORS } from "../types/tokens.js";
 import type {
     Program,
     FunctionDeclaration,
@@ -11,7 +11,9 @@ import type {
     Expression,
     BinaryOperator,
     SimpleLiteral,
-    AssignmentExpression
+    AssignmentExpression,
+    VariableDeclaration,
+    ExpressionStatement
 } from "../types/nodes.js";
 
 export class Parser {
@@ -143,11 +145,20 @@ export class Parser {
         return statement;
     }
 
+    private parseVariableDeclarationOrAssignment(type: "declaration"): VariableDeclaration;
+    private parseVariableDeclarationOrAssignment(
+        type: "assignment",
+        left: Identifier
+    ): AssignmentExpression;
+    private parseVariableDeclarationOrAssignment(
+        type: "assignment" | "declaration",
+        left?: Identifier
+    ): AssignmentExpression | VariableDeclaration {
         if (type === "declaration") {
             const variable_type = this.tokens[this.idx++].value,
                 variable_name = this.tokens[this.idx++].value;
 
-            variable = {
+            const variable: VariableDeclaration = {
                 type: "VariableDeclaration",
                 declarations: [
                     {
@@ -165,27 +176,29 @@ export class Parser {
                 ]
             };
 
+            // has initializer
             if (this.tokens[this.idx].type === TokenType.ASSIGNMENT) {
                 this.idx++;
                 variable.declarations[0].init = this.parseExpression();
             }
-        } else if (type === "assignment") {
-            const variable_name = this.tokens[this.idx++].value;
 
-            variable = {
+            return variable;
+        } else if (type === "assignment") {
+            this.expectToken(TokenType.ASSIGNMENT);
+            this.idx++;
+
+            return {
                 type: "AssignmentExpression",
                 operator: "=",
-                left: {
+                left: left ?? {
                     type: "Identifier",
-                    name: variable_name
+                    name: this.tokens[this.idx++].value
                 },
                 right: this.parseExpression()
-            };
+            } as AssignmentExpression;
         } else {
             throw new Error("Unknown variable operation");
         }
-
-        return variable;
     }
 
     private parseExpression(): Expression {
