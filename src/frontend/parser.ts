@@ -76,9 +76,6 @@ export class Parser {
 
         const body = this.parseBlock();
 
-        this.expectToken(TokenType.RIGHT_BRACE);
-        this.idx++;
-
         return {
             type: "FunctionDeclaration",
             id: {
@@ -107,6 +104,9 @@ export class Parser {
             const node = this.parseStatement();
             expression.body.push(node);
         }
+
+        this.expectToken(TokenType.RIGHT_BRACE);
+        this.idx++;
 
         return expression;
     }
