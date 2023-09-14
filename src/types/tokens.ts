@@ -1,24 +1,25 @@
 export enum TokenType {
     IDENTIFIER,
     NUMBER,
+    STRING,
 
-    LEFT_PAREN, // (
-    RIGHT_PAREN, // )
-    LEFT_BRACE, // {
-    RIGHT_BRACE, // }
-    COLON, // :
-    SEMICOLON, // ;
+    LEFT_PAREN = "(",
+    RIGHT_PAREN = ")",
+    LEFT_BRACE = "{",
+    RIGHT_BRACE = "}",
+    COLON = ":",
+    SEMICOLON = ";",
 
-    PLUS, // +
-    MINUS, // -
-    SLASH, // /
-    STAR, // *
-    ASSIGNMENT, // =
+    PLUS = "+",
+    MINUS = "-",
+    SLASH = "/",
+    STAR = "*",
+    ASSIGNMENT = "=",
 
-    FN, // fn
-    RETURN, // return
+    FN = "fn",
+    RETURN = "return",
 
-    EOF
+    EOF = ""
 }
 
 export type Token = {

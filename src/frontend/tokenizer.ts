@@ -70,25 +70,24 @@ export function tokenize(input: string): Token[] {
                 break;
             }
             default: {
-                if (/[a-zA-Z]/.test(input[i])) {
-                    let value = "";
-                    while (i < input.length && /[a-zA-Z0-9]/.test(input[i])) {
-                        value += input[i];
-                        i++;
-                    }
-                    switch (value) {
-                        case "return":
-                            tokens.push({ type: TokenType.RETURN, value });
-                            break;
-                        case "fn":
-                            tokens.push({ type: TokenType.FN, value });
-                            break;
-                        default:
-                            tokens.push({ type: TokenType.IDENTIFIER, value });
-                            break;
-                    }
-                } else {
+                if (!/[a-zA-Z]/.test(input[i]))
                     throw new Error(`Unexpected character ${input[i]} at index ${i}`);
+
+                let value = "";
+                while (i < input.length && /[a-zA-Z0-9]/.test(input[i])) {
+                    value += input[i];
+                    i++;
+                }
+                switch (value) {
+                    case "return":
+                        tokens.push({ type: TokenType.RETURN, value });
+                        break;
+                    case "fn":
+                        tokens.push({ type: TokenType.FN, value });
+                        break;
+                    default:
+                        tokens.push({ type: TokenType.IDENTIFIER, value });
+                        break;
                 }
             }
         }
