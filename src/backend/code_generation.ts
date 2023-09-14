@@ -131,3 +131,96 @@ function expression_to_expression(
 
     throw new Error(`Unknown statement type: ${value.type}`);
 }
+
+function coerceBinaryExpression(
+    ctx: Context,
+    value: BinaryExpression
+): [binaryen.ExpressionRef, binaryen.ExpressionRef] {
+    const { expected } = ctx,
+        { left, right } = value;
+    if (expected)
+        return [
+            coerceTypeOf(ctx, expression_to_expression(ctx, left), expected.binaryenType),
+            coerceTypeOf(ctx, expression_to_expression(ctx, right), expected.binaryenType)
+        ];
+
+    const left_expr = expression_to_expression(ctx, left),
+        right_expr = expression_to_expression(ctx, right),
+        left_type = binaryen.getExpressionType(left_expr),
+        right_type = binaryen.getExpressionType(right_expr);
+
+    if (left_type === right_type) return [left_expr, right_expr];
+    if (left_type === binaryen.f64) return [left_expr, coerceTypeOf(ctx, left_expr, binaryen.i64)];
+    if (right_type === binaryen.f64)
+        return [coerceTypeOf(ctx, left_expr, binaryen.i64), right_expr];
+    if (left_type === binaryen.f32) return [left_expr, coerceTypeOf(ctx, left_expr, binaryen.i32)];
+    if (right_type === binaryen.f32)
+        return [coerceTypeOf(ctx, left_expr, binaryen.i32), right_expr];
+    if (left_type === binaryen.i64) return [left_expr, coerceTypeOf(ctx, left_expr, binaryen.i32)];
+    if (right_type === binaryen.i64)
+        return [coerceTypeOf(ctx, left_expr, binaryen.i32), right_expr];
+    if (left_type === binaryen.i32) return [left_expr, coerceTypeOf(ctx, left_expr, binaryen.f32)];
+    if (right_type === binaryen.i32)
+        return [coerceTypeOf(ctx, left_expr, binaryen.f32), right_expr];
+
+    throw new Error(`Unknown coercion: ${left_type} and ${right_type}`);
+}
+
+function coerceTypeOf(
+    ctx: Context,
+    expression: binaryen.ExpressionRef,
+    to: binaryen.Type
+): binaryen.ExpressionRef {
+    const type = binaryen.getExpressionType(expression);
+    if (to === binaryen.i32) {
+        if (type === binaryen.i32) {
+            return expression;
+        } else if (type === binaryen.i64) {
+            return ctx.mod.i32.wrap(expression);
+        } else if (type === binaryen.f32) {
+            return ctx.mod.i32.trunc_u.f32(expression);
+        } else if (type === binaryen.f64) {
+            return ctx.mod.i32.trunc_u.f64(expression);
+        } else {
+            throw new Error(`Unknown coercion: ${type} to ${to}`);
+        }
+    } else if (to === binaryen.i64) {
+        if (type === binaryen.i32) {
+            return ctx.mod.i64.extend_u(expression);
+        } else if (type === binaryen.i64) {
+            return expression;
+        } else if (type === binaryen.f32) {
+            return ctx.mod.i64.trunc_u.f32(expression);
+        } else if (type === binaryen.f64) {
+            return ctx.mod.i64.trunc_u.f64(expression);
+        } else {
+            throw new Error(`Unknown coercion: ${type} to ${to}`);
+        }
+    } else if (to === binaryen.f32) {
+        if (type === binaryen.i32) {
+            return ctx.mod.f32.convert_u.i32(expression);
+        } else if (type === binaryen.i64) {
+            return ctx.mod.f32.convert_u.i64(expression);
+        } else if (type === binaryen.f32) {
+            return expression;
+        } else if (type === binaryen.f64) {
+            return ctx.mod.f32.demote(expression);
+        } else {
+            throw new Error(`Unknown coercion: ${type} to ${to}`);
+        }
+    } else if (to === binaryen.f64) {
+        if (type === binaryen.i32) {
+            return ctx.mod.f64.convert_u.i32(expression);
+        } else if (type === binaryen.i64) {
+            return ctx.mod.f64.convert_u.i64(expression);
+        } else if (type === binaryen.f32) {
+            return ctx.mod.f64.promote(expression);
+        } else if (type === binaryen.f64) {
+            return expression;
+        } else {
+            throw new Error(`Unknown coercion: ${type} to ${to}`);
+        }
+    } else {
+        throw new Error(`Unknown coercion: ${type} to ${to}`);
+    }
+}
