@@ -10,7 +10,8 @@ import type {
     BinaryExpression,
     Expression,
     BinaryOperator,
-    SimpleLiteral
+    SimpleLiteral,
+    AssignmentExpression
 } from "../types/nodes.js";
 
 export class Parser {
@@ -28,6 +29,7 @@ export class Parser {
             body: []
         };
 
+        // only functions can be top level right now
         $: while (this.idx < this.tokens.length) {
             switch (this.tokens[this.idx].type) {
                 case TokenType.FN:
@@ -112,6 +114,7 @@ export class Parser {
     }
 
     private parseStatement(): Statement {
+        // return statement
         if (this.tokens[this.idx].type === TokenType.RETURN) {
             this.idx++;
             const expression = this.parseExpression();
@@ -119,40 +122,67 @@ export class Parser {
                 type: "ReturnStatement",
                 argument: expression
             } satisfies ReturnStatement;
+            // variable declaration
+        } else if (
+            this.tokens[this.idx].type === TokenType.IDENTIFIER &&
+            this.tokens[this.idx + 1].type === TokenType.IDENTIFIER &&
+            this.tokens[this.idx + 2].type === TokenType.ASSIGNMENT
+        ) {
+            return this.parseVariableDeclarationOrAssignment("declaration");
+        } else {
+            throw new Error("Unknown statement");
         }
-        // only support return and variable declarations rn
-        return this.parseVariableDeclaration();
     }
 
-    private parseVariableDeclaration(): Declaration {
+    private parseVariableDeclarationOrAssignment(type: "declaration"): Declaration;
+    private parseVariableDeclarationOrAssignment(type: "assignment"): Declaration;
+    private parseVariableDeclarationOrAssignment(
+        type: "assignment" | "declaration"
+    ): AssignmentExpression | Declaration {
         this.expectToken(TokenType.IDENTIFIER);
 
-        const variable_type = this.tokens[this.idx].value,
-            variable_name = this.tokens[this.idx + 1].value;
+        let variable: Declaration | AssignmentExpression;
 
-        const variable: Declaration = {
-            type: "VariableDeclaration",
-            declarations: [
-                {
-                    type: "VariableDeclarator",
-                    id: {
-                        type: "Identifier",
-                        name: variable_name
-                    },
-                    typeAnnotation: {
-                        type: "Identifier",
-                        name: variable_type
-                    },
-                    init: null
-                }
-            ]
-        };
+        if (type === "declaration") {
+            const variable_type = this.tokens[this.idx++].value,
+                variable_name = this.tokens[this.idx++].value;
 
-        this.idx += 2;
-        if (this.tokens[this.idx].type === TokenType.ASSIGNMENT) {
-            this.idx++;
-            const expression = this.parseExpression();
-            variable.declarations[0].init = expression;
+            variable = {
+                type: "VariableDeclaration",
+                declarations: [
+                    {
+                        type: "VariableDeclarator",
+                        id: {
+                            type: "Identifier",
+                            name: variable_name
+                        },
+                        typeAnnotation: {
+                            type: "Identifier",
+                            name: variable_type
+                        },
+                        init: null
+                    }
+                ]
+            };
+
+            if (this.tokens[this.idx].type === TokenType.ASSIGNMENT) {
+                this.idx++;
+                variable.declarations[0].init = this.parseExpression();
+            }
+        } else if (type === "assignment") {
+            const variable_name = this.tokens[this.idx++].value;
+
+            variable = {
+                type: "AssignmentExpression",
+                operator: "=",
+                left: {
+                    type: "Identifier",
+                    name: variable_name
+                },
+                right: this.parseExpression()
+            };
+        } else {
+            throw new Error("Unknown variable operation");
         }
 
         return variable;
