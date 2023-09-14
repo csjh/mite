@@ -1,131 +1,178 @@
 import binaryen from "binaryen";
-import type { Program, VariableDeclaration, Statement, Expression } from "../types/nodes.js";
+import type {
+    Program,
+    VariableDeclaration,
+    Statement,
+    Expression,
+    BinaryExpression
+} from "../types/nodes.js";
+import { bigintToLowAndHigh } from "./utils.js";
+
+const allTypes = [
+    ["void", binaryen.none],
+    ["i64", binaryen.i64],
+    ["i32", binaryen.i32],
+    ["f64", binaryen.f64],
+    ["f32", binaryen.f32],
+    ["v128", binaryen.v128],
+    ["funcref", binaryen.funcref],
+    ["externref", binaryen.externref],
+    ["anyref", binaryen.anyref],
+    ["eqref", binaryen.eqref],
+    ["i31ref", binaryen.i31ref],
+    ["dataref", binaryen.dataref],
+    ["stringref", binaryen.stringref],
+    ["stringview_wtf8", binaryen.stringview_wtf8],
+    ["stringview_wtf16", binaryen.stringview_wtf16],
+    ["stringview_iter", binaryen.stringview_iter],
+    ["unreachable", binaryen.unreachable],
+    ["auto", binaryen.auto]
+];
+
+const types = new Map(allTypes as [string, binaryen.Type][]);
+
+type VariableInformation = {
+    type: "i32" | "i64" | "f32" | "f64"; // string
+    binaryenType: binaryen.Type; // convenience conversion of above
+    index: number;
+};
+
+type FunctionInformation = {
+    ref: binaryen.FunctionRef;
+};
+
+type Context = {
+    mod: binaryen.Module;
+    variables: Map<string, VariableInformation>;
+    functions: Map<string, FunctionInformation>;
+    expected?: Omit<VariableInformation, "index">;
+    current_function: binaryen.FunctionInfo;
+};
 
 export function program_to_module(program: Program): binaryen.Module {
-    const mod = new binaryen.Module();
-
-    const functions = new Map<string, binaryen.FunctionRef>();
-    const types = new Map([
-        ["void", binaryen.none],
-        ["i64", binaryen.i64],
-        ["i32", binaryen.i32],
-        ["f64", binaryen.f64],
-        ["f32", binaryen.f32],
-        ["v128", binaryen.v128],
-        ["funcref", binaryen.funcref],
-        ["externref", binaryen.externref],
-        ["anyref", binaryen.anyref],
-        ["eqref", binaryen.eqref],
-        ["i31ref", binaryen.i31ref],
-        ["dataref", binaryen.dataref],
-        ["stringref", binaryen.stringref],
-        ["stringview_wtf8", binaryen.stringview_wtf8],
-        ["stringview_wtf16", binaryen.stringview_wtf16],
-        ["stringview_iter", binaryen.stringview_iter],
-        ["unreachable", binaryen.unreachable],
-        ["auto", binaryen.auto]
-    ]);
+    const ctx: Context = {
+        mod: new binaryen.Module(),
+        variables: new Map(),
+        functions: new Map(),
+        // @ts-expect-error initially we're not in a function
+        current_function: null
+    };
 
     for (const node of program.body) {
         switch (node.type) {
             case "FunctionDeclaration":
-                const variables = node.body.body.filter(
+                const function_variables = node.body.body.filter(
                     (node) => node.type === "VariableDeclaration"
                 ) as VariableDeclaration[];
 
-                const variable_indexes = new Map(
-                    variables.map((variable, index) => [variable.declarations[0].id.name, index])
+                ctx.variables = new Map(
+                    function_variables.map((variable, index) => [
+                        variable.declarations[0].id.name,
+                        {
+                            index,
+                            type: variable.declarations[0].typeAnnotation.name as
+                                | "i32"
+                                | "i64"
+                                | "f32"
+                                | "f64",
+                            binaryenType: types.get(variable.declarations[0].typeAnnotation.name)!
+                        }
+                    ])
                 );
 
-                const fn = mod.addFunction(
+                const fn = ctx.mod.addFunction(
                     node.id.name,
                     binaryen.createType(
                         node.params.map((param) => types.get(param.typeAnnotation.name)!)
                     ),
                     types.get(node.returnType.name)!,
-                    variables.map(
+                    function_variables.map(
                         (variable) => types.get(variable.declarations[0].typeAnnotation.name)!
                     ),
-                    mod.block(
+                    ctx.mod.block(
                         null,
-                        node.body.body.map((statement) =>
-                            statement_to_expression(mod, variable_indexes, statement)
-                        )
+                        node.body.body.map((statement) => statement_to_expression(ctx, statement))
                     )
                 );
 
-                functions.set(node.id.name, fn);
+                ctx.functions.set(node.id.name, { ref: fn });
                 break;
         }
     }
 
-    for (const key of functions.keys()) {
-        mod.addFunctionExport(key, key);
+    for (const key of ctx.functions.keys()) {
+        ctx.mod.addFunctionExport(key, key);
     }
 
-    return mod;
+    return ctx.mod;
 }
-function statement_to_expression(
-    mod: binaryen.Module,
-    variable_indexes: Map<string, number>,
-    value: Statement
-): binaryen.ExpressionRef {
+function statement_to_expression(ctx: Context, value: Statement): binaryen.ExpressionRef {
     switch (value.type) {
         case "VariableDeclaration":
             const declaration = value.declarations[0];
-            return mod.local.set(
-                variable_indexes.get(declaration.id.name)!,
-                expression_to_expression(mod, variable_indexes, declaration.init!)
+            ctx.expected = ctx.variables.get(declaration.id.name);
+            return ctx.mod.local.set(
+                ctx.variables.get(declaration.id.name)!.index,
+                expression_to_expression(ctx, declaration.init!)
             );
         case "ReturnStatement":
-            return mod.return(expression_to_expression(mod, variable_indexes, value.argument!));
+            return ctx.mod.return(
+                coerceTypeOf(ctx, expression_to_expression(ctx, value.argument!), binaryen.f32)
+            );
         case "ExpressionStatement":
-            return expression_to_expression(mod, variable_indexes, value.expression!);
+            return expression_to_expression(ctx, value.expression!);
     }
 
     throw new Error(`Unknown statement type: ${value.type}`);
 }
 
-function expression_to_expression(
-    mod: binaryen.Module,
-    variable_indexes: Map<string, number>,
-    value: Expression
-): binaryen.ExpressionRef {
+function expression_to_expression(ctx: Context, value: Expression): binaryen.ExpressionRef {
     switch (value.type) {
         case "Literal":
-            return mod.i32.const(Number(value.value));
+            if (!ctx.expected)
+                return typeof value.value === "bigint"
+                    ? ctx.mod.i64.const(...bigintToLowAndHigh(value.value))
+                    : ctx.mod.f64.const(value.value as number);
+            switch (ctx.expected.type) {
+                case "i32":
+                    return ctx.mod.i32.const(value.value as number);
+                case "i64":
+                    return ctx.mod.i64.const(...bigintToLowAndHigh(value.value as bigint));
+                case "f32":
+                    return ctx.mod.f32.const(value.value as number);
+                case "f64":
+                    return ctx.mod.f64.const(value.value as number);
+                default:
+                    throw new Error(`Unknown type: ${ctx.expected.type}`);
+            }
         case "Identifier":
-            return mod.local.get(variable_indexes.get(value.name!)!, binaryen.i32);
+            const { index, binaryenType } = ctx.variables.get(value.name)!;
+            return ctx.mod.local.get(index, binaryenType);
         case "BinaryExpression":
+            const [coerced_left, coerced_right] = coerceBinaryExpression(ctx, value);
+            const expected = ctx.expected!;
+
             switch (value.operator) {
                 case "+":
-                    return mod.i32.add(
-                        expression_to_expression(mod, variable_indexes, value.left),
-                        expression_to_expression(mod, variable_indexes, value.right)
-                    );
+                    return ctx.mod[expected.type].add(coerced_left, coerced_right);
                 case "-":
-                    return mod.i32.sub(
-                        expression_to_expression(mod, variable_indexes, value.left),
-                        expression_to_expression(mod, variable_indexes, value.right)
-                    );
+                    return ctx.mod[expected.type].sub(coerced_left, coerced_right);
                 case "*":
-                    return mod.i32.mul(
-                        expression_to_expression(mod, variable_indexes, value.left),
-                        expression_to_expression(mod, variable_indexes, value.right)
-                    );
+                    return ctx.mod[expected.type].mul(coerced_left, coerced_right);
                 case "/":
-                    // todo: implement unsigned/signed
-                    return mod.i32.div_s(
-                        expression_to_expression(mod, variable_indexes, value.left),
-                        expression_to_expression(mod, variable_indexes, value.right)
-                    );
+                    if (expected.type === "i64" || expected.type === "i32") {
+                        // todo: implement unsigned/signed)
+                        return ctx.mod[expected.type].div_s(coerced_left, coerced_right);
+                    } else {
+                        return ctx.mod[expected.type].div(coerced_left, coerced_right);
+                    }
                 default:
                     throw new Error(`Unknown binary operator: ${value.operator}`);
             }
         case "AssignmentExpression":
-            return mod.local.set(
-                variable_indexes.get(value.left.name!)!,
-                expression_to_expression(mod, variable_indexes, value.right)
+            return ctx.mod.local.set(
+                ctx.variables.get(value.left.name)!.index,
+                expression_to_expression(ctx, value.right)
             );
     }
 
