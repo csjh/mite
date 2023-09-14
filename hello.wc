@@ -4,5 +4,7 @@ fn main(): i32 {
 
     i32 c = a + b;
 
-    return c;
+    c = c + a;
+
+    return a + b + c + 5 / 3;
 }
