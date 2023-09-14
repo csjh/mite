@@ -65,6 +65,27 @@ export function program_to_module(program: Program): binaryen.Module {
                     (node) => node.type === "VariableDeclaration"
                 ) as VariableDeclaration[];
 
+                if (
+                    !function_variables.every((variable) =>
+                        variable.declarations.every((declaration) =>
+                            types.has(declaration.typeAnnotation.name)
+                        )
+                    )
+                ) {
+                    const weird_decl = function_variables.find((variable) =>
+                        variable.declarations.some(
+                            (declaration) => !types.has(declaration.typeAnnotation.name)
+                        )
+                    );
+                    const weird_type = weird_decl?.declarations.find(
+                        (declaration) => !types.has(declaration.typeAnnotation.name)
+                    )!;
+
+                    throw new Error(
+                        `Unknown type found: ${weird_type.id.name} is of type ${weird_type.typeAnnotation.name}`
+                    );
+                }
+
                 ctx.variables = new Map(
                     function_variables.map((variable, index) => [
                         variable.declarations[0].id.name,
