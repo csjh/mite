@@ -1,4 +1,9 @@
 import binaryen from "binaryen";
+import { bigintToLowAndHigh } from "./utils.js";
+import type {
+    Context
+} from "../types/code_gen.js";
+import { types } from "../types/code_gen.js";
 import type {
     Program,
     VariableDeclaration,
@@ -6,48 +11,6 @@ import type {
     Expression,
     BinaryExpression
 } from "../types/nodes.js";
-import { bigintToLowAndHigh } from "./utils.js";
-
-const allTypes = [
-    ["void", binaryen.none],
-    ["i64", binaryen.i64],
-    ["i32", binaryen.i32],
-    ["f64", binaryen.f64],
-    ["f32", binaryen.f32],
-    ["v128", binaryen.v128],
-    ["funcref", binaryen.funcref],
-    ["externref", binaryen.externref],
-    ["anyref", binaryen.anyref],
-    ["eqref", binaryen.eqref],
-    ["i31ref", binaryen.i31ref],
-    ["dataref", binaryen.dataref],
-    ["stringref", binaryen.stringref],
-    ["stringview_wtf8", binaryen.stringview_wtf8],
-    ["stringview_wtf16", binaryen.stringview_wtf16],
-    ["stringview_iter", binaryen.stringview_iter],
-    ["unreachable", binaryen.unreachable],
-    ["auto", binaryen.auto]
-];
-
-const types = new Map(allTypes as [string, binaryen.Type][]);
-
-type VariableInformation = {
-    type: "i32" | "i64" | "f32" | "f64"; // string
-    binaryenType: binaryen.Type; // convenience conversion of above
-    index: number;
-};
-
-type FunctionInformation = {
-    ref: binaryen.FunctionRef;
-};
-
-type Context = {
-    mod: binaryen.Module;
-    variables: Map<string, VariableInformation>;
-    functions: Map<string, FunctionInformation>;
-    expected?: Omit<VariableInformation, "index">;
-    current_function: binaryen.FunctionInfo;
-};
 
 export function program_to_module(program: Program): binaryen.Module {
     const ctx: Context = {
@@ -61,6 +24,9 @@ export function program_to_module(program: Program): binaryen.Module {
     for (const node of program.body) {
         switch (node.type) {
             case "FunctionDeclaration":
+                // only has top-level variables
+                // todo: implement nested variables
+                // probably just a recursive check thru fields w/ 'type' and fat switch
                 const function_variables = node.body.body.filter(
                     (node) => node.type === "VariableDeclaration"
                 ) as VariableDeclaration[];
@@ -87,18 +53,27 @@ export function program_to_module(program: Program): binaryen.Module {
                 }
 
                 ctx.variables = new Map(
-                    function_variables.map((variable, index) => [
-                        variable.declarations[0].id.name,
-                        {
-                            index,
-                            type: variable.declarations[0].typeAnnotation.name as
-                                | "i32"
-                                | "i64"
-                                | "f32"
-                                | "f64",
-                            binaryenType: types.get(variable.declarations[0].typeAnnotation.name)!
-                        }
-                    ])
+                    function_variables
+                        .map((variable, index) =>
+                            variable.declarations.map(
+                                (declaration) =>
+                                    [
+                                        declaration.id.name,
+                                        {
+                                            index,
+                                            type: declaration.typeAnnotation.name as
+                                                | "i32"
+                                                | "i64"
+                                                | "f32"
+                                                | "f64",
+                                            binaryenType: types.get(
+                                                declaration.typeAnnotation.name
+                                            )!
+                                        }
+                                    ] as const
+                            )
+                        )
+                        .flat(1)
                 );
 
                 const fn = ctx.mod.addFunction(
