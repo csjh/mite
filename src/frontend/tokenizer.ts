@@ -64,6 +64,14 @@ export function tokenize(input: string): Token[] {
                     value += input[i];
                     i++;
                 }
+                if (i < input.length && input[i] === ".") {
+                    value += input[i];
+                    i++;
+                    while (i < input.length && /[0-9]/.test(input[i])) {
+                        value += input[i];
+                        i++;
+                    }
+                }
                 tokens.push({ type: TokenType.NUMBER, value });
                 break;
             }
