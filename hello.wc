@@ -1,4 +1,4 @@
-fn main(): i32 {
+fn main(): f32 {
     i32 a = 123;
     i32 b = 456;
 
@@ -6,5 +6,7 @@ fn main(): i32 {
 
     c = c + a;
 
-    return a + b + c + 5 / 3;
+    f64 d = 1.5;
+
+    return a + d + b + 2.5 + c + 5 / 3;
 }
