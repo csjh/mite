@@ -20,6 +20,9 @@ export enum TokenType {
     FN = "fn",
     RETURN = "return",
 
+    SIGNED = "signed",
+    UNSIGNED = "unsigned",
+
     EOF = "EOF"
 }
 export type BinaryOperator = TokenType.PLUS | TokenType.MINUS | TokenType.SLASH | TokenType.STAR;

@@ -60,6 +60,13 @@ export class Parser {
         }
     }
 
+    private getSignedness(): boolean {
+        if (this.tokens[this.idx].type === TokenType.SIGNED || this.tokens[this.idx].type === TokenType.UNSIGNED) {
+            return this.tokens[this.idx++].type === TokenType.UNSIGNED;
+        }
+        return false;
+    }
+
     /*
     fn identifier(variable: type): type {
         // body
@@ -80,6 +87,7 @@ export class Parser {
         this.idx++;
 
         this.expectToken(TokenType.IDENTIFIER);
+        const isUnsigned = this.getSignedness();
         const return_type = this.tokens[this.idx].value;
         this.expectTypeName(return_type);
         this.idx++;
@@ -95,7 +103,8 @@ export class Parser {
             params: [],
             returnType: {
                 type: "Identifier",
-                name: return_type
+                name: return_type,
+                isUnsigned
             },
             body
         };
@@ -166,6 +175,7 @@ export class Parser {
                 declarations: []
             };
 
+            const isUnsigned = this.getSignedness();
             const variable_type = this.tokens[this.idx++].value;
             this.expectTypeName(variable_type);
             do {
@@ -179,7 +189,8 @@ export class Parser {
                     },
                     typeAnnotation: {
                         type: "Identifier",
-                        name: variable_type
+                        name: variable_type,
+                        isUnsigned
                     },
                     init: null
                 };

@@ -89,11 +89,17 @@ export function tokenize(input: string): Token[] {
                     i++;
                 }
                 switch (value) {
+                    case "fn":
+                        tokens.push({ type: TokenType.FN, value });
+                        break;
                     case "return":
                         tokens.push({ type: TokenType.RETURN, value });
                         break;
-                    case "fn":
-                        tokens.push({ type: TokenType.FN, value });
+                    case "signed":
+                        tokens.push({ type: TokenType.SIGNED, value });
+                        break;
+                    case "unsigned":
+                        tokens.push({ type: TokenType.UNSIGNED, value });
                         break;
                     default:
                         tokens.push({ type: TokenType.IDENTIFIER, value });

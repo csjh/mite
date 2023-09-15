@@ -16,6 +16,7 @@ export type VariableInformation = {
     type: "i32" | "i64" | "f32" | "f64"; // string
     binaryenType: binaryen.Type; // convenience conversion of above
     index: number;
+    isSigned?: boolean;
 };
 
 export type FunctionInformation = {
