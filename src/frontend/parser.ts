@@ -12,7 +12,9 @@ import type {
     AssignmentExpression,
     VariableDeclaration,
     ExpressionStatement,
-    VariableDeclarator
+    VariableDeclarator,
+    CallExpression,
+    TypedParameter
 } from "../types/nodes.js";
 
 export class Parser {
@@ -83,7 +85,38 @@ export class Parser {
 
         this.expectToken(TokenType.LEFT_PAREN);
         this.idx++;
-        // todo: parse params
+
+        const params: TypedParameter[] = [];
+        while (this.tokens[this.idx].type !== TokenType.RIGHT_PAREN) {
+            const isUnsigned = this.getSignedness();
+
+            const name = this.tokens[this.idx].value;
+            this.expectToken(TokenType.IDENTIFIER);
+            this.idx++;
+
+            this.expectToken(TokenType.COLON);
+            this.idx++;
+
+            const type = this.tokens[this.idx].value;
+            this.expectTypeName(type);
+            this.idx++;
+
+            params.push({
+                type: "TypedParameter",
+                name: {
+                    type: "Identifier",
+                    name
+                },
+                typeAnnotation: {
+                    type: "Identifier",
+                    name: type,
+                    isUnsigned
+                }
+            });
+
+            if (this.tokens[this.idx].type === TokenType.COMMA) this.idx++;
+        }
+
         this.expectToken(TokenType.RIGHT_PAREN);
         this.idx++;
         this.expectToken(TokenType.COLON);
@@ -103,7 +136,7 @@ export class Parser {
                 type: "Identifier",
                 name
             },
-            params: [],
+            params,
             returnType: {
                 type: "Identifier",
                 name: return_type,
@@ -235,6 +268,7 @@ export class Parser {
         switch (this.tokens[this.idx].value) {
             case TokenType.SEMICOLON:
             case TokenType.COMMA: // todo: commas shouldn't *always* have this effect
+            case TokenType.RIGHT_PAREN: // same as above kinda, need a bit of context
                 return next;
             case TokenType.ASSIGNMENT:
                 if (next.type !== "Identifier") throw new Error("Expected identifier, got literal");
@@ -244,6 +278,8 @@ export class Parser {
             case TokenType.SLASH:
             case TokenType.STAR:
                 return this.parseBinaryExpression(next);
+            case TokenType.LEFT_PAREN:
+                if (next.type === "Identifier") return this.parseCallExpression(next);
             default:
                 throw new Error(`Unknown expression: ${this.tokens[this.idx].value}`);
         }
@@ -296,5 +332,28 @@ export class Parser {
                 `Expected an identifier or a number, got ${this.tokens[this.idx].value}`
             );
         }
+    }
+
+    private parseCallExpression(func_name: Identifier): CallExpression {
+        const call_expression: CallExpression = {
+            type: "CallExpression",
+            callee: func_name,
+            arguments: []
+        };
+
+        this.expectToken(TokenType.LEFT_PAREN);
+        this.idx++;
+
+        while (true) {
+            const argument = this.parseExpression();
+            call_expression.arguments.push(argument);
+            if (this.tokens[this.idx].type === TokenType.RIGHT_PAREN) break;
+            this.idx++;
+        }
+
+        this.expectToken(TokenType.RIGHT_PAREN);
+        this.idx++;
+
+        return call_expression;
     }
 }

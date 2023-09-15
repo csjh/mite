@@ -1,8 +1,19 @@
 import binaryen from "binaryen";
 import { bigintToLowAndHigh, createTypeOperations } from "./utils.js";
-import type { Context, ExpressionInformation } from "../types/code_gen.js";
+import type {
+    Context,
+    ExpressionInformation,
+    LocalVariableInformation
+} from "../types/code_gen.js";
 import { types } from "../types/code_gen.js";
-import type { Program, Statement, Expression, BinaryExpression } from "../types/nodes.js";
+import type {
+    Program,
+    Statement,
+    Expression,
+    BinaryExpression,
+    VariableDeclaration,
+    TypedParameter
+} from "../types/nodes.js";
 
 export function program_to_module(program: Program): binaryen.Module {
     const mod = new binaryen.Module();
@@ -21,43 +32,54 @@ export function program_to_module(program: Program): binaryen.Module {
                 // only has top-level variables
                 // todo: implement nested variables
                 // probably just a recursive check thru fields w/ 'type' and fat switch
-                const function_variables = node.body.body.filter(
-                    (node) => node.type === "VariableDeclaration"
-                ) as Extract<Statement, { type: "VariableDeclaration" }>[];
-
-                const weird_type = function_variables
-                    .find((variable) =>
-                        variable.declarations.some(
-                            (declaration) => !(declaration.typeAnnotation.name in types)
-                        )
+                const parameter_vars = node.params;
+                const declared_vars = node.body.body
+                    .filter<VariableDeclaration>(
+                        (node): node is VariableDeclaration => node.type === "VariableDeclaration"
                     )
-                    ?.declarations.find(
-                        (declaration) => !(declaration.typeAnnotation.name in types)
+                    .flatMap((variable) => variable.declarations)
+                    .map(
+                        (variable) =>
+                            ({
+                                type: "TypedParameter",
+                                name: variable.id,
+                                typeAnnotation: variable.typeAnnotation
+                            }) as TypedParameter
                     );
+
+                const function_variables = [...parameter_vars, ...declared_vars];
+
+                const weird_type = function_variables.find(
+                    (variable) => !(variable.typeAnnotation.name in types)
+                );
 
                 if (weird_type) {
                     throw new Error(
-                        `Unknown type found: ${weird_type.id.name} is of type ${weird_type.typeAnnotation.name}`
+                        `Unknown type found: ${weird_type.name.name} is of type ${weird_type.typeAnnotation.name}`
                     );
                 }
 
                 let var_index = 0;
                 ctx.variables = new Map(
-                    function_variables
-                        .flatMap((variable) => variable.declarations)
-                        .map(
-                            (declaration) =>
-                                [
-                                    declaration.id.name,
-                                    {
-                                        index: var_index++,
-                                        type: declaration.typeAnnotation.name,
-                                        binaryenType: types[declaration.typeAnnotation.name],
-                                        isUnsigned: declaration.typeAnnotation.isUnsigned
-                                    }
-                                ] as const
-                        )
+                    function_variables.map(
+                        ({ name, typeAnnotation }) =>
+                            [
+                                name.name,
+                                {
+                                    index: var_index++,
+                                    type: typeAnnotation.name,
+                                    binaryenType: types[typeAnnotation.name],
+                                    isUnsigned: typeAnnotation.isUnsigned
+                                }
+                            ] as const
+                    )
                 );
+
+                const params = node.params.map((param) => ({
+                    type: param.typeAnnotation.name,
+                    binaryenType: types[param.typeAnnotation.name],
+                    isUnsigned: param.typeAnnotation.isUnsigned
+                }));
 
                 const results = {
                     type: node.returnType.name,
@@ -67,14 +89,9 @@ export function program_to_module(program: Program): binaryen.Module {
 
                 const fn = ctx.mod.addFunction(
                     node.id.name,
-                    binaryen.createType(
-                        node.params.map((param) => types[param.typeAnnotation.name])
-                    ),
+                    binaryen.createType(params.map((param) => param.binaryenType)),
                     results.binaryenType,
-                    // lol 3 copies of array
-                    function_variables
-                        .flatMap((variable) => variable.declarations)
-                        .map((declaration) => types[declaration.typeAnnotation.name]),
+                    function_variables.map((declaration) => types[declaration.typeAnnotation.name]),
                     ctx.mod.block(
                         null,
                         node.body.body
@@ -93,7 +110,7 @@ export function program_to_module(program: Program): binaryen.Module {
                     )
                 );
 
-                ctx.functions.set(node.id.name, { ref: fn });
+                ctx.functions.set(node.id.name, { params, results, ref: fn });
                 break;
         }
     }
@@ -115,11 +132,11 @@ function statement_to_expression(
                 .filter((declaration) => declaration.init)
                 .map((declaration) => {
                     const expr = expression_to_expression(
-                        { ...ctx, expected: ctx.variables.get(declaration.id.name) },
+                        { ...ctx, expected: lookForVariable(ctx, declaration.id.name) },
                         declaration.init!
                     );
                     const ref = ctx.mod.local.set(
-                        ctx.variables.get(declaration.id.name)!.index,
+                        lookForVariable(ctx, declaration.id.name).index,
                         expr.ref
                     );
                     return {
@@ -186,7 +203,7 @@ function expression_to_expression(ctx: Context, value: Expression): ExpressionIn
             ref
         };
     } else if (value.type === "Identifier") {
-        const { index, binaryenType, type } = ctx.variables.get(value.name)!;
+        const { index, binaryenType, type } = lookForVariable(ctx, value.name);
         const ref = ctx.mod.local.get(index, binaryenType);
         return {
             ref,
@@ -211,15 +228,35 @@ function expression_to_expression(ctx: Context, value: Expression): ExpressionIn
         }
     } else if (value.type === "AssignmentExpression") {
         const expr = expression_to_expression(
-            { ...ctx, expected: ctx.variables.get(value.left.name) },
+            { ...ctx, expected: lookForVariable(ctx, value.left.name) },
             value.right
         );
 
-        const ref = ctx.mod.local.set(ctx.variables.get(value.left.name)!.index, expr.ref);
+        const ref = ctx.mod.local.set(lookForVariable(ctx, value.left.name).index, expr.ref);
         return {
             ref,
             binaryenType: binaryen.none,
             type: "void"
+        };
+    } else if (value.type === "CallExpression") {
+        const fn = ctx.functions.get(value.callee.name)!;
+        const args = value.arguments.map((arg, i) =>
+            expression_to_expression(
+                {
+                    ...ctx,
+                    expected: fn.params[i]
+                },
+                arg
+            )
+        );
+
+        return {
+            ...fn.results,
+            ref: ctx.mod.call(
+                value.callee.name,
+                args.map((arg) => arg.ref),
+                fn.results.binaryenType
+            )
         };
     }
 
@@ -250,4 +287,10 @@ function coerceBinaryExpression(
     }
 
     throw new Error(`Unknown coercion: ${left_expr.type} to ${right_expr.type}`);
+}
+
+function lookForVariable(ctx: Context, name: string): LocalVariableInformation {
+    const variable = ctx.variables.get(name);
+    if (!variable) throw new Error(`Unknown variable: ${name}`);
+    return variable;
 }
