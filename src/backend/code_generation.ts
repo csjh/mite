@@ -4,15 +4,15 @@ import type { Context } from "../types/code_gen.js";
 import { types } from "../types/code_gen.js";
 import type {
     Program,
-    VariableDeclaration,
     Statement,
     Expression,
     BinaryExpression
 } from "../types/nodes.js";
 
 export function program_to_module(program: Program): binaryen.Module {
+    const mod = new binaryen.Module();
     const ctx: Context = {
-        mod: new binaryen.Module(),
+        mod,
         variables: new Map(),
         functions: new Map(),
         // @ts-expect-error initially we're not in a function
@@ -56,7 +56,8 @@ export function program_to_module(program: Program): binaryen.Module {
                                         {
                                             index: var_index++,
                                             type: declaration.typeAnnotation.name,
-                                            binaryenType: types[declaration.typeAnnotation.name]
+                                            binaryenType: types[declaration.typeAnnotation.name],
+                                            isUnsigned: declaration.typeAnnotation.isUnsigned
                                         }
                                     ] as const
                             )
