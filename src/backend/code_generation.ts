@@ -60,11 +60,7 @@ export function program_to_module(program: Program): binaryen.Module {
                                         declaration.id.name,
                                         {
                                             index: var_index++,
-                                            type: declaration.typeAnnotation.name as
-                                                | "i32"
-                                                | "i64"
-                                                | "f32"
-                                                | "f64",
+                                            type: declaration.typeAnnotation.name,
                                             binaryenType: types.get(
                                                 declaration.typeAnnotation.name
                                             )!
