@@ -410,11 +410,9 @@ export interface Identifier extends BaseNode, BaseExpression, BasePattern {
     name: string;
 }
 
-export type Literal = SimpleLiteral | RegExpLiteral | BigIntLiteral;
-
-export interface SimpleLiteral extends BaseNode, BaseExpression {
+export interface Literal extends BaseNode, BaseExpression {
     type: "Literal";
-    value: string | boolean | number | null;
+    value: number | bigint; // todo: add back string
     raw?: string | undefined;
 }
 
@@ -425,13 +423,6 @@ export interface RegExpLiteral extends BaseNode, BaseExpression {
         pattern: string;
         flags: string;
     };
-    raw?: string | undefined;
-}
-
-export interface BigIntLiteral extends BaseNode, BaseExpression {
-    type: "Literal";
-    value?: bigint | null | undefined;
-    bigint: string;
     raw?: string | undefined;
 }
 
