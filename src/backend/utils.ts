@@ -8,7 +8,7 @@ import binaryen from "binaryen";
 import { Context, ExpressionInformation } from "../types/code_gen.js";
 
 // todo: arbitrary
-type ValidTypes = import("../types/code_gen.js").VariableInformation["type"];
+type ValidTypes = import("../types/code_gen.js").LocalVariableInformation["type"];
 
 export function createTypeOperations(mod: binaryen.Module): Record<
     ValidTypes,

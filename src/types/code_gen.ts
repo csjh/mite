@@ -12,28 +12,33 @@ export const types = Object.fromEntries(allTypes) as {
     [key in (typeof allTypes)[number][0]]: binaryen.Type;
 };
 
-export type VariableInformation = {
+type VariableInformation = {
     type: "i32" | "i64" | "f32" | "f64" | "void"; // string
     binaryenType: binaryen.Type; // convenience conversion of above
-    index: number;
     isUnsigned?: boolean;
 };
 
-export type ExpressionInformation = Omit<VariableInformation, "index"> & {
+export type LocalVariableInformation = VariableInformation & {
+    index: number;
+};
+
+export type ExpressionInformation = VariableInformation & {
     ref: binaryen.ExpressionRef;
 };
 
 export type FunctionInformation = {
     ref: binaryen.FunctionRef;
+    params: VariableInformation[];
+    results: VariableInformation;
 };
 
 export type Context = {
     mod: binaryen.Module;
-    variables: Map<string, VariableInformation>;
+    variables: Map<string, LocalVariableInformation>;
     functions: Map<string, FunctionInformation>;
-    expected?: Omit<VariableInformation, "index">;
+    expected?: VariableInformation;
     type_operations: ReturnType<typeof import("../backend/utils.js").createTypeOperations>;
     current_function: {
-        results: Omit<VariableInformation, "index">;
+        results: VariableInformation;
     };
 };

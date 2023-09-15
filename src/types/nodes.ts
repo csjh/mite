@@ -33,7 +33,6 @@ export interface NodeMap {
     PropertyDefinition: PropertyDefinition;
     SpreadElement: SpreadElement;
     Statement: Statement;
-    Super: Super;
     SwitchCase: SwitchCase;
     TemplateElement: TemplateElement;
     VariableDeclarator: VariableDeclarator;
@@ -256,7 +255,6 @@ export interface ExpressionMap {
     LogicalExpression: LogicalExpression;
     MemberExpression: MemberExpression;
     MetaProperty: MetaProperty;
-    NewExpression: NewExpression;
     ObjectExpression: ObjectExpression;
     SequenceExpression: SequenceExpression;
     TaggedTemplateExpression: TaggedTemplateExpression;
@@ -271,7 +269,7 @@ export type Expression = ExpressionMap[keyof ExpressionMap];
 
 export interface BaseExpression extends BaseNode {}
 
-export type ChainElement = SimpleCallExpression | MemberExpression;
+export type ChainElement = CallExpression | MemberExpression;
 
 export interface ChainExpression extends BaseExpression {
     type: "ChainExpression";
@@ -368,24 +366,15 @@ export interface ConditionalExpression extends BaseExpression {
     consequent: Expression;
 }
 
-export interface BaseCallExpression extends BaseExpression {
-    callee: Expression | Super;
-    arguments: Array<Expression | SpreadElement>;
-}
-export type CallExpression = SimpleCallExpression | NewExpression;
-
-export interface SimpleCallExpression extends BaseCallExpression {
+export interface CallExpression extends BaseExpression {
     type: "CallExpression";
-    optional: boolean;
-}
-
-export interface NewExpression extends BaseCallExpression {
-    type: "NewExpression";
+    callee: Identifier;
+    arguments: Array<Expression>;
 }
 
 export interface MemberExpression extends BaseExpression, BasePattern {
     type: "MemberExpression";
-    object: Expression | Super;
+    object: Expression;
     property: Expression | PrivateIdentifier;
     computed: boolean;
     optional: boolean;
@@ -482,10 +471,6 @@ export type UpdateOperator = "++" | "--";
 export interface ForOfStatement extends BaseForXStatement {
     type: "ForOfStatement";
     await: boolean;
-}
-
-export interface Super extends BaseNode {
-    type: "Super";
 }
 
 export interface SpreadElement extends BaseNode {
