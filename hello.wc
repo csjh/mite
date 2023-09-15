@@ -1,12 +1,19 @@
-fn main(): i64 {
-    i32 a = 123;
-    i32 b = 456;
+fn main(): f32 {
+    i32 hundred = 100;
+    i32 four_hundred = 400;
 
-    i32 c = a + b, e = b - a;
+    i32 sum = hundred + four_hundred, second_decl = four_hundred - hundred;
 
-    c = c + a + e;
+    i64 unused;
+    unused = 100;
+    unused = 9223372036854776000;
+    f64 big_double_literal = 9223372036854776000.15;
 
-    f64 d = 1.5;
+    sum = sum + hundred + second_decl;
 
-    return d + e;
+    f64 three_halves = 3 / 2;
+
+    f32 blah = three_halves * big_double_literal;
+
+    return sum + three_halves - blah;
 }
