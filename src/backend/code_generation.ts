@@ -140,13 +140,13 @@ function expression_to_expression(ctx: Context, value: Expression): binaryen.Exp
                     : ctx.mod.f64.const(value.value as number);
             switch (ctx.expected.type) {
                 case "i32":
-                    return ctx.mod.i32.const(value.value as number);
+                    return ctx.mod.i32.const(Number(value.value));
                 case "i64":
-                    return ctx.mod.i64.const(...bigintToLowAndHigh(value.value as bigint));
+                    return ctx.mod.i64.const(...bigintToLowAndHigh(value.value));
                 case "f32":
-                    return ctx.mod.f32.const(value.value as number);
+                    return ctx.mod.f32.const(Number(value.value));
                 case "f64":
-                    return ctx.mod.f64.const(value.value as number);
+                    return ctx.mod.f64.const(Number(value.value));
                 default:
                     throw new Error(`Unknown type: ${ctx.expected.type}`);
             }

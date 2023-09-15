@@ -10,7 +10,7 @@ import type {
     BinaryExpression,
     Expression,
     BinaryOperator,
-    SimpleLiteral,
+    Literal,
     AssignmentExpression,
     VariableDeclaration,
     ExpressionStatement,
@@ -223,11 +223,11 @@ export class Parser {
             case TokenType.STAR:
                 return this.parseBinaryExpression(next);
             default:
-                throw new Error("Unknown expression");
+                throw new Error(`Unknown expression: ${this.tokens[this.idx].value}`);
         }
     }
 
-    private parseBinaryExpression(left: Identifier | SimpleLiteral): BinaryExpression {
+    private parseBinaryExpression(left: Identifier | Literal): BinaryExpression {
         if (!BINARY_OPERATORS.has(this.tokens[this.idx].value)) {
             throw new Error(
                 `Expected binary operator in (${Array.from(BINARY_OPERATORS).join(", ")}), got ${
@@ -250,16 +250,20 @@ export class Parser {
         return binary_expression;
     }
 
-    private getIdentifierOrLiteral(): Identifier | SimpleLiteral {
+    private getIdentifierOrLiteral(): Identifier | Literal {
         if (this.tokens[this.idx].type === TokenType.IDENTIFIER) {
             return {
                 type: "Identifier",
                 name: this.tokens[this.idx++].value
             };
         } else if (this.tokens[this.idx].type === TokenType.NUMBER) {
+            const raw = this.tokens[this.idx++].value;
+            let value: bigint | number;
+            // prettier-ignore
+            try { value = BigInt(raw); } catch { value = Number(raw); }
             return {
                 type: "Literal",
-                value: this.tokens[this.idx++].value
+                value
             };
         } else {
             throw new Error(
