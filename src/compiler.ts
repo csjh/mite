@@ -16,7 +16,7 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     const mod = program_to_module(program);
 
     if (options.as === "wat") {
-        return mod.emitText();
+        return mod.emitStackIR();
     } else if (options.as === "wasm") {
         return mod.emitBinary();
     }
