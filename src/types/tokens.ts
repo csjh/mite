@@ -22,13 +22,14 @@ export enum TokenType {
 
     EOF = "EOF"
 }
+export type BinaryOperator = TokenType.PLUS | TokenType.MINUS | TokenType.SLASH | TokenType.STAR;
 
-export const BINARY_OPERATORS = new Set([
+export const BINARY_OPERATORS: Set<BinaryOperator> = new Set([
     TokenType.PLUS,
     TokenType.MINUS,
     TokenType.SLASH,
     TokenType.STAR
-] as string[]);
+] as const);
 
 export type Token = {
     type: TokenType;

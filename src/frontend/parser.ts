@@ -1,15 +1,13 @@
-import { TokenType, Token, BINARY_OPERATORS } from "../types/tokens.js";
+import { TokenType, Token, BINARY_OPERATORS, BinaryOperator } from "../types/tokens.js";
 import type {
     Program,
     FunctionDeclaration,
     BlockStatement,
     Statement,
-    Declaration,
     ReturnStatement,
     Identifier,
     BinaryExpression,
     Expression,
-    BinaryOperator,
     Literal,
     AssignmentExpression,
     VariableDeclaration,
@@ -56,6 +54,12 @@ export class Parser {
         }
     }
 
+    private expectTypeName(type: string): asserts type is "i32" | "i64" | "f32" | "f64" {
+        if (!["i32", "i64", "f32", "f64"].includes(type)) {
+            throw new Error(`Expected type name, got ${type}`);
+        }
+    }
+
     /*
     fn identifier(variable: type): type {
         // body
@@ -77,6 +81,7 @@ export class Parser {
 
         this.expectToken(TokenType.IDENTIFIER);
         const return_type = this.tokens[this.idx].value;
+        this.expectTypeName(return_type);
         this.idx++;
 
         const body = this.parseBlock();
@@ -125,7 +130,7 @@ export class Parser {
             statement = {
                 type: "ReturnStatement",
                 argument: expression
-            } as ReturnStatement;
+            } satisfies ReturnStatement;
         } else if (
             this.tokens[this.idx].type === TokenType.IDENTIFIER &&
             this.tokens[this.idx + 1].type === TokenType.IDENTIFIER &&
@@ -136,7 +141,7 @@ export class Parser {
             statement = {
                 type: "ExpressionStatement",
                 expression: this.parseExpression()
-            } as ExpressionStatement;
+            } satisfies ExpressionStatement;
         }
 
         // statements end with a semicolon
@@ -162,6 +167,7 @@ export class Parser {
             };
 
             const variable_type = this.tokens[this.idx++].value;
+            this.expectTypeName(variable_type);
             do {
                 const variable_name = this.tokens[this.idx++].value;
 
@@ -200,7 +206,7 @@ export class Parser {
                     name: this.tokens[this.idx++].value
                 },
                 right: this.parseExpression()
-            } as AssignmentExpression;
+            } satisfies AssignmentExpression;
         } else {
             throw new Error("Unknown variable operation");
         }
@@ -227,15 +233,19 @@ export class Parser {
         }
     }
 
-    private parseBinaryExpression(left: Identifier | Literal): BinaryExpression {
-        if (!BINARY_OPERATORS.has(this.tokens[this.idx].value)) {
+    private expectBinaryOperator(token: string): asserts token is BinaryOperator {
+        if (!BINARY_OPERATORS.has(token as BinaryOperator)) {
             throw new Error(
-                `Expected binary operator in (${Array.from(BINARY_OPERATORS).join(", ")}), got ${
-                    this.tokens[this.idx].value
-                }`
+                `Expected binary operator in (${Array.from(BINARY_OPERATORS).join(
+                    ", "
+                )}), got ${token}`
             );
         }
-        const operator: BinaryOperator = this.tokens[this.idx].value as unknown as BinaryOperator;
+    }
+
+    private parseBinaryExpression(left: Identifier | Literal): BinaryExpression {
+        const operator = this.tokens[this.idx].value;
+        this.expectBinaryOperator(operator);
         this.idx++;
 
         const right = this.parseExpression();

@@ -27,7 +27,7 @@ export function program_to_module(program: Program): binaryen.Module {
                 // probably just a recursive check thru fields w/ 'type' and fat switch
                 const function_variables = node.body.body.filter(
                     (node) => node.type === "VariableDeclaration"
-                ) as VariableDeclaration[];
+                ) as Extract<Statement, { type: "VariableDeclaration" }>[];
 
                 if (
                     !function_variables.every((variable) =>
@@ -137,7 +137,7 @@ function expression_to_expression(ctx: Context, value: Expression): binaryen.Exp
             if (!ctx.expected)
                 return typeof value.value === "bigint"
                     ? ctx.mod.i64.const(...bigintToLowAndHigh(value.value))
-                    : ctx.mod.f64.const(value.value as number);
+                    : ctx.mod.f64.const(value.value);
             switch (ctx.expected.type) {
                 case "i32":
                     return ctx.mod.i32.const(Number(value.value));

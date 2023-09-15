@@ -74,12 +74,12 @@ export interface Directive extends BaseNode {
 export interface TypedParameter extends BaseNode {
     type: "TypedParameter";
     name: Identifier;
-    typeAnnotation: Identifier;
+    typeAnnotation: TypeIdentifier;
 }
 
 export interface BaseFunction extends BaseNode {
     params: TypedParameter[];
-    returnType: Identifier;
+    returnType: TypeIdentifier;
     // The body is either BlockStatement or Expression because arrow functions
     // can have a body that's either. FunctionDeclarations and
     // FunctionExpressions have only BlockStatement bodies.
@@ -235,7 +235,7 @@ export interface VariableDeclaration extends BaseDeclaration {
 export interface VariableDeclarator extends BaseNode {
     type: "VariableDeclarator";
     id: Identifier;
-    typeAnnotation: Identifier;
+    typeAnnotation: TypeIdentifier;
     init?: Expression | null | undefined;
 }
 
@@ -408,6 +408,10 @@ export interface CatchClause extends BaseNode {
 export interface Identifier extends BaseNode, BaseExpression, BasePattern {
     type: "Identifier";
     name: string;
+}
+
+export interface TypeIdentifier extends Identifier {
+    name: "i64" | "i32" | "f64" | "f32";
 }
 
 export interface Literal extends BaseNode, BaseExpression {
