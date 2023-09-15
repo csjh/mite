@@ -54,6 +54,7 @@ export function tokenize(input: string): Token[] {
                 tokens.push({ type: TokenType.ASSIGNMENT, value: "=" });
                 i++;
                 break;
+            case "0":
             case "1":
             case "2":
             case "3":
