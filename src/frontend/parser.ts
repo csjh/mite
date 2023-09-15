@@ -54,8 +54,8 @@ export class Parser {
         }
     }
 
-    private expectTypeName(type: string): asserts type is "i32" | "i64" | "f32" | "f64" {
-        if (!["i32", "i64", "f32", "f64"].includes(type)) {
+    private expectTypeName(type: string): asserts type is "i32" | "i64" | "f32" | "f64" | "void" {
+        if (!["i32", "i64", "f32", "f64", "void"].includes(type)) {
             throw new Error(`Expected type name, got ${type}`);
         }
     }

@@ -411,7 +411,7 @@ export interface Identifier extends BaseNode, BaseExpression, BasePattern {
 }
 
 export interface TypeIdentifier extends Identifier {
-    name: "i64" | "i32" | "f64" | "f32";
+    name: "i64" | "i32" | "f64" | "f32" | "void";
     isUnsigned: boolean;
 }
 
