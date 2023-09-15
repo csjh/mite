@@ -13,10 +13,14 @@ export const types = Object.fromEntries(allTypes) as {
 };
 
 export type VariableInformation = {
-    type: "i32" | "i64" | "f32" | "f64"; // string
+    type: "i32" | "i64" | "f32" | "f64" | "void"; // string
     binaryenType: binaryen.Type; // convenience conversion of above
     index: number;
-    isSigned?: boolean;
+    isUnsigned?: boolean;
+};
+
+export type ExpressionInformation = Omit<VariableInformation, "index"> & {
+    ref: binaryen.ExpressionRef;
 };
 
 export type FunctionInformation = {
@@ -28,5 +32,8 @@ export type Context = {
     variables: Map<string, VariableInformation>;
     functions: Map<string, FunctionInformation>;
     expected?: Omit<VariableInformation, "index">;
-    current_function: binaryen.FunctionInfo;
+    type_operations: ReturnType<typeof import("../backend/utils.js").createTypeOperations>;
+    current_function: {
+        results: Omit<VariableInformation, "index">;
+    };
 };
