@@ -8,7 +8,9 @@ export const allTypes = [
     ["f32", binaryen.f32]
 ] as const;
 
-export const types = new Map(allTypes);
+export const types = Object.fromEntries(allTypes) as {
+    [key in (typeof allTypes)[number][0]]: binaryen.Type;
+};
 
 export type VariableInformation = {
     type: "i32" | "i64" | "f32" | "f64"; // string

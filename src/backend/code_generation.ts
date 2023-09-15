@@ -29,22 +29,17 @@ export function program_to_module(program: Program): binaryen.Module {
                     (node) => node.type === "VariableDeclaration"
                 ) as Extract<Statement, { type: "VariableDeclaration" }>[];
 
-                if (
-                    !function_variables.every((variable) =>
-                        variable.declarations.every((declaration) =>
-                            types.has(declaration.typeAnnotation.name)
+                const weird_type = function_variables
+                    .find((variable) =>
+                        variable.declarations.some(
+                            (declaration) => !(declaration.typeAnnotation.name in types)
                         )
                     )
-                ) {
-                    const weird_decl = function_variables.find((variable) =>
-                        variable.declarations.some(
-                            (declaration) => !types.has(declaration.typeAnnotation.name)
-                        )
+                    ?.declarations.find(
+                        (declaration) => !(declaration.typeAnnotation.name in types)
                     );
-                    const weird_type = weird_decl?.declarations.find(
-                        (declaration) => !types.has(declaration.typeAnnotation.name)
-                    )!;
 
+                if (weird_type) {
                     throw new Error(
                         `Unknown type found: ${weird_type.id.name} is of type ${weird_type.typeAnnotation.name}`
                     );
@@ -61,9 +56,7 @@ export function program_to_module(program: Program): binaryen.Module {
                                         {
                                             index: var_index++,
                                             type: declaration.typeAnnotation.name,
-                                            binaryenType: types.get(
-                                                declaration.typeAnnotation.name
-                                            )!
+                                            binaryenType: types[declaration.typeAnnotation.name]
                                         }
                                     ] as const
                             )
@@ -71,21 +64,39 @@ export function program_to_module(program: Program): binaryen.Module {
                         .flat(1)
                 );
 
+                const params = binaryen.createType(
+                    node.params.map((param) => types[param.typeAnnotation.name])
+                );
+                const vars = function_variables.flatMap((variable) =>
+                    variable.declarations.map(
+                        (declaration) => types[declaration.typeAnnotation.name]
+                    )
+                );
+                const results = types[node.returnType.name];
+
                 const fn = ctx.mod.addFunction(
                     node.id.name,
-                    binaryen.createType(
-                        node.params.map((param) => types.get(param.typeAnnotation.name)!)
-                    ),
-                    types.get(node.returnType.name)!,
-                    function_variables.flatMap((variable) =>
-                        variable.declarations.map(
-                            (declaration) => types.get(declaration.typeAnnotation.name)!
-                        )
-                    ),
+                    params,
+                    results,
+                    vars,
                     ctx.mod.block(
                         null,
                         node.body.body.flatMap((statement) =>
-                            statement_to_expression(ctx, statement)
+                            statement_to_expression(
+                                {
+                                    ...ctx,
+                                    current_function: {
+                                        name: node.id.name,
+                                        module: null,
+                                        base: null,
+                                        params,
+                                        results,
+                                        vars,
+                                        body: 0
+                                    }
+                                },
+                                statement
+                            )
                         )
                     )
                 );
@@ -107,21 +118,30 @@ function statement_to_expression(
 ): binaryen.ExpressionRef | binaryen.ExpressionRef[] {
     switch (value.type) {
         case "VariableDeclaration":
-            return value.declarations.map((declaration) =>
-                ctx.mod.local.set(
-                    ctx.variables.get(declaration.id.name)!.index,
-                    expression_to_expression(
-                        { ...ctx, expected: ctx.variables.get(declaration.id.name) },
-                        declaration.init!
-                    )
+            return value.declarations
+                .map(
+                    (declaration) =>
+                        declaration.init &&
+                        ctx.mod.local.set(
+                            ctx.variables.get(declaration.id.name)!.index,
+                            expression_to_expression(
+                                { ...ctx, expected: ctx.variables.get(declaration.id.name) },
+                                declaration.init
+                            )
+                        )
+                )
+                .filter((x): x is number => typeof x === "number");
+        case "ReturnStatement":
+            if (!value.argument) return ctx.mod.return();
+            return ctx.mod.return(
+                coerceTypeOf(
+                    ctx,
+                    expression_to_expression(ctx, value.argument),
+                    ctx.current_function.results
                 )
             );
-        case "ReturnStatement":
-            return ctx.mod.return(
-                coerceTypeOf(ctx, expression_to_expression(ctx, value.argument!), binaryen.f32)
-            );
         case "ExpressionStatement":
-            return expression_to_expression(ctx, value.expression!);
+            return expression_to_expression(ctx, value.expression);
     }
 
     throw new Error(`Unknown statement type: ${value.type}`);
@@ -207,18 +227,10 @@ function coerceBinaryExpression(
         right_type = binaryen.getExpressionType(right_expr);
 
     if (left_type === right_type) return [left_expr, right_expr];
-    if (left_type === binaryen.f64) return [left_expr, coerceTypeOf(ctx, left_expr, binaryen.i64)];
-    if (right_type === binaryen.f64)
-        return [coerceTypeOf(ctx, left_expr, binaryen.i64), right_expr];
-    if (left_type === binaryen.f32) return [left_expr, coerceTypeOf(ctx, left_expr, binaryen.i32)];
-    if (right_type === binaryen.f32)
-        return [coerceTypeOf(ctx, left_expr, binaryen.i32), right_expr];
-    if (left_type === binaryen.i64) return [left_expr, coerceTypeOf(ctx, left_expr, binaryen.i32)];
-    if (right_type === binaryen.i64)
-        return [coerceTypeOf(ctx, left_expr, binaryen.i32), right_expr];
-    if (left_type === binaryen.i32) return [left_expr, coerceTypeOf(ctx, left_expr, binaryen.f32)];
-    if (right_type === binaryen.i32)
-        return [coerceTypeOf(ctx, left_expr, binaryen.f32), right_expr];
+    for (const type of [binaryen.f64, binaryen.f32, binaryen.i64, binaryen.i32]) {
+        if (left_type === type) return [left_expr, coerceTypeOf(ctx, right_expr, type)];
+        if (right_type === type) return [coerceTypeOf(ctx, left_expr, type), right_expr];
+    }
 
     throw new Error(`Unknown coercion: ${left_type} and ${right_type}`);
 }
