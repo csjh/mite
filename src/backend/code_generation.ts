@@ -2,12 +2,7 @@ import binaryen from "binaryen";
 import { bigintToLowAndHigh } from "./utils.js";
 import type { Context } from "../types/code_gen.js";
 import { types } from "../types/code_gen.js";
-import type {
-    Program,
-    Statement,
-    Expression,
-    BinaryExpression
-} from "../types/nodes.js";
+import type { Program, Statement, Expression, BinaryExpression } from "../types/nodes.js";
 
 export function program_to_module(program: Program): binaryen.Module {
     const mod = new binaryen.Module();

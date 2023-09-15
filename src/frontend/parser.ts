@@ -61,7 +61,10 @@ export class Parser {
     }
 
     private getSignedness(): boolean {
-        if (this.tokens[this.idx].type === TokenType.SIGNED || this.tokens[this.idx].type === TokenType.UNSIGNED) {
+        if (
+            this.tokens[this.idx].type === TokenType.SIGNED ||
+            this.tokens[this.idx].type === TokenType.UNSIGNED
+        ) {
             return this.tokens[this.idx++].type === TokenType.UNSIGNED;
         }
         return false;
