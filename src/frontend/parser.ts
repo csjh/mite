@@ -146,7 +146,9 @@ export class Parser {
         } else if (
             this.tokens[this.idx].type === TokenType.IDENTIFIER &&
             this.tokens[this.idx + 1].type === TokenType.IDENTIFIER &&
-            this.tokens[this.idx + 2].type === TokenType.ASSIGNMENT
+            (this.tokens[this.idx + 2].type === TokenType.ASSIGNMENT ||
+                this.tokens[this.idx + 2].type === TokenType.COMMA ||
+                this.tokens[this.idx + 2].type === TokenType.SEMICOLON)
         ) {
             statement = this.parseVariableDeclarationOrAssignment("declaration");
         } else {
