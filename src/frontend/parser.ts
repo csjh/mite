@@ -185,7 +185,6 @@ export class Parser {
                 }
 
                 variable.declarations.push(declaration);
-                console.log(variable_name, this.tokens[this.idx])
             } while (this.tokens[this.idx].type === TokenType.COMMA && ++this.idx);
 
             return variable;
