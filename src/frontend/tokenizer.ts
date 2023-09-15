@@ -81,11 +81,11 @@ export function tokenize(input: string): Token[] {
                 break;
             }
             default: {
-                if (!/[a-zA-Z]/.test(input[i]))
+                if (!/[a-zA-Z_]/.test(input[i]))
                     throw new Error(`Unexpected character ${input[i]} at index ${i}`);
 
                 let value = "";
-                while (i < input.length && /[a-zA-Z0-9]/.test(input[i])) {
+                while (i < input.length && /[a-zA-Z0-9_]/.test(input[i])) {
                     value += input[i];
                     i++;
                 }
