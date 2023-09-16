@@ -27,7 +27,6 @@ export type ExpressionInformation = VariableInformation & {
 };
 
 export type FunctionInformation = {
-    ref: binaryen.FunctionRef;
     params: VariableInformation[];
     results: VariableInformation;
 };

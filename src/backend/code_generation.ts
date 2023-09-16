@@ -12,7 +12,8 @@ import type {
     Expression,
     BinaryExpression,
     VariableDeclaration,
-    TypedParameter
+    TypedParameter,
+    FunctionDeclaration
 } from "../types/nodes.js";
 
 export function program_to_module(program: Program): binaryen.Module {
@@ -25,6 +26,27 @@ export function program_to_module(program: Program): binaryen.Module {
         // @ts-expect-error initially we're not in a function
         current_function: null
     };
+
+    ctx.functions = new Map(
+        program.body
+            .filter((x): x is FunctionDeclaration => x.type === "FunctionDeclaration")
+            .map((node) => [
+                node.id.name,
+                {
+                    name: node.id.name,
+                    params: node.params.map((param) => ({
+                        type: param.typeAnnotation.name,
+                        binaryenType: types[param.typeAnnotation.name],
+                        isUnsigned: param.typeAnnotation.isUnsigned
+                    })),
+                    results: {
+                        type: node.returnType.name,
+                        binaryenType: types[node.returnType.name],
+                        isUnsigned: node.returnType.isUnsigned
+                    }
+                }
+            ])
+    );
 
     for (const node of program.body) {
         switch (node.type) {
@@ -75,19 +97,9 @@ export function program_to_module(program: Program): binaryen.Module {
                     )
                 );
 
-                const params = node.params.map((param) => ({
-                    type: param.typeAnnotation.name,
-                    binaryenType: types[param.typeAnnotation.name],
-                    isUnsigned: param.typeAnnotation.isUnsigned
-                }));
+                const { params, results } = ctx.functions.get(node.id.name)!;
 
-                const results = {
-                    type: node.returnType.name,
-                    binaryenType: types[node.returnType.name],
-                    isUnsigned: node.returnType.isUnsigned
-                };
-
-                const fn = ctx.mod.addFunction(
+                ctx.mod.addFunction(
                     node.id.name,
                     binaryen.createType(params.map((param) => param.binaryenType)),
                     results.binaryenType,
@@ -110,7 +122,6 @@ export function program_to_module(program: Program): binaryen.Module {
                     )
                 );
 
-                ctx.functions.set(node.id.name, { params, results, ref: fn });
                 break;
         }
     }
