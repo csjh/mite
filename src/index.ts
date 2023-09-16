@@ -1,4 +1,5 @@
 import binaryen from "binaryen";
+import { writeFileSync } from "fs";
 
 const myModule = new binaryen.Module();
 myModule.setFeatures(binaryen.Features.All);
@@ -21,6 +22,7 @@ myModule.addFunction(
 myModule.addFunctionExport("main", "main");
 
 console.log(myModule.emitText());
+writeFileSync("out.wasm", myModule.emitBinary());
 
 // Optimize the module using default passes and levels
 myModule.optimize();
