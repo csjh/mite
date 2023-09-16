@@ -18,13 +18,10 @@ export interface BaseNode extends BaseNodeWithoutComments {
 export interface NodeMap {
     AssignmentProperty: AssignmentProperty;
     CatchClause: CatchClause;
-    Class: Class;
-    ClassBody: ClassBody;
     Expression: Expression;
     Function: Function;
     Identifier: Identifier;
     Literal: Literal;
-    MethodDefinition: MethodDefinition;
     ModuleDeclaration: ModuleDeclaration;
     ModuleSpecifier: ModuleSpecifier;
     PrivateIdentifier: PrivateIdentifier;
@@ -88,25 +85,21 @@ export interface BaseFunction extends BaseNode {
 export type Function = FunctionDeclaration | FunctionExpression;
 
 export type Statement =
-    | ExpressionStatement
-    | BlockStatement
-    | StaticBlock
-    | EmptyStatement
-    | DebuggerStatement
-    | WithStatement
-    | ReturnStatement
-    | LabeledStatement
+    | ExpressionStatement // should be expression
+    | BlockStatement // should be expression
+    | ReturnStatement // should be expression
+    | LabeledStatement // should be expression or nonexistent
     | BreakStatement
     | ContinueStatement
-    | IfStatement
-    | SwitchStatement
+    | IfStatement // should be expression
+    | SwitchStatement // should be expression 1000%
     | ThrowStatement
     | TryStatement
-    | WhileStatement
-    | DoWhileStatement
-    | ForStatement
-    | ForInStatement
-    | ForOfStatement
+    | WhileStatement // should be expressioN?
+    | DoWhileStatement // should be expression?
+    | ForStatement // should be expression
+    | ForInStatement // should be expression
+    | ForOfStatement // should be expression
     | Declaration;
 
 export interface BaseStatement extends BaseNode {}
@@ -119,10 +112,6 @@ export interface BlockStatement extends BaseStatement {
     type: "BlockStatement";
     body: Statement[];
     innerComments?: Comment[] | undefined;
-}
-
-export interface StaticBlock extends Omit<BlockStatement, "type"> {
-    type: "StaticBlock";
 }
 
 export interface ExpressionStatement extends BaseStatement {
@@ -216,7 +205,7 @@ export interface DebuggerStatement extends BaseStatement {
     type: "DebuggerStatement";
 }
 
-export type Declaration = FunctionDeclaration | VariableDeclaration | ClassDeclaration;
+export type Declaration = FunctionDeclaration | VariableDeclaration;
 
 export interface BaseDeclaration extends BaseStatement {}
 
@@ -246,7 +235,6 @@ export interface ExpressionMap {
     BinaryExpression: BinaryExpression;
     CallExpression: CallExpression;
     ChainExpression: ChainExpression;
-    ClassExpression: ClassExpression;
     ConditionalExpression: ConditionalExpression;
     FunctionExpression: FunctionExpression;
     Identifier: Identifier;
@@ -537,37 +525,6 @@ export interface AssignmentPattern extends BasePattern {
     type: "AssignmentPattern";
     left: Identifier;
     right: Expression;
-}
-
-export type Class = ClassDeclaration | ClassExpression;
-export interface BaseClass extends BaseNode {
-    superClass?: Expression | null | undefined;
-    body: ClassBody;
-}
-
-export interface ClassBody extends BaseNode {
-    type: "ClassBody";
-    body: Array<MethodDefinition | PropertyDefinition | StaticBlock>;
-}
-
-export interface MethodDefinition extends BaseNode {
-    type: "MethodDefinition";
-    key: Expression | PrivateIdentifier;
-    value: FunctionExpression;
-    kind: "constructor" | "method" | "get" | "set";
-    computed: boolean;
-    static: boolean;
-}
-
-export interface ClassDeclaration extends BaseClass, BaseDeclaration {
-    type: "ClassDeclaration";
-    /** It is null when a class declaration is a part of the `export default class` statement */
-    id: Identifier | null;
-}
-
-export interface ClassExpression extends BaseClass, BaseExpression {
-    type: "ClassExpression";
-    id?: Identifier | null | undefined;
 }
 
 export interface MetaProperty extends BaseExpression {
