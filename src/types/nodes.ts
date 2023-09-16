@@ -76,17 +76,13 @@ export interface TypedParameter extends BaseNode {
 export interface BaseFunction extends BaseNode {
     params: TypedParameter[];
     returnType: TypeIdentifier;
-    // The body is either BlockStatement or Expression because arrow functions
-    // can have a body that's either. FunctionDeclarations and
-    // FunctionExpressions have only BlockStatement bodies.
-    body: BlockStatement | Expression;
+    body: BlockExpression;
 }
 
 export type Function = FunctionDeclaration | FunctionExpression;
 
 export type Statement =
     | ExpressionStatement // should be expression
-    | BlockStatement // should be expression
     | ReturnStatement // should be expression
     | LabeledStatement // should be expression or nonexistent
     | BreakStatement
@@ -108,8 +104,8 @@ export interface EmptyStatement extends BaseStatement {
     type: "EmptyStatement";
 }
 
-export interface BlockStatement extends BaseStatement {
-    type: "BlockStatement";
+export interface BlockExpression extends BaseStatement {
+    type: "BlockExpression";
     body: Statement[];
     innerComments?: Comment[] | undefined;
 }
@@ -166,9 +162,9 @@ export interface ThrowStatement extends BaseStatement {
 
 export interface TryStatement extends BaseStatement {
     type: "TryStatement";
-    block: BlockStatement;
+    block: BlockExpression;
     handler?: CatchClause | null | undefined;
-    finalizer?: BlockStatement | null | undefined;
+    finalizer?: BlockExpression | null | undefined;
 }
 
 export interface WhileStatement extends BaseStatement {
@@ -212,7 +208,7 @@ export interface BaseDeclaration extends BaseStatement {}
 export interface FunctionDeclaration extends BaseFunction, BaseDeclaration {
     type: "FunctionDeclaration";
     id: Identifier;
-    body: BlockStatement;
+    body: BlockExpression;
 }
 
 export interface VariableDeclaration extends BaseDeclaration {
@@ -229,7 +225,6 @@ export interface VariableDeclarator extends BaseNode {
 
 export interface ExpressionMap {
     ArrayExpression: ArrayExpression;
-    ArrowFunctionExpression: ArrowFunctionExpression;
     AssignmentExpression: AssignmentExpression;
     AwaitExpression: AwaitExpression;
     BinaryExpression: BinaryExpression;
@@ -304,7 +299,7 @@ export interface PropertyDefinition extends BaseNode {
 export interface FunctionExpression extends BaseFunction, BaseExpression {
     id?: Identifier | null | undefined;
     type: "FunctionExpression";
-    body: BlockStatement;
+    body: BlockExpression;
 }
 
 export interface SequenceExpression extends BaseExpression {
@@ -379,7 +374,7 @@ export interface SwitchCase extends BaseNode {
 export interface CatchClause extends BaseNode {
     type: "CatchClause";
     param: Identifier | null;
-    body: BlockStatement;
+    body: BlockExpression;
 }
 
 export interface Identifier extends BaseNode, BaseExpression, BasePattern {
@@ -464,12 +459,6 @@ export interface ForOfStatement extends BaseForXStatement {
 export interface SpreadElement extends BaseNode {
     type: "SpreadElement";
     argument: Expression;
-}
-
-export interface ArrowFunctionExpression extends BaseExpression, BaseFunction {
-    type: "ArrowFunctionExpression";
-    expression: boolean;
-    body: BlockStatement | Expression;
 }
 
 export interface YieldExpression extends BaseExpression {

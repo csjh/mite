@@ -1,6 +1,6 @@
 import { tokenize } from "./frontend/tokenizer.js";
 import { Parser } from "./frontend/parser.js";
-import { program_to_module } from "./backend/code_generation.js";
+import { programToModule } from "./backend/code_generation.js";
 
 type CompileOptions = {
     as?: "wat" | "wasm";
@@ -13,7 +13,7 @@ export function compile(source: string, options: CompileOptions = {}): string | 
 
     const tokens = tokenize(source);
     const program = Parser.parse(tokens);
-    const mod = program_to_module(program);
+    const mod = programToModule(program);
 
     if (options.as === "wat") {
         return mod.emitText();

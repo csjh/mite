@@ -16,7 +16,7 @@ import type {
     FunctionDeclaration
 } from "../types/nodes.js";
 
-export function program_to_module(program: Program): binaryen.Module {
+export function programToModule(program: Program): binaryen.Module {
     const mod = new binaryen.Module();
     const ctx: Context = {
         mod,
@@ -108,7 +108,7 @@ export function program_to_module(program: Program): binaryen.Module {
                         null,
                         node.body.body
                             .flatMap((statement) =>
-                                statement_to_expression(
+                                statementToExpression(
                                     {
                                         ...ctx,
                                         current_function: {
@@ -133,7 +133,7 @@ export function program_to_module(program: Program): binaryen.Module {
     return ctx.mod;
 }
 
-function statement_to_expression(
+function statementToExpression(
     ctx: Context,
     value: Statement
 ): ExpressionInformation | ExpressionInformation[] {
@@ -142,7 +142,7 @@ function statement_to_expression(
             return value.declarations
                 .filter((declaration) => declaration.init)
                 .map((declaration) => {
-                    const expr = expression_to_expression(
+                    const expr = expressionToExpression(
                         { ...ctx, expected: lookForVariable(ctx, declaration.id.name) },
                         declaration.init!
                     );
@@ -164,7 +164,7 @@ function statement_to_expression(
                     binaryenType: binaryen.none
                 };
             }
-            const expr = expression_to_expression(
+            const expr = expressionToExpression(
                 { ...ctx, expected: ctx.current_function.results },
                 value.argument
             );
@@ -173,13 +173,13 @@ function statement_to_expression(
                 ref: ctx.mod.return(expr.ref)
             };
         case "ExpressionStatement":
-            return expression_to_expression(ctx, value.expression);
+            return expressionToExpression(ctx, value.expression);
     }
 
     throw new Error(`Unknown statement type: ${value.type}`);
 }
 
-function expression_to_expression(ctx: Context, value: Expression): ExpressionInformation {
+function expressionToExpression(ctx: Context, value: Expression): ExpressionInformation {
     if (value.type === "Literal") {
         if (!ctx.expected) {
             const type = typeof value.value === "bigint" ? "i64" : "f64";
@@ -238,7 +238,7 @@ function expression_to_expression(ctx: Context, value: Expression): ExpressionIn
                 throw new Error(`Unknown binary operator: ${value.operator}`);
         }
     } else if (value.type === "AssignmentExpression") {
-        const expr = expression_to_expression(
+        const expr = expressionToExpression(
             { ...ctx, expected: lookForVariable(ctx, value.left.name) },
             value.right
         );
@@ -252,7 +252,7 @@ function expression_to_expression(ctx: Context, value: Expression): ExpressionIn
     } else if (value.type === "CallExpression") {
         const fn = ctx.functions.get(value.callee.name)!;
         const args = value.arguments.map((arg, i) =>
-            expression_to_expression(
+            expressionToExpression(
                 {
                     ...ctx,
                     expected: fn.params[i]
@@ -282,12 +282,12 @@ function coerceBinaryExpression(
         { left, right } = value;
     if (expected)
         return [
-            ctx.type_operations[expected.type].coerce(expression_to_expression(ctx, left), ctx),
-            ctx.type_operations[expected.type].coerce(expression_to_expression(ctx, right), ctx)
+            ctx.type_operations[expected.type].coerce(expressionToExpression(ctx, left), ctx),
+            ctx.type_operations[expected.type].coerce(expressionToExpression(ctx, right), ctx)
         ];
 
-    const left_expr = expression_to_expression(ctx, left),
-        right_expr = expression_to_expression(ctx, right);
+    const left_expr = expressionToExpression(ctx, left),
+        right_expr = expressionToExpression(ctx, right);
 
     if (left_expr.binaryenType === right_expr.binaryenType) return [left_expr, right_expr];
     for (const type of [binaryen.f64, binaryen.f32, binaryen.i64, binaryen.i32]) {
