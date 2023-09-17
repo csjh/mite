@@ -15,7 +15,9 @@ import type {
     VariableDeclarator,
     CallExpression,
     TypedParameter,
-    IfExpression
+    IfExpression,
+    ForExpression,
+    SequenceExpression
 } from "../types/nodes.js";
 
 export class Parser {
@@ -173,6 +175,50 @@ export class Parser {
         };
     }
 
+    private parseForExpression(): ForExpression {
+        this.expectToken(TokenType.FOR);
+        this.idx++;
+
+        this.expectToken(TokenType.LEFT_PAREN);
+        this.idx++;
+
+        const init = this.parseExpression();
+        this.expectToken(TokenType.SEMICOLON);
+        this.idx++;
+
+        const test = this.parseExpression();
+        this.expectToken(TokenType.SEMICOLON);
+        this.idx++;
+
+        const update = this.parseExpression();
+        this.expectToken(TokenType.RIGHT_PAREN);
+        this.idx++;
+
+        const body = this.parseExpression();
+
+        return {
+            type: "ForExpression",
+            init,
+            test,
+            update,
+            body
+        };
+    }
+
+    private parseSequenceExpression(): SequenceExpression {
+        const expression: SequenceExpression = {
+            type: "SequenceExpression",
+            expressions: []
+        };
+
+        do {
+            const node = this.parseExpression();
+            expression.expressions.push(node);
+        } while (this.token.type === TokenType.COMMA && ++this.idx);
+
+        return expression;
+    }
+
     private parseBlock(): BlockExpression {
         this.expectToken(TokenType.LEFT_BRACE);
         this.idx++;
@@ -291,11 +337,22 @@ export class Parser {
 
     private parseExpression(): Expression {
         // expressions that start with a keyword (e.g. for, if)
-        switch (this.tokens[this.idx].type) {
+        switch (this.token.type) {
+            case TokenType.SEMICOLON:
+            case TokenType.RIGHT_PAREN: // these are both for for loops
+                return { type: "EmptyExpression" };
             case TokenType.IF:
                 return this.parseIfExpression();
             case TokenType.LEFT_BRACE:
                 return this.parseBlock();
+            case TokenType.LEFT_PAREN:
+                this.idx++;
+                const expression = this.parseSequenceExpression();
+                this.expectToken(TokenType.RIGHT_PAREN);
+                this.idx++;
+                return expression;
+            case TokenType.FOR:
+                return this.parseForExpression();
             default:
                 break;
         }
@@ -316,6 +373,7 @@ export class Parser {
             case TokenType.MINUS:
             case TokenType.SLASH:
             case TokenType.STAR:
+            case TokenType.LESS_THAN:
                 return this.parseBinaryExpression(next);
             case TokenType.LEFT_PAREN:
                 if (next.type === "Identifier") return this.parseCallExpression(next);

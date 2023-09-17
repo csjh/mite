@@ -50,6 +50,10 @@ export function tokenize(input: string): Token[] {
                 tokens.push({ type: TokenType.STAR, value: "*" });
                 i++;
                 break;
+            case "<":
+                tokens.push({ type: TokenType.LESS_THAN, value: "<" });
+                i++;
+                break;
             case "=":
                 tokens.push({ type: TokenType.ASSIGNMENT, value: "=" });
                 i++;
@@ -104,6 +108,12 @@ export function tokenize(input: string): Token[] {
                         break;
                     case "for":
                         tokens.push({ type: TokenType.FOR, value });
+                        break;
+                    case "do":
+                        tokens.push({ type: TokenType.DO, value });
+                        break;
+                    case "while":
+                        tokens.push({ type: TokenType.WHILE, value });
                         break;
                     case "signed":
                         tokens.push({ type: TokenType.SIGNED, value });

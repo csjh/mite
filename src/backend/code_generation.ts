@@ -25,7 +25,9 @@ import type {
     AssignmentExpression,
     Identifier,
     CallExpression,
-    IfExpression
+    IfExpression,
+    ForExpression,
+    BlockExpression
 } from "../types/nodes.js";
 
 export function programToModule(program: Program): binaryen.Module {
@@ -59,6 +61,13 @@ export function programToModule(program: Program): binaryen.Module {
                 }
             ])
     );
+
+    for (const type of ["i32", "i64", "f32", "f64"] as const) {
+        ctx.functions.set(`log_${type}`, {
+            params: [{ type, binaryenType: binaryen[type], isUnsigned: false }],
+            results: { type: "void", binaryenType: binaryen.none, isUnsigned: false }
+        });
+    }
 
     for (const node of program.body) {
         switch (node.type) {
@@ -215,6 +224,10 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
         expr = callExpressionToExpression(ctx, value);
     } else if (value.type === "IfExpression") {
         expr = ifExpressionToExpression(ctx, value);
+    } else if (value.type === "ForExpression") {
+        expr = forExpressionToExpression(ctx, value);
+    } else if (value.type === "BlockExpression") {
+        expr = blockExpressionToExpression(ctx, value);
     } else {
         throw new Error(`Unknown statement type: ${value.type}`);
     }
@@ -279,6 +292,8 @@ function binaryExpressionToExpression(
             return ctx.type_operations[type].mul(coerced_left, coerced_right);
         case "/":
             return ctx.type_operations[type].div(coerced_left, coerced_right);
+        case "<":
+            return ctx.type_operations[type].lt(coerced_left, coerced_right);
     }
 
     throw new Error(`Unknown binary operator: ${value.operator}`);
@@ -330,5 +345,89 @@ function ifExpressionToExpression(ctx: Context, value: IfExpression): Expression
     return {
         ...true_branch,
         ref: ctx.mod.if(condition.ref, true_branch.ref, false_branch?.ref)
+    };
+}
+
+function forExpressionToExpression(ctx: Context, value: ForExpression): ExpressionInformation {
+    const init = value.init
+        ? value.init.type === "VariableDeclaration"
+            ? variableDeclarationToExpression(ctx, value.init)
+            : expressionToExpression(ctx, value.init)
+        : undefined;
+
+    const test = value.test
+        ? expressionToExpression(
+              {
+                  ...ctx,
+                  expected: {
+                      type: "i32",
+                      binaryenType: binaryen.i32
+                  }
+              },
+              value.test
+          )
+        : undefined;
+
+    const update = value.update ? expressionToExpression(ctx, value.update) : undefined;
+    const body = expressionToExpression(ctx, value.body);
+
+    const forloop = [];
+    if (init) {
+        const init_as_arr = Array.isArray(init) ? init : [init];
+        forloop.push(
+            ctx.mod.block(
+                null,
+                init_as_arr.map((x) => x.ref)
+            )
+        );
+    }
+    if (test) forloop.push(ctx.mod.br_if("forloop", ctx.mod.i32.eqz(test.ref)));
+
+    const loopbody = [];
+    loopbody.push(body.ref);
+    if (update) loopbody.push(update.ref);
+    if (test) loopbody.push(ctx.mod.br_if("loopbody", test.ref));
+
+    forloop.push(ctx.mod.loop("loopbody", ctx.mod.block(null, loopbody)));
+
+    return {
+        ...body,
+        // todo: add depth to ctx
+        ref: ctx.mod.block("forloop", forloop)
+    };
+}
+
+function blockExpressionToExpression(ctx: Context, value: BlockExpression): ExpressionInformation {
+    const return_value = value.body.at(-1);
+    let return_type = binaryen.none;
+    if (return_value) {
+        const return_expr = statementToExpression(ctx, return_value);
+        if (!Array.isArray(return_expr)) {
+            return_type = binaryen.getExpressionType(return_expr.ref);
+        }
+    }
+
+    return {
+        ref: ctx.mod.block(
+            null,
+            value.body
+                .map((statement) => statementToExpression(ctx, statement))
+                .flat()
+                .map((x) => x.ref),
+            return_type
+        ),
+        binaryenType: return_type,
+        type:
+            return_type === binaryen.none
+                ? "void"
+                : return_type === binaryen.i32
+                ? "i32"
+                : return_type === binaryen.i64
+                ? "i64"
+                : return_type === binaryen.f32
+                ? "f32"
+                : return_type === binaryen.f64
+                ? "f64"
+                : "void"
     };
 }

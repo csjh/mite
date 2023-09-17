@@ -90,18 +90,11 @@ export type Statement =
     | SwitchStatement // should be expression 1000%
     | ThrowStatement
     | TryStatement
-    | WhileStatement // should be expression?
-    | DoWhileStatement // should be expression?
-    | ForStatement // should be expression
     | Declaration;
 
 export interface BaseStatement extends BaseNode {}
 
-export interface EmptyStatement extends BaseStatement {
-    type: "EmptyStatement";
-}
-
-export interface BlockExpression extends BaseStatement {
+export interface BlockExpression extends BaseExpression {
     type: "BlockExpression";
     body: Statement[];
     innerComments?: Comment[] | undefined;
@@ -157,24 +150,24 @@ export interface TryStatement extends BaseStatement {
     finalizer?: BlockExpression | null | undefined;
 }
 
-export interface WhileStatement extends BaseStatement {
-    type: "WhileStatement";
+export interface WhileExpression extends BaseExpression {
+    type: "WhileExpression";
     test: Expression;
-    body: Statement;
+    body: Expression;
 }
 
-export interface DoWhileStatement extends BaseStatement {
-    type: "DoWhileStatement";
-    body: Statement;
+export interface DoWhileExpression extends BaseExpression {
+    type: "DoWhileExpression";
+    body: Expression;
     test: Expression;
 }
 
-export interface ForStatement extends BaseStatement {
-    type: "ForStatement";
+export interface ForExpression extends BaseExpression {
+    type: "ForExpression";
     init?: VariableDeclaration | Expression | null | undefined;
     test?: Expression | null | undefined;
     update?: Expression | null | undefined;
-    body: Statement;
+    body: Expression;
 }
 
 export interface BaseForXStatement extends BaseStatement {
@@ -221,6 +214,9 @@ export interface ExpressionMap {
     BlockExpression: BlockExpression;
     CallExpression: CallExpression;
     ChainExpression: ChainExpression;
+    DoWhileExpression: DoWhileExpression;
+    EmptyExpression: EmptyExpression;
+    ForExpression: ForExpression;
     FunctionExpression: FunctionExpression;
     Identifier: Identifier;
     IfExpression: IfExpression;
@@ -236,12 +232,17 @@ export interface ExpressionMap {
     ThisExpression: ThisExpression;
     UnaryExpression: UnaryExpression;
     UpdateExpression: UpdateExpression;
+    WhileExpression: WhileExpression;
     YieldExpression: YieldExpression;
 }
 
 export type Expression = ExpressionMap[keyof ExpressionMap];
 
 export interface BaseExpression extends BaseNode {}
+
+export interface EmptyExpression extends BaseExpression {
+    type: "EmptyExpression";
+}
 
 export type ChainElement = CallExpression | MemberExpression;
 

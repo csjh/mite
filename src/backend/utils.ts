@@ -18,6 +18,7 @@ export function createTypeOperations(mod: binaryen.Module): Record<
         sub: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
         mul: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
         div: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        lt: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
         coerce: (expr: ExpressionInformation, ctx: Context) => ExpressionInformation;
     }
 > {
@@ -42,6 +43,11 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 type: "f32",
                 binaryenType: binaryen.f32,
                 ref: mod.f32.div(left.ref, right.ref)
+            }),
+            lt: (left, right) => ({
+                type: "f32",
+                binaryenType: binaryen.f32,
+                ref: mod.f32.lt(left.ref, right.ref)
             }),
             coerce: (expr) => {
                 switch (expr.type) {
@@ -94,6 +100,11 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 type: "f64",
                 binaryenType: binaryen.f64,
                 ref: mod.f64.div(left.ref, right.ref)
+            }),
+            lt: (left, right) => ({
+                type: "f64",
+                binaryenType: binaryen.f64,
+                ref: mod.f64.lt(left.ref, right.ref)
             }),
             coerce: (expr) => {
                 switch (expr.type) {
@@ -149,6 +160,11 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                     ? mod.i32.div_u(left.ref, right.ref)
                     : mod.i32.div_s(left.ref, right.ref)
             }),
+            lt: (left, right) => ({
+                type: "i32",
+                binaryenType: binaryen.i32,
+                ref: left.isUnsigned ? mod.i32.lt_u(left.ref, right.ref) : mod.i32.lt_s(left.ref, right.ref)
+            }),
             coerce: (expr, ctx) => {
                 switch (expr.type) {
                     case "f32":
@@ -202,6 +218,11 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 ref: left.isUnsigned
                     ? mod.i64.div_u(left.ref, right.ref)
                     : mod.i64.div_s(left.ref, right.ref)
+            }),
+            lt: (left, right) => ({
+                type: "i64",
+                binaryenType: binaryen.i64,
+                ref: left.isUnsigned ? mod.i64.lt_u(left.ref, right.ref) : mod.i64.lt_s(left.ref, right.ref)
             }),
             coerce: (expr, ctx) => {
                 switch (expr.type) {
@@ -257,6 +278,13 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 };
             },
             div: () => {
+                return {
+                    type: "void",
+                    binaryenType: binaryen.none,
+                    ref: mod.nop()
+                };
+            },
+            lt: () => {
                 return {
                     type: "void",
                     binaryenType: binaryen.none,

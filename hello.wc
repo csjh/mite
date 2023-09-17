@@ -12,6 +12,10 @@ fn main(): f32 {
 
     i32 shooby = if (1) 15 else 20;
 
+    for (shooby = 0; shooby < 5; shooby = shooby + 1) {
+        log_i32(shooby);
+    };
+
     i64 unused;
     unused = 100;
     unused = 9223372036854776000;
