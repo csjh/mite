@@ -20,6 +20,9 @@ import type {
 
 export class Parser {
     idx: number;
+    get token() {
+        return this.tokens[this.idx];
+    }
 
     constructor(readonly tokens: Token[]) {
         this.idx = 0;
@@ -35,7 +38,7 @@ export class Parser {
 
         // only functions can be top level right now
         $: while (this.idx < this.tokens.length) {
-            switch (this.tokens[this.idx].type) {
+            switch (this.token.type) {
                 case TokenType.FN:
                     this.idx++;
                     const node = this.parseFunction();
@@ -52,8 +55,8 @@ export class Parser {
     }
 
     private expectToken(type: TokenType) {
-        if (this.tokens[this.idx].type !== type) {
-            throw new Error(`Expected token of type ${type}, got ${this.tokens[this.idx].value}`);
+        if (this.token.type !== type) {
+            throw new Error(`Expected token of type ${type}, got ${this.token.value}`);
         }
     }
 
@@ -64,10 +67,7 @@ export class Parser {
     }
 
     private getSignedness(): boolean {
-        if (
-            this.tokens[this.idx].type === TokenType.SIGNED ||
-            this.tokens[this.idx].type === TokenType.UNSIGNED
-        ) {
+        if (this.token.type === TokenType.SIGNED || this.token.type === TokenType.UNSIGNED) {
             return this.tokens[this.idx++].type === TokenType.UNSIGNED;
         }
         return false;
@@ -88,17 +88,17 @@ export class Parser {
         this.idx++;
 
         const params: TypedParameter[] = [];
-        while (this.tokens[this.idx].type !== TokenType.RIGHT_PAREN) {
+        while (this.token.type !== TokenType.RIGHT_PAREN) {
             const isUnsigned = this.getSignedness();
 
-            const name = this.tokens[this.idx].value;
+            const name = this.token.value;
             this.expectToken(TokenType.IDENTIFIER);
             this.idx++;
 
             this.expectToken(TokenType.COLON);
             this.idx++;
 
-            const type = this.tokens[this.idx].value;
+            const type = this.token.value;
             this.expectTypeName(type);
             this.idx++;
 
@@ -115,7 +115,7 @@ export class Parser {
                 }
             });
 
-            if (this.tokens[this.idx].type === TokenType.COMMA) this.idx++;
+            if (this.token.type === TokenType.COMMA) this.idx++;
         }
 
         this.expectToken(TokenType.RIGHT_PAREN);
@@ -125,7 +125,7 @@ export class Parser {
 
         this.expectToken(TokenType.IDENTIFIER);
         const isUnsigned = this.getSignedness();
-        const return_type = this.tokens[this.idx].value;
+        const return_type = this.token.value;
         this.expectTypeName(return_type);
         this.idx++;
 
@@ -160,7 +160,7 @@ export class Parser {
         const consequent = this.parseExpression();
 
         let alternate: Expression | null = null;
-        if (this.tokens[this.idx].type === TokenType.ELSE) {
+        if (this.token.type === TokenType.ELSE) {
             this.idx++;
             alternate = this.parseExpression();
         }
@@ -182,7 +182,7 @@ export class Parser {
             body: []
         };
 
-        while (this.tokens[this.idx].type !== TokenType.RIGHT_BRACE) {
+        while (this.token.type !== TokenType.RIGHT_BRACE) {
             const node = this.parseStatement();
             expression.body.push(node);
         }
@@ -196,7 +196,7 @@ export class Parser {
     private parseStatement(): Statement {
         let statement: Statement;
 
-        if (this.tokens[this.idx].type === TokenType.RETURN) {
+        if (this.token.type === TokenType.RETURN) {
             this.idx++;
             const expression = this.parseExpression();
             statement = {
@@ -205,7 +205,7 @@ export class Parser {
             } satisfies ReturnStatement;
         } else if (
             // probably a better way to do this lmao
-            this.tokens[this.idx].type === TokenType.IDENTIFIER &&
+            this.token.type === TokenType.IDENTIFIER &&
             this.tokens[this.idx + 1].type === TokenType.IDENTIFIER &&
             (this.tokens[this.idx + 2].type === TokenType.ASSIGNMENT ||
                 this.tokens[this.idx + 2].type === TokenType.COMMA ||
@@ -262,13 +262,13 @@ export class Parser {
                 };
 
                 // has initializer
-                if (this.tokens[this.idx].type === TokenType.ASSIGNMENT) {
+                if (this.token.type === TokenType.ASSIGNMENT) {
                     this.idx++;
                     declaration.init = this.parseExpression();
                 }
 
                 variable.declarations.push(declaration);
-            } while (this.tokens[this.idx].type === TokenType.COMMA && ++this.idx);
+            } while (this.token.type === TokenType.COMMA && ++this.idx);
 
             return variable;
         } else if (type === "assignment") {
@@ -303,7 +303,7 @@ export class Parser {
         // expressions that start with an identifier or literal (e.g. func(), 1 + 1, x = 5)
         const next = this.getIdentifierOrLiteral();
 
-        switch (this.tokens[this.idx].value) {
+        switch (this.token.value) {
             case TokenType.SEMICOLON:
             case TokenType.COMMA: // right now commas in function call
             case TokenType.RIGHT_PAREN: // end of a function call
@@ -320,7 +320,7 @@ export class Parser {
             case TokenType.LEFT_PAREN:
                 if (next.type === "Identifier") return this.parseCallExpression(next);
             default:
-                throw new Error(`Unknown expression: ${this.tokens[this.idx].value}`);
+                throw new Error(`Unknown expression: ${this.token.value}`);
         }
     }
 
@@ -335,7 +335,7 @@ export class Parser {
     }
 
     private parseBinaryExpression(left: Identifier | Literal): BinaryExpression {
-        const operator = this.tokens[this.idx].value;
+        const operator = this.token.value;
         this.expectBinaryOperator(operator);
         this.idx++;
 
@@ -352,9 +352,9 @@ export class Parser {
     }
 
     private getIdentifierOrLiteral(): Identifier | Literal {
-        if (this.tokens[this.idx].type === TokenType.IDENTIFIER) return this.getIdentifier();
-        else if (this.tokens[this.idx].type === TokenType.NUMBER) return this.getLiteral();
-        throw new Error(`Expected identifier or literal, got ${this.tokens[this.idx].value}`);
+        if (this.token.type === TokenType.IDENTIFIER) return this.getIdentifier();
+        else if (this.token.type === TokenType.NUMBER) return this.getLiteral();
+        throw new Error(`Expected identifier or literal, got ${this.token.value}`);
     }
 
     private getIdentifier(): Identifier {
@@ -388,7 +388,7 @@ export class Parser {
         while (true) {
             const argument = this.parseExpression();
             call_expression.arguments.push(argument);
-            if (this.tokens[this.idx].type === TokenType.RIGHT_PAREN) break;
+            if (this.token.type === TokenType.RIGHT_PAREN) break;
             this.idx++;
         }
 
