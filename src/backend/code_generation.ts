@@ -29,6 +29,7 @@ import type {
     ForExpression,
     BlockExpression
 } from "../types/nodes.js";
+import { TokenType } from "../types/tokens.js";
 
 export function programToModule(program: Program): binaryen.Module {
     const mod = new binaryen.Module();
@@ -278,16 +279,43 @@ function binaryExpressionToExpression(
     const type = coerced_left.type;
 
     switch (value.operator) {
-        case "+":
+        case TokenType.PLUS:
             return ctx.type_operations[type].add(coerced_left, coerced_right);
-        case "-":
+        case TokenType.MINUS:
             return ctx.type_operations[type].sub(coerced_left, coerced_right);
-        case "*":
+        case TokenType.STAR:
             return ctx.type_operations[type].mul(coerced_left, coerced_right);
-        case "/":
+        case TokenType.SLASH:
             return ctx.type_operations[type].div(coerced_left, coerced_right);
-        case "<":
+        case TokenType.EQUALS:
+            return ctx.type_operations[type].eq(coerced_left, coerced_right);
+        case TokenType.NOT_EQUALS:
+            return ctx.type_operations[type].ne(coerced_left, coerced_right);
+        case TokenType.LESS_THAN:
             return ctx.type_operations[type].lt(coerced_left, coerced_right);
+        case TokenType.LESS_THAN_EQUALS:
+            return ctx.type_operations[type].lte(coerced_left, coerced_right);
+        case TokenType.GREATER_THAN:
+            return ctx.type_operations[type].gt(coerced_left, coerced_right);
+        case TokenType.GREATER_THAN_EQUALS:
+            return ctx.type_operations[type].gte(coerced_left, coerced_right);
+    }
+
+    if (type === TYPES.i32 || type === TYPES.i64) {
+        switch (value.operator) {
+            case TokenType.BITSHIFT_LEFT:
+                return ctx.type_operations[type].shl!(coerced_left, coerced_right);
+            case TokenType.BITSHIFT_RIGHT:
+                return ctx.type_operations[type].shr!(coerced_left, coerced_right);
+            case TokenType.MODULUS:
+                return ctx.type_operations[type].mod!(coerced_left, coerced_right);
+            case TokenType.BITWISE_OR:
+                return ctx.type_operations[type].or!(coerced_left, coerced_right);
+            case TokenType.BITWISE_XOR:
+                return ctx.type_operations[type].xor!(coerced_left, coerced_right);
+            case TokenType.BITWISE_AND:
+                return ctx.type_operations[type].and!(coerced_left, coerced_right);
+        }
     }
 
     throw new Error(`Unknown binary operator: ${value.operator}`);

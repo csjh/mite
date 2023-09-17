@@ -5,57 +5,58 @@ export function tokenize(input: string): Token[] {
 
     let i = 0;
     while ((i = skipWhitespace(input, i)) < input.length) {
+        let token: Token;
         switch (input[i]) {
             case "(":
-                tokens.push({ type: TokenType.LEFT_PAREN, value: "(" });
+                token = { type: TokenType.LEFT_PAREN, value: "(" };
                 i++;
                 break;
             case ")":
-                tokens.push({ type: TokenType.RIGHT_PAREN, value: ")" });
+                token = { type: TokenType.RIGHT_PAREN, value: ")" };
                 i++;
                 break;
             case "{":
-                tokens.push({ type: TokenType.LEFT_BRACE, value: "{" });
+                token = { type: TokenType.LEFT_BRACE, value: "{" };
                 i++;
                 break;
             case "}":
-                tokens.push({ type: TokenType.RIGHT_BRACE, value: "}" });
+                token = { type: TokenType.RIGHT_BRACE, value: "}" };
                 i++;
                 break;
             case ":":
-                tokens.push({ type: TokenType.COLON, value: ":" });
+                token = { type: TokenType.COLON, value: ":" };
                 i++;
                 break;
             case ",":
-                tokens.push({ type: TokenType.COMMA, value: "," });
+                token = { type: TokenType.COMMA, value: "," };
                 i++;
                 break;
             case ";":
-                tokens.push({ type: TokenType.SEMICOLON, value: ";" });
+                token = { type: TokenType.SEMICOLON, value: ";" };
                 i++;
                 break;
             case "+":
-                tokens.push({ type: TokenType.PLUS, value: "+" });
+                token = { type: TokenType.PLUS, value: "+" };
                 i++;
                 break;
             case "-":
-                tokens.push({ type: TokenType.MINUS, value: "-" });
+                token = { type: TokenType.MINUS, value: "-" };
                 i++;
                 break;
             case "/":
-                tokens.push({ type: TokenType.SLASH, value: "/" });
+                token = { type: TokenType.SLASH, value: "/" };
                 i++;
                 break;
             case "*":
-                tokens.push({ type: TokenType.STAR, value: "*" });
+                token = { type: TokenType.STAR, value: "*" };
                 i++;
                 break;
             case "<":
-                tokens.push({ type: TokenType.LESS_THAN, value: "<" });
+                token = { type: TokenType.LESS_THAN, value: "<" };
                 i++;
                 break;
             case "=":
-                tokens.push({ type: TokenType.ASSIGNMENT, value: "=" });
+                token = { type: TokenType.ASSIGNMENT, value: "=" };
                 i++;
                 break;
             case "0":
@@ -81,10 +82,10 @@ export function tokenize(input: string): Token[] {
                         i++;
                     }
                 }
-                tokens.push({ type: TokenType.NUMBER, value });
+                token = { type: TokenType.NUMBER, value };
                 break;
             }
-            default: {
+            default:
                 if (!/[a-zA-Z_]/.test(input[i]))
                     throw new Error(`Unexpected character ${input[i]} at index ${i}`);
 
@@ -93,40 +94,69 @@ export function tokenize(input: string): Token[] {
                     value += input[i];
                     i++;
                 }
-                switch (value) {
+                token = { type: TokenType.IDENTIFIER, value };
+        }
+
+        // Check for multi-character tokens
+        switch (token.type) {
+            case TokenType.IDENTIFIER:
+                switch (token.value) {
                     case "fn":
-                        tokens.push({ type: TokenType.FN, value });
+                        token = { type: TokenType.FN, value: "fn" };
                         break;
                     case "return":
-                        tokens.push({ type: TokenType.RETURN, value });
+                        token = { type: TokenType.RETURN, value: "return" };
                         break;
                     case "if":
-                        tokens.push({ type: TokenType.IF, value });
+                        token = { type: TokenType.IF, value: "if" };
                         break;
                     case "else":
-                        tokens.push({ type: TokenType.ELSE, value });
+                        token = { type: TokenType.ELSE, value: "else" };
                         break;
                     case "for":
-                        tokens.push({ type: TokenType.FOR, value });
+                        token = { type: TokenType.FOR, value: "for" };
                         break;
                     case "do":
-                        tokens.push({ type: TokenType.DO, value });
+                        token = { type: TokenType.DO, value: "do" };
                         break;
                     case "while":
-                        tokens.push({ type: TokenType.WHILE, value });
+                        token = { type: TokenType.WHILE, value: "while" };
                         break;
                     case "signed":
-                        tokens.push({ type: TokenType.SIGNED, value });
+                        token = { type: TokenType.SIGNED, value: "signed" };
                         break;
                     case "unsigned":
-                        tokens.push({ type: TokenType.UNSIGNED, value });
-                        break;
-                    default:
-                        tokens.push({ type: TokenType.IDENTIFIER, value });
+                        token = { type: TokenType.UNSIGNED, value: "unsigned" };
                         break;
                 }
-            }
+                break;
+            case TokenType.ASSIGNMENT:
+                if (input[i] === "=") {
+                    token = { type: TokenType.EQUALS, value: "==" };
+                    i++;
+                }
+                break;
+            case TokenType.LESS_THAN:
+                if (input[i] === "=") {
+                    token = { type: TokenType.LESS_THAN_EQUALS, value: "<=" };
+                    i++;
+                } else if (input[i] === "<") {
+                    token = { type: TokenType.BITSHIFT_LEFT, value: "<<" };
+                    i++;
+                }
+                break;
+            case TokenType.GREATER_THAN:
+                if (input[i] === "=") {
+                    token = { type: TokenType.GREATER_THAN_EQUALS, value: ">=" };
+                    i++;
+                } else if (input[i] === ">") {
+                    token = { type: TokenType.BITSHIFT_RIGHT, value: ">>" };
+                    i++;
+                }
+                break;
         }
+
+        tokens.push(token);
     }
     tokens.push({ type: TokenType.EOF, value: "" });
 

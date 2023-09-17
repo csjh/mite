@@ -373,7 +373,18 @@ export class Parser {
             case TokenType.MINUS:
             case TokenType.SLASH:
             case TokenType.STAR:
+            case TokenType.EQUALS:
+            case TokenType.NOT_EQUALS:
             case TokenType.LESS_THAN:
+            case TokenType.LESS_THAN_EQUALS:
+            case TokenType.GREATER_THAN:
+            case TokenType.GREATER_THAN_EQUALS:
+            case TokenType.BITSHIFT_LEFT:
+            case TokenType.BITSHIFT_RIGHT:
+            case TokenType.MODULUS:
+            case TokenType.BITWISE_OR:
+            case TokenType.BITWISE_XOR:
+            case TokenType.BITWISE_AND:
                 return this.parseBinaryExpression(next);
             case TokenType.LEFT_PAREN:
                 if (next.type === "Identifier") return this.parseCallExpression(next);

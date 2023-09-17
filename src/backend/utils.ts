@@ -6,23 +6,32 @@ export function bigintToLowAndHigh(num: bigint | number): [number, number] {
 
 import binaryen from "binaryen";
 import { Context, ExpressionInformation, LocalVariableInformation } from "../types/code_gen.js";
-import { BinaryExpression } from "../types/nodes.js";
 import { TYPES } from "../types/code_gen.js";
 
-// todo: arbitrary
-type ValidTypes = LocalVariableInformation["type"];
-
-export function createTypeOperations(mod: binaryen.Module): Record<
-    ValidTypes,
+type TypeOperations = Record<
+    TYPES,
     {
         add: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
         sub: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
         mul: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
         div: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        eq: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        ne: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
         lt: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        lte: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        gt: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        gte: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        shl?: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        shr?: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        mod?: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        and?: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        or?: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
+        xor?: (left: ExpressionInformation, right: ExpressionInformation) => ExpressionInformation;
         coerce: (expr: ExpressionInformation, ctx: Context) => ExpressionInformation;
     }
-> {
+>;
+
+export function createTypeOperations(mod: binaryen.Module) {
     return {
         [TYPES.f32]: {
             add: (left, right) => ({
@@ -41,9 +50,29 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 type: TYPES.f32,
                 ref: mod.f32.div(left.ref, right.ref)
             }),
+            eq: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.f32.eq(left.ref, right.ref)
+            }),
+            ne: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.f32.ne(left.ref, right.ref)
+            }),
             lt: (left, right) => ({
-                type: TYPES.f32,
+                type: TYPES.i32,
                 ref: mod.f32.lt(left.ref, right.ref)
+            }),
+            lte: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.f32.le(left.ref, right.ref)
+            }),
+            gt: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.f32.gt(left.ref, right.ref)
+            }),
+            gte: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.f32.ge(left.ref, right.ref)
             }),
             coerce: (expr) => {
                 switch (expr.type) {
@@ -90,9 +119,29 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 type: TYPES.f64,
                 ref: mod.f64.div(left.ref, right.ref)
             }),
+            eq: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.f64.eq(left.ref, right.ref)
+            }),
+            ne: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.f64.ne(left.ref, right.ref)
+            }),
             lt: (left, right) => ({
                 type: TYPES.f64,
                 ref: mod.f64.lt(left.ref, right.ref)
+            }),
+            lte: (left, right) => ({
+                type: TYPES.f64,
+                ref: mod.f64.le(left.ref, right.ref)
+            }),
+            gt: (left, right) => ({
+                type: TYPES.f64,
+                ref: mod.f64.gt(left.ref, right.ref)
+            }),
+            gte: (left, right) => ({
+                type: TYPES.f64,
+                ref: mod.f64.ge(left.ref, right.ref)
             }),
             coerce: (expr) => {
                 switch (expr.type) {
@@ -141,11 +190,65 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                     ? mod.i32.div_u(left.ref, right.ref)
                     : mod.i32.div_s(left.ref, right.ref)
             }),
+            eq: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.i32.eq(left.ref, right.ref)
+            }),
+            ne: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.i32.ne(left.ref, right.ref)
+            }),
             lt: (left, right) => ({
                 type: TYPES.i32,
                 ref: left.isUnsigned
                     ? mod.i32.lt_u(left.ref, right.ref)
                     : mod.i32.lt_s(left.ref, right.ref)
+            }),
+            lte: (left, right) => ({
+                type: TYPES.i32,
+                ref: left.isUnsigned
+                    ? mod.i32.le_u(left.ref, right.ref)
+                    : mod.i32.le_s(left.ref, right.ref)
+            }),
+            gt: (left, right) => ({
+                type: TYPES.i32,
+                ref: left.isUnsigned
+                    ? mod.i32.gt_u(left.ref, right.ref)
+                    : mod.i32.gt_s(left.ref, right.ref)
+            }),
+            gte: (left, right) => ({
+                type: TYPES.i32,
+                ref: left.isUnsigned
+                    ? mod.i32.ge_u(left.ref, right.ref)
+                    : mod.i32.ge_s(left.ref, right.ref)
+            }),
+            shl: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.i32.shl(left.ref, right.ref)
+            }),
+            shr: (left, right) => ({
+                type: TYPES.i32,
+                ref: left.isUnsigned
+                    ? mod.i32.shr_u(left.ref, right.ref)
+                    : mod.i32.shr_s(left.ref, right.ref)
+            }),
+            mod: (left, right) => ({
+                type: TYPES.i32,
+                ref: left.isUnsigned
+                    ? mod.i32.rem_u(left.ref, right.ref)
+                    : mod.i32.rem_s(left.ref, right.ref)
+            }),
+            and: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.i32.and(left.ref, right.ref)
+            }),
+            or: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.i32.or(left.ref, right.ref)
+            }),
+            xor: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.i32.xor(left.ref, right.ref)
             }),
             coerce: (expr, ctx) => {
                 switch (expr.type) {
@@ -194,11 +297,65 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                     ? mod.i64.div_u(left.ref, right.ref)
                     : mod.i64.div_s(left.ref, right.ref)
             }),
+            eq: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.i64.eq(left.ref, right.ref)
+            }),
+            ne: (left, right) => ({
+                type: TYPES.i32,
+                ref: mod.i64.ne(left.ref, right.ref)
+            }),
             lt: (left, right) => ({
-                type: TYPES.i64,
+                type: TYPES.i32,
                 ref: left.isUnsigned
                     ? mod.i64.lt_u(left.ref, right.ref)
                     : mod.i64.lt_s(left.ref, right.ref)
+            }),
+            lte: (left, right) => ({
+                type: TYPES.i32,
+                ref: left.isUnsigned
+                    ? mod.i64.le_u(left.ref, right.ref)
+                    : mod.i64.le_s(left.ref, right.ref)
+            }),
+            gt: (left, right) => ({
+                type: TYPES.i32,
+                ref: left.isUnsigned
+                    ? mod.i64.gt_u(left.ref, right.ref)
+                    : mod.i64.gt_s(left.ref, right.ref)
+            }),
+            gte: (left, right) => ({
+                type: TYPES.i32,
+                ref: left.isUnsigned
+                    ? mod.i64.ge_u(left.ref, right.ref)
+                    : mod.i64.ge_s(left.ref, right.ref)
+            }),
+            shl: (left, right) => ({
+                type: TYPES.i64,
+                ref: mod.i64.shl(left.ref, right.ref)
+            }),
+            shr: (left, right) => ({
+                type: TYPES.i64,
+                ref: left.isUnsigned
+                    ? mod.i64.shr_u(left.ref, right.ref)
+                    : mod.i64.shr_s(left.ref, right.ref)
+            }),
+            mod: (left, right) => ({
+                type: TYPES.i64,
+                ref: left.isUnsigned
+                    ? mod.i64.rem_u(left.ref, right.ref)
+                    : mod.i64.rem_s(left.ref, right.ref)
+            }),
+            and: (left, right) => ({
+                type: TYPES.i64,
+                ref: mod.i64.and(left.ref, right.ref)
+            }),
+            or: (left, right) => ({
+                type: TYPES.i64,
+                ref: mod.i64.or(left.ref, right.ref)
+            }),
+            xor: (left, right) => ({
+                type: TYPES.i64,
+                ref: mod.i64.xor(left.ref, right.ref)
             }),
             coerce: (expr, ctx) => {
                 switch (expr.type) {
@@ -245,7 +402,27 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 type: TYPES.void,
                 ref: mod.nop()
             }),
+            eq: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
+            ne: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
             lt: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
+            lte: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
+            gt: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
+            gte: () => ({
                 type: TYPES.void,
                 ref: mod.nop()
             }),
@@ -254,7 +431,7 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 ref: mod.nop()
             })
         }
-    };
+    } as const satisfies TypeOperations;
 }
 
 export function lookForVariable(ctx: Context, name: string): LocalVariableInformation {
