@@ -21,11 +21,11 @@ myModule.addFunction(
 
 myModule.addFunctionExport("main", "main");
 
-console.log(myModule.emitText());
-writeFileSync("out.wasm", myModule.emitBinary());
-
 // Optimize the module using default passes and levels
 myModule.optimize();
+
+console.log(myModule.emitText());
+writeFileSync("out.wasm", myModule.emitBinary());
 
 // Validate the module
 if (!myModule.validate()) throw new Error("validation error");
