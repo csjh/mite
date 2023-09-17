@@ -1,5 +1,11 @@
 import binaryen from "binaryen";
-import { bigintToLowAndHigh, createTypeOperations } from "./utils.js";
+import {
+    bigintToLowAndHigh,
+    coerceBinaryExpression,
+    coerceToExpected,
+    createTypeOperations,
+    lookForVariable
+} from "./utils.js";
 import type {
     Context,
     ExpressionInformation,
@@ -14,7 +20,11 @@ import type {
     VariableDeclaration,
     TypedParameter,
     FunctionDeclaration,
-    ReturnStatement
+    ReturnStatement,
+    Literal,
+    AssignmentExpression,
+    Identifier,
+    CallExpression
 } from "../types/nodes.js";
 
 export function programToModule(program: Program): binaryen.Module {
@@ -163,6 +173,7 @@ function variableDeclarationToExpression(
             declaration.init!
         );
         const ref = ctx.mod.local.set(lookForVariable(ctx, declaration.id.name).index, expr.ref);
+        console.log(lookForVariable(ctx, declaration.id.name))
         expressions.push({
             ref,
             type: "void",
@@ -191,128 +202,111 @@ function returnStatementToExpression(ctx: Context, value: ReturnStatement): Expr
 }
 
 function expressionToExpression(ctx: Context, value: Expression): ExpressionInformation {
+    let expr: ExpressionInformation;
     if (value.type === "Literal") {
-        if (!ctx.expected) {
-            const type = typeof value.value === "bigint" ? "i64" : "f64";
-            return {
-                ref:
-                    typeof value.value === "bigint"
-                        ? ctx.mod.i64.const(...bigintToLowAndHigh(value.value))
-                        : ctx.mod.f64.const(value.value),
-                type,
-                binaryenType: binaryen[type]
-            };
-        }
-        let ref;
-        switch (ctx.expected.type) {
-            case "i32":
-                ref = ctx.mod.i32.const(Number(value.value));
-                break;
-            case "i64":
-                ref = ctx.mod.i64.const(...bigintToLowAndHigh(value.value));
-                break;
-            case "f32":
-                ref = ctx.mod.f32.const(Number(value.value));
-                break;
-            case "f64":
-                ref = ctx.mod.f64.const(Number(value.value));
-                break;
-            default:
-                throw new Error(`Unknown literal type: ${ctx.expected.type}`);
-        }
-        return {
-            ...ctx.expected,
-            ref
-        };
+        expr = literalToExpression(ctx, value);
     } else if (value.type === "Identifier") {
-        const { index, binaryenType, type } = lookForVariable(ctx, value.name);
-        const ref = ctx.mod.local.get(index, binaryenType);
-        return {
-            ref,
-            binaryenType,
-            type
-        };
+        expr = identifierToExpression(ctx, value);
     } else if (value.type === "BinaryExpression") {
-        const [coerced_left, coerced_right] = coerceBinaryExpression(ctx, value);
-        const type = coerced_left.type;
-
-        switch (value.operator) {
-            case "+":
-                return ctx.type_operations[type].add(coerced_left, coerced_right);
-            case "-":
-                return ctx.type_operations[type].sub(coerced_left, coerced_right);
-            case "*":
-                return ctx.type_operations[type].mul(coerced_left, coerced_right);
-            case "/":
-                return ctx.type_operations[type].div(coerced_left, coerced_right);
-            default:
-                throw new Error(`Unknown binary operator: ${value.operator}`);
-        }
+        expr = binaryExpressionToExpression(ctx, value);
     } else if (value.type === "AssignmentExpression") {
-        const expr = expressionToExpression(
-            { ...ctx, expected: lookForVariable(ctx, value.left.name) },
-            value.right
-        );
-
-        const ref = ctx.mod.local.set(lookForVariable(ctx, value.left.name).index, expr.ref);
-        return {
-            ref,
-            binaryenType: binaryen.none,
-            type: "void"
-        };
+        expr = assignmentExpressionToExpression(ctx, value);
     } else if (value.type === "CallExpression") {
-        const fn = ctx.functions.get(value.callee.name)!;
-        const args = value.arguments.map((arg, i) =>
-            expressionToExpression(
-                {
-                    ...ctx,
-                    expected: fn.params[i]
-                },
-                arg
-            )
-        );
-
-        return {
-            ...fn.results,
-            ref: ctx.mod.call(
-                value.callee.name,
-                args.map((arg) => arg.ref),
-                fn.results.binaryenType
-            )
-        };
+        expr = callExpressionToExpression(ctx, value);
+    } else {
+        throw new Error(`Unknown statement type: ${value.type}`);
     }
-
-    throw new Error(`Unknown statement type: ${value.type}`);
+    return coerceToExpected(ctx, expr);
 }
 
-function coerceBinaryExpression(
+function literalToExpression(ctx: Context, value: Literal): ExpressionInformation {
+    if (!ctx.expected) {
+        const type = typeof value.value === "bigint" ? "i64" : "f64";
+        return {
+            ref:
+                typeof value.value === "bigint"
+                    ? ctx.mod.i64.const(...bigintToLowAndHigh(value.value))
+                    : ctx.mod.f64.const(value.value),
+            type,
+            binaryenType: binaryen[type]
+        };
+    }
+    let ref;
+    switch (ctx.expected.type) {
+        case "i32":
+            ref = ctx.mod.i32.const(Number(value.value));
+            break;
+        case "i64":
+            ref = ctx.mod.i64.const(...bigintToLowAndHigh(value.value));
+            break;
+        case "f32":
+            ref = ctx.mod.f32.const(Number(value.value));
+            break;
+        case "f64":
+            ref = ctx.mod.f64.const(Number(value.value));
+            break;
+        default:
+            throw new Error(`Unknown literal type: ${ctx.expected.type}`);
+    }
+    return { ...ctx.expected, ref };
+}
+
+function identifierToExpression(ctx: Context, value: Identifier): ExpressionInformation {
+    const { index, binaryenType, type } = lookForVariable(ctx, value.name);
+    const ref = ctx.mod.local.get(index, binaryenType);
+    return { ref, binaryenType, type };
+}
+
+function binaryExpressionToExpression(
     ctx: Context,
     value: BinaryExpression
-): [ExpressionInformation, ExpressionInformation] {
-    const { expected } = ctx,
-        { left, right } = value;
-    if (expected)
-        return [
-            ctx.type_operations[expected.type].coerce(expressionToExpression(ctx, left), ctx),
-            ctx.type_operations[expected.type].coerce(expressionToExpression(ctx, right), ctx)
-        ];
+): ExpressionInformation {
+    const args: [ExpressionInformation, ExpressionInformation] = [
+        expressionToExpression(ctx, value.left),
+        expressionToExpression(ctx, value.right)
+    ];
+    const [coerced_left, coerced_right] = coerceBinaryExpression(ctx, args);
+    const type = coerced_left.type;
 
-    const left_expr = expressionToExpression(ctx, left),
-        right_expr = expressionToExpression(ctx, right);
-
-    if (left_expr.binaryenType === right_expr.binaryenType) return [left_expr, right_expr];
-    for (const type of [binaryen.f64, binaryen.f32, binaryen.i64, binaryen.i32]) {
-        if (left_expr.binaryenType === type)
-            return [left_expr, ctx.type_operations[left_expr.type].coerce(right_expr, ctx)];
-        if (right_expr.binaryenType === type)
-            return [ctx.type_operations[right_expr.type].coerce(left_expr, ctx), right_expr];
+    switch (value.operator) {
+        case "+":
+            return ctx.type_operations[type].add(coerced_left, coerced_right);
+        case "-":
+            return ctx.type_operations[type].sub(coerced_left, coerced_right);
+        case "*":
+            return ctx.type_operations[type].mul(coerced_left, coerced_right);
+        case "/":
+            return ctx.type_operations[type].div(coerced_left, coerced_right);
     }
 
-    throw new Error(`Unknown coercion: ${left_expr.type} to ${right_expr.type}`);
+    throw new Error(`Unknown binary operator: ${value.operator}`);
 }
 
-function lookForVariable(ctx: Context, name: string): LocalVariableInformation {
-    const variable = ctx.variables.get(name);
-    if (!variable) throw new Error(`Unknown variable: ${name}`);
-    return variable;
+function assignmentExpressionToExpression(
+    ctx: Context,
+    value: AssignmentExpression
+): ExpressionInformation {
+    const expr = expressionToExpression(
+        { ...ctx, expected: lookForVariable(ctx, value.left.name) },
+        value.right
+    );
+
+    const ref = ctx.mod.local.set(lookForVariable(ctx, value.left.name).index, expr.ref);
+    return { ref, binaryenType: binaryen.none, type: "void" };
+}
+
+function callExpressionToExpression(ctx: Context, value: CallExpression): ExpressionInformation {
+    const fn = ctx.functions.get(value.callee.name)!;
+    const args = value.arguments.map((arg, i) =>
+        expressionToExpression({ ...ctx, expected: fn.params[i] }, arg)
+    );
+
+    return {
+        ...fn.results,
+        ref: ctx.mod.call(
+            value.callee.name,
+            args.map((arg) => arg.ref),
+            fn.results.binaryenType
+        )
+    };
 }

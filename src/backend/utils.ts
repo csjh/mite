@@ -5,10 +5,11 @@ export function bigintToLowAndHigh(num: bigint | number): [number, number] {
 }
 
 import binaryen from "binaryen";
-import { Context, ExpressionInformation } from "../types/code_gen.js";
+import { Context, ExpressionInformation, LocalVariableInformation } from "../types/code_gen.js";
+import { BinaryExpression } from "../types/nodes.js";
 
 // todo: arbitrary
-type ValidTypes = import("../types/code_gen.js").LocalVariableInformation["type"];
+type ValidTypes = LocalVariableInformation["type"];
 
 export function createTypeOperations(mod: binaryen.Module): Record<
     ValidTypes,
@@ -271,4 +272,36 @@ export function createTypeOperations(mod: binaryen.Module): Record<
             }
         }
     };
+}
+
+export function lookForVariable(ctx: Context, name: string): LocalVariableInformation {
+    const variable = ctx.variables.get(name);
+    if (!variable) throw new Error(`Unknown variable: ${name}`);
+    return variable;
+}
+
+export function coerceBinaryExpression(
+    ctx: Context,
+    [left, right]: [ExpressionInformation, ExpressionInformation]
+): [ExpressionInformation, ExpressionInformation] {
+    if (ctx.expected) {
+        return [coerceToExpected(ctx, left), coerceToExpected(ctx, right)];
+    }
+
+    if (left.binaryenType === right.binaryenType) return [left, right];
+    for (const type of [binaryen.f64, binaryen.f32, binaryen.i64, binaryen.i32]) {
+        if (left.binaryenType === type)
+            return [left, ctx.type_operations[left.type].coerce(right, ctx)];
+        if (right.binaryenType === type)
+            return [ctx.type_operations[right.type].coerce(left, ctx), right];
+    }
+
+    throw new Error(`Unknown coercion: ${left.type} to ${right.type}`);
+}
+
+export function coerceToExpected(ctx: Context, expr: ExpressionInformation): ExpressionInformation {
+    if (ctx.expected) {
+        return ctx.type_operations[ctx.expected.type].coerce(expr, ctx);
+    }
+    return expr;
 }
