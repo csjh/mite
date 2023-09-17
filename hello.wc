@@ -8,6 +8,8 @@ fn main(): f32 {
 
     i32 sum = hundred + four_hundred, second_decl = four_hundred - hundred;
 
+    i32 shooby = if (1) 15 else 20;
+
     i64 unused;
     unused = 100;
     unused = 9223372036854776000;
