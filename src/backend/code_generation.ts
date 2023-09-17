@@ -13,7 +13,8 @@ import type {
     BinaryExpression,
     VariableDeclaration,
     TypedParameter,
-    FunctionDeclaration
+    FunctionDeclaration,
+    ReturnStatement
 } from "../types/nodes.js";
 
 export function programToModule(program: Program): binaryen.Module {
@@ -139,44 +140,54 @@ function statementToExpression(
 ): ExpressionInformation | ExpressionInformation[] {
     switch (value.type) {
         case "VariableDeclaration":
-            return value.declarations
-                .filter((declaration) => declaration.init)
-                .map((declaration) => {
-                    const expr = expressionToExpression(
-                        { ...ctx, expected: lookForVariable(ctx, declaration.id.name) },
-                        declaration.init!
-                    );
-                    const ref = ctx.mod.local.set(
-                        lookForVariable(ctx, declaration.id.name).index,
-                        expr.ref
-                    );
-                    return {
-                        ref,
-                        type: "void",
-                        binaryenType: binaryen.none
-                    };
-                });
+            return variableDeclarationToExpression(ctx, value);
         case "ReturnStatement":
-            if (!value.argument) {
-                return {
-                    ref: ctx.mod.return(),
-                    type: "void",
-                    binaryenType: binaryen.none
-                };
-            }
-            const expr = expressionToExpression(
-                { ...ctx, expected: ctx.current_function.results },
-                value.argument
-            );
-            return {
-                ...expr,
-                ref: ctx.mod.return(expr.ref)
-            };
+            return returnStatementToExpression(ctx, value);
         case "ExpressionStatement":
             return expressionToExpression(ctx, value.expression);
     }
 
     throw new Error(`Unknown statement type: ${value.type}`);
+}
+
+function variableDeclarationToExpression(
+    ctx: Context,
+    value: VariableDeclaration
+): ExpressionInformation[] {
+    const withInitializers = value.declarations.filter((declaration) => declaration.init);
+
+    const expressions: ExpressionInformation[] = [];
+    for (const declaration of withInitializers) {
+        const expr = expressionToExpression(
+            { ...ctx, expected: lookForVariable(ctx, declaration.id.name) },
+            declaration.init!
+        );
+        const ref = ctx.mod.local.set(lookForVariable(ctx, declaration.id.name).index, expr.ref);
+        expressions.push({
+            ref,
+            type: "void",
+            binaryenType: binaryen.none
+        });
+    }
+    return expressions;
+}
+
+function returnStatementToExpression(ctx: Context, value: ReturnStatement): ExpressionInformation {
+    if (!value.argument) {
+        return {
+            ref: ctx.mod.return(),
+            type: "void",
+            binaryenType: binaryen.none
+        };
+    }
+    const expr = expressionToExpression(
+        { ...ctx, expected: ctx.current_function.results },
+        value.argument
+    );
+    return {
+        ...expr,
+        ref: ctx.mod.return(expr.ref)
+    };
 }
 
 function expressionToExpression(ctx: Context, value: Expression): ExpressionInformation {
