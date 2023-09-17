@@ -7,6 +7,7 @@ export function bigintToLowAndHigh(num: bigint | number): [number, number] {
 import binaryen from "binaryen";
 import { Context, ExpressionInformation, LocalVariableInformation } from "../types/code_gen.js";
 import { BinaryExpression } from "../types/nodes.js";
+import { TYPES } from "../types/code_gen.js";
 
 // todo: arbitrary
 type ValidTypes = LocalVariableInformation["type"];
@@ -23,54 +24,46 @@ export function createTypeOperations(mod: binaryen.Module): Record<
     }
 > {
     return {
-        f32: {
+        [TYPES.f32]: {
             add: (left, right) => ({
-                type: "f32",
-                binaryenType: binaryen.f32,
+                type: TYPES.f32,
                 ref: mod.f32.add(left.ref, right.ref)
             }),
             sub: (left, right) => ({
-                type: "f32",
-                binaryenType: binaryen.f32,
+                type: TYPES.f32,
                 ref: mod.f32.sub(left.ref, right.ref)
             }),
             mul: (left, right) => ({
-                type: "f32",
-                binaryenType: binaryen.f32,
+                type: TYPES.f32,
                 ref: mod.f32.mul(left.ref, right.ref)
             }),
             div: (left, right) => ({
-                type: "f32",
-                binaryenType: binaryen.f32,
+                type: TYPES.f32,
                 ref: mod.f32.div(left.ref, right.ref)
             }),
             lt: (left, right) => ({
-                type: "f32",
-                binaryenType: binaryen.f32,
+                type: TYPES.f32,
                 ref: mod.f32.lt(left.ref, right.ref)
             }),
             coerce: (expr) => {
                 switch (expr.type) {
-                    case "f32":
+                    case TYPES.f32:
                         return expr;
-                    case "f64":
+                    case TYPES.f64:
                         return {
-                            type: "f32",
-                            binaryenType: binaryen.f32,
+                            type: TYPES.f32,
                             ref: mod.f32.demote(expr.ref)
                         };
-                    case "i32":
+                    case TYPES.i32:
                         return {
-                            type: "f32",
-                            binaryenType: binaryen.f32,
+                            type: TYPES.f32,
                             ref: expr.isUnsigned
                                 ? mod.f32.convert_u.i32(expr.ref)
                                 : mod.f32.convert_s.i32(expr.ref)
                         };
-                    case "i64":
+                    case TYPES.i64:
                         return {
-                            type: "f32",
-                            binaryenType: binaryen.f32,
+                            type: TYPES.f32,
                             ref: expr.isUnsigned
                                 ? mod.f32.convert_u.i64(expr.ref)
                                 : mod.f32.convert_s.i64(expr.ref)
@@ -80,54 +73,46 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 }
             }
         },
-        f64: {
+        [TYPES.f64]: {
             add: (left, right) => ({
-                type: "f64",
-                binaryenType: binaryen.f64,
+                type: TYPES.f64,
                 ref: mod.f64.add(left.ref, right.ref)
             }),
             sub: (left, right) => ({
-                type: "f64",
-                binaryenType: binaryen.f64,
+                type: TYPES.f64,
                 ref: mod.f64.sub(left.ref, right.ref)
             }),
             mul: (left, right) => ({
-                type: "f64",
-                binaryenType: binaryen.f64,
+                type: TYPES.f64,
                 ref: mod.f64.mul(left.ref, right.ref)
             }),
             div: (left, right) => ({
-                type: "f64",
-                binaryenType: binaryen.f64,
+                type: TYPES.f64,
                 ref: mod.f64.div(left.ref, right.ref)
             }),
             lt: (left, right) => ({
-                type: "f64",
-                binaryenType: binaryen.f64,
+                type: TYPES.f64,
                 ref: mod.f64.lt(left.ref, right.ref)
             }),
             coerce: (expr) => {
                 switch (expr.type) {
-                    case "f32":
+                    case TYPES.f32:
                         return {
-                            type: "f64",
-                            binaryenType: binaryen.f64,
+                            type: TYPES.f64,
                             ref: mod.f64.promote(expr.ref)
                         };
-                    case "f64":
+                    case TYPES.f64:
                         return expr;
-                    case "i32":
+                    case TYPES.i32:
                         return {
-                            type: "f64",
-                            binaryenType: binaryen.f64,
+                            type: TYPES.f64,
                             ref: expr.isUnsigned
                                 ? mod.f64.convert_u.i32(expr.ref)
                                 : mod.f64.convert_s.i32(expr.ref)
                         };
-                    case "i64":
+                    case TYPES.i64:
                         return {
-                            type: "f64",
-                            binaryenType: binaryen.f64,
+                            type: TYPES.f64,
                             ref: expr.isUnsigned
                                 ? mod.f64.convert_u.i64(expr.ref)
                                 : mod.f64.convert_s.i64(expr.ref)
@@ -137,58 +122,52 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 }
             }
         },
-        i32: {
+        [TYPES.i32]: {
             add: (left, right) => ({
-                type: "i32",
-                binaryenType: binaryen.i32,
+                type: TYPES.i32,
                 ref: mod.i32.add(left.ref, right.ref)
             }),
             sub: (left, right) => ({
-                type: "i32",
-                binaryenType: binaryen.i32,
+                type: TYPES.i32,
                 ref: mod.i32.sub(left.ref, right.ref)
             }),
             mul: (left, right) => ({
-                type: "i32",
-                binaryenType: binaryen.i32,
+                type: TYPES.i32,
                 ref: mod.i32.mul(left.ref, right.ref)
             }),
             div: (left, right) => ({
-                type: "i32",
-                binaryenType: binaryen.i32,
+                type: TYPES.i32,
                 ref: left.isUnsigned
                     ? mod.i32.div_u(left.ref, right.ref)
                     : mod.i32.div_s(left.ref, right.ref)
             }),
             lt: (left, right) => ({
-                type: "i32",
-                binaryenType: binaryen.i32,
-                ref: left.isUnsigned ? mod.i32.lt_u(left.ref, right.ref) : mod.i32.lt_s(left.ref, right.ref)
+                type: TYPES.i32,
+                ref: left.isUnsigned
+                    ? mod.i32.lt_u(left.ref, right.ref)
+                    : mod.i32.lt_s(left.ref, right.ref)
             }),
             coerce: (expr, ctx) => {
                 switch (expr.type) {
-                    case "f32":
+                    case TYPES.f32:
                         return {
-                            type: "i32",
-                            binaryenType: binaryen.i32,
+                            type: TYPES.i32,
                             ref: ctx.expected?.isUnsigned
                                 ? mod.i32.trunc_u.f32(expr.ref)
                                 : mod.i32.trunc_s.f32(expr.ref)
                         };
-                    case "f64":
+                    case TYPES.f64:
                         return {
-                            type: "i32",
-                            binaryenType: binaryen.i32,
+                            type: TYPES.i32,
                             ref: ctx.expected?.isUnsigned
                                 ? mod.i32.trunc_u.f64(expr.ref)
                                 : mod.i32.trunc_s.f64(expr.ref)
                         };
-                    case "i32":
+                    case TYPES.i32:
                         return expr;
-                    case "i64":
+                    case TYPES.i64:
                         return {
-                            type: "i32",
-                            binaryenType: binaryen.i32,
+                            type: TYPES.i32,
                             ref: mod.i32.wrap(expr.ref)
                         };
                     default:
@@ -196,108 +175,84 @@ export function createTypeOperations(mod: binaryen.Module): Record<
                 }
             }
         },
-        i64: {
+        [TYPES.i64]: {
             add: (left, right) => ({
-                type: "i64",
-                binaryenType: binaryen.i64,
+                type: TYPES.i64,
                 ref: mod.i64.add(left.ref, right.ref)
             }),
             sub: (left, right) => ({
-                type: "i64",
-                binaryenType: binaryen.i64,
+                type: TYPES.i64,
                 ref: mod.i64.sub(left.ref, right.ref)
             }),
             mul: (left, right) => ({
-                type: "i64",
-                binaryenType: binaryen.i64,
+                type: TYPES.i64,
                 ref: mod.i64.mul(left.ref, right.ref)
             }),
             div: (left, right) => ({
-                type: "i64",
-                binaryenType: binaryen.i64,
+                type: TYPES.i64,
                 ref: left.isUnsigned
                     ? mod.i64.div_u(left.ref, right.ref)
                     : mod.i64.div_s(left.ref, right.ref)
             }),
             lt: (left, right) => ({
-                type: "i64",
-                binaryenType: binaryen.i64,
-                ref: left.isUnsigned ? mod.i64.lt_u(left.ref, right.ref) : mod.i64.lt_s(left.ref, right.ref)
+                type: TYPES.i64,
+                ref: left.isUnsigned
+                    ? mod.i64.lt_u(left.ref, right.ref)
+                    : mod.i64.lt_s(left.ref, right.ref)
             }),
             coerce: (expr, ctx) => {
                 switch (expr.type) {
-                    case "f32":
+                    case TYPES.f32:
                         return {
-                            type: "i64",
-                            binaryenType: binaryen.i64,
+                            type: TYPES.i64,
                             ref: ctx.expected?.isUnsigned
                                 ? mod.i64.trunc_u.f32(expr.ref)
                                 : mod.i64.trunc_s.f32(expr.ref)
                         };
-                    case "f64":
+                    case TYPES.f64:
                         return {
-                            type: "i64",
-                            binaryenType: binaryen.i64,
+                            type: TYPES.i64,
                             ref: ctx.expected?.isUnsigned
                                 ? mod.i64.trunc_u.f64(expr.ref)
                                 : mod.i64.trunc_s.f64(expr.ref)
                         };
-                    case "i32":
+                    case TYPES.i32:
                         return {
-                            type: "i64",
-                            binaryenType: binaryen.i64,
+                            type: TYPES.i64,
                             ref: mod.i64.extend_s(expr.ref)
                         };
-                    case "i64":
+                    case TYPES.i64:
                         return expr;
                     default:
                         throw new Error(`Cannot coerce ${expr.type} to i64`);
                 }
             }
         },
-        void: {
-            add: () => {
-                return {
-                    type: "void",
-                    binaryenType: binaryen.none,
-                    ref: mod.nop()
-                };
-            },
-            sub: () => {
-                return {
-                    type: "void",
-                    binaryenType: binaryen.none,
-                    ref: mod.nop()
-                };
-            },
-            mul: () => {
-                return {
-                    type: "void",
-                    binaryenType: binaryen.none,
-                    ref: mod.nop()
-                };
-            },
-            div: () => {
-                return {
-                    type: "void",
-                    binaryenType: binaryen.none,
-                    ref: mod.nop()
-                };
-            },
-            lt: () => {
-                return {
-                    type: "void",
-                    binaryenType: binaryen.none,
-                    ref: mod.nop()
-                };
-            },
-            coerce: () => {
-                return {
-                    type: "void",
-                    binaryenType: binaryen.none,
-                    ref: mod.nop()
-                };
-            }
+        [TYPES.void]: {
+            add: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
+            sub: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
+            mul: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
+            div: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
+            lt: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            }),
+            coerce: () => ({
+                type: TYPES.void,
+                ref: mod.nop()
+            })
         }
     };
 }
@@ -316,12 +271,10 @@ export function coerceBinaryExpression(
         return [coerceToExpected(ctx, left), coerceToExpected(ctx, right)];
     }
 
-    if (left.binaryenType === right.binaryenType) return [left, right];
+    if (left.type === right.type) return [left, right];
     for (const type of [binaryen.f64, binaryen.f32, binaryen.i64, binaryen.i32]) {
-        if (left.binaryenType === type)
-            return [left, ctx.type_operations[left.type].coerce(right, ctx)];
-        if (right.binaryenType === type)
-            return [ctx.type_operations[right.type].coerce(left, ctx), right];
+        if (left.type === type) return [left, ctx.type_operations[left.type].coerce(right, ctx)];
+        if (right.type === type) return [ctx.type_operations[right.type].coerce(left, ctx), right];
     }
 
     throw new Error(`Unknown coercion: ${left.type} to ${right.type}`);

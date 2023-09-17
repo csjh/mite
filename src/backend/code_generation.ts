@@ -11,7 +11,7 @@ import type {
     ExpressionInformation,
     LocalVariableInformation
 } from "../types/code_gen.js";
-import { types } from "../types/code_gen.js";
+import { TYPES } from "../types/code_gen.js";
 import type {
     Program,
     Statement,
@@ -49,13 +49,11 @@ export function programToModule(program: Program): binaryen.Module {
                 {
                     name: node.id.name,
                     params: node.params.map((param) => ({
-                        type: param.typeAnnotation.name,
-                        binaryenType: types[param.typeAnnotation.name],
+                        type: TYPES[param.typeAnnotation.name],
                         isUnsigned: param.typeAnnotation.isUnsigned
                     })),
                     results: {
-                        type: node.returnType.name,
-                        binaryenType: types[node.returnType.name],
+                        type: TYPES[node.returnType.name],
                         isUnsigned: node.returnType.isUnsigned
                     }
                 }
@@ -64,8 +62,8 @@ export function programToModule(program: Program): binaryen.Module {
 
     for (const type of ["i32", "i64", "f32", "f64"] as const) {
         ctx.functions.set(`log_${type}`, {
-            params: [{ type, binaryenType: binaryen[type], isUnsigned: false }],
-            results: { type: "void", binaryenType: binaryen.none, isUnsigned: false }
+            params: [{ type: TYPES[type], isUnsigned: false }],
+            results: { type: TYPES.void, isUnsigned: false }
         });
     }
 
@@ -93,7 +91,7 @@ export function programToModule(program: Program): binaryen.Module {
                 const function_variables = [...parameter_vars, ...declared_vars];
 
                 const weird_type = function_variables.find(
-                    (variable) => !(variable.typeAnnotation.name in types)
+                    (variable) => !(variable.typeAnnotation.name in TYPES)
                 );
 
                 if (weird_type) {
@@ -110,8 +108,7 @@ export function programToModule(program: Program): binaryen.Module {
                                 name.name,
                                 {
                                     index: var_index++,
-                                    type: typeAnnotation.name,
-                                    binaryenType: types[typeAnnotation.name],
+                                    type: TYPES[typeAnnotation.name],
                                     isUnsigned: typeAnnotation.isUnsigned
                                 }
                             ] as const
@@ -122,9 +119,9 @@ export function programToModule(program: Program): binaryen.Module {
 
                 ctx.mod.addFunction(
                     node.id.name,
-                    binaryen.createType(params.map((param) => param.binaryenType)),
-                    results.binaryenType,
-                    function_variables.map((declaration) => types[declaration.typeAnnotation.name]),
+                    binaryen.createType(params.map((param) => param.type)),
+                    results.type,
+                    function_variables.map((declaration) => TYPES[declaration.typeAnnotation.name]),
                     ctx.mod.block(
                         null,
                         node.body.body
@@ -185,8 +182,7 @@ function variableDeclarationToExpression(
         const ref = ctx.mod.local.set(lookForVariable(ctx, declaration.id.name).index, expr.ref);
         expressions.push({
             ref,
-            type: "void",
-            binaryenType: binaryen.none
+            type: TYPES.void
         });
     }
     return expressions;
@@ -196,8 +192,7 @@ function returnStatementToExpression(ctx: Context, value: ReturnStatement): Expr
     if (!value.argument) {
         return {
             ref: ctx.mod.return(),
-            type: "void",
-            binaryenType: binaryen.none
+            type: TYPES.void
         };
     }
     const expr = expressionToExpression(
@@ -242,22 +237,21 @@ function literalToExpression(ctx: Context, value: Literal): ExpressionInformatio
                 typeof value.value === "bigint"
                     ? ctx.mod.i64.const(...bigintToLowAndHigh(value.value))
                     : ctx.mod.f64.const(value.value),
-            type,
-            binaryenType: binaryen[type]
+            type: TYPES[type]
         };
     }
     let ref;
     switch (ctx.expected.type) {
-        case "i32":
+        case TYPES.i32:
             ref = ctx.mod.i32.const(Number(value.value));
             break;
-        case "i64":
+        case TYPES.i64:
             ref = ctx.mod.i64.const(...bigintToLowAndHigh(value.value));
             break;
-        case "f32":
+        case TYPES.f32:
             ref = ctx.mod.f32.const(Number(value.value));
             break;
-        case "f64":
+        case TYPES.f64:
             ref = ctx.mod.f64.const(Number(value.value));
             break;
         default:
@@ -267,9 +261,9 @@ function literalToExpression(ctx: Context, value: Literal): ExpressionInformatio
 }
 
 function identifierToExpression(ctx: Context, value: Identifier): ExpressionInformation {
-    const { index, binaryenType, type } = lookForVariable(ctx, value.name);
-    const ref = ctx.mod.local.get(index, binaryenType);
-    return { ref, binaryenType, type };
+    const { index, type } = lookForVariable(ctx, value.name);
+    const ref = ctx.mod.local.get(index, type);
+    return { ref, type };
 }
 
 function binaryExpressionToExpression(
@@ -309,7 +303,7 @@ function assignmentExpressionToExpression(
     );
 
     const ref = ctx.mod.local.set(lookForVariable(ctx, value.left.name).index, expr.ref);
-    return { ref, binaryenType: binaryen.none, type: "void" };
+    return { ref, type: TYPES.void };
 }
 
 function callExpressionToExpression(ctx: Context, value: CallExpression): ExpressionInformation {
@@ -323,7 +317,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): Expres
         ref: ctx.mod.call(
             value.callee.name,
             args.map((arg) => arg.ref),
-            fn.results.binaryenType
+            fn.results.type
         )
     };
 }
@@ -333,8 +327,7 @@ function ifExpressionToExpression(ctx: Context, value: IfExpression): Expression
         {
             ...ctx,
             expected: {
-                type: "i32",
-                binaryenType: binaryen.i32
+                type: TYPES.i32
             }
         },
         value.test
@@ -360,8 +353,7 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
               {
                   ...ctx,
                   expected: {
-                      type: "i32",
-                      binaryenType: binaryen.i32
+                      type: TYPES.i32
                   }
               },
               value.test
@@ -399,11 +391,14 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
 
 function blockExpressionToExpression(ctx: Context, value: BlockExpression): ExpressionInformation {
     const return_value = value.body.at(-1);
-    let return_type = binaryen.none;
+    let return_type = TYPES.void;
     if (return_value) {
         const return_expr = statementToExpression(ctx, return_value);
         if (!Array.isArray(return_expr)) {
             return_type = binaryen.getExpressionType(return_expr.ref);
+            if (!(return_type in TYPES)) {
+                throw new Error(`Unknown return type: ${return_type}`);
+            }
         }
     }
 
@@ -416,18 +411,6 @@ function blockExpressionToExpression(ctx: Context, value: BlockExpression): Expr
                 .map((x) => x.ref),
             return_type
         ),
-        binaryenType: return_type,
-        type:
-            return_type === binaryen.none
-                ? "void"
-                : return_type === binaryen.i32
-                ? "i32"
-                : return_type === binaryen.i64
-                ? "i64"
-                : return_type === binaryen.f32
-                ? "f32"
-                : return_type === binaryen.f64
-                ? "f64"
-                : "void"
+        type: return_type
     };
 }
