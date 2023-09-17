@@ -2,7 +2,7 @@ import { TokenType, Token, BINARY_OPERATORS, BinaryOperator } from "../types/tok
 import type {
     Program,
     FunctionDeclaration,
-    BlockStatement,
+    BlockExpression,
     Statement,
     ReturnStatement,
     Identifier,
@@ -14,7 +14,8 @@ import type {
     ExpressionStatement,
     VariableDeclarator,
     CallExpression,
-    TypedParameter
+    TypedParameter,
+    IfExpression
 } from "../types/nodes.js";
 
 export class Parser {
@@ -146,12 +147,38 @@ export class Parser {
         };
     }
 
-    private parseBlock(): BlockStatement {
+    private parseIfExpression(): IfExpression {
+        this.expectToken(TokenType.IF);
+        this.idx++;
+
+        this.expectToken(TokenType.LEFT_PAREN);
+        this.idx++;
+        const test = this.parseExpression();
+        this.expectToken(TokenType.RIGHT_PAREN);
+        this.idx++;
+
+        const consequent = this.parseExpression();
+
+        let alternate: Expression | null = null;
+        if (this.tokens[this.idx].type === TokenType.ELSE) {
+            this.idx++;
+            alternate = this.parseExpression();
+        }
+
+        return {
+            type: "IfExpression",
+            test,
+            consequent,
+            alternate
+        };
+    }
+
+    private parseBlock(): BlockExpression {
         this.expectToken(TokenType.LEFT_BRACE);
         this.idx++;
 
-        const expression: BlockStatement = {
-            type: "BlockStatement",
+        const expression: BlockExpression = {
+            type: "BlockExpression",
             body: []
         };
 
@@ -177,6 +204,7 @@ export class Parser {
                 argument: expression
             } satisfies ReturnStatement;
         } else if (
+            // probably a better way to do this lmao
             this.tokens[this.idx].type === TokenType.IDENTIFIER &&
             this.tokens[this.idx + 1].type === TokenType.IDENTIFIER &&
             (this.tokens[this.idx + 2].type === TokenType.ASSIGNMENT ||
@@ -262,13 +290,24 @@ export class Parser {
     }
 
     private parseExpression(): Expression {
-        // only binary expressions and literals are supported right now
+        // expressions that start with a keyword (e.g. for, if)
+        switch (this.tokens[this.idx].type) {
+            case TokenType.IF:
+                return this.parseIfExpression();
+            case TokenType.LEFT_BRACE:
+                return this.parseBlock();
+            default:
+                break;
+        }
+
+        // expressions that start with an identifier or literal (e.g. func(), 1 + 1, x = 5)
         const next = this.getIdentifierOrLiteral();
 
         switch (this.tokens[this.idx].value) {
             case TokenType.SEMICOLON:
-            case TokenType.COMMA: // todo: commas shouldn't *always* have this effect
-            case TokenType.RIGHT_PAREN: // same as above kinda, need a bit of context
+            case TokenType.COMMA: // right now commas in function call
+            case TokenType.RIGHT_PAREN: // end of a function call
+            case TokenType.ELSE: // end of an if statement
                 return next;
             case TokenType.ASSIGNMENT:
                 if (next.type !== "Identifier") throw new Error("Expected identifier, got literal");
@@ -313,25 +352,27 @@ export class Parser {
     }
 
     private getIdentifierOrLiteral(): Identifier | Literal {
-        if (this.tokens[this.idx].type === TokenType.IDENTIFIER) {
-            return {
-                type: "Identifier",
-                name: this.tokens[this.idx++].value
-            };
-        } else if (this.tokens[this.idx].type === TokenType.NUMBER) {
-            const raw = this.tokens[this.idx++].value;
-            let value: bigint | number;
-            // prettier-ignore
-            try { value = BigInt(raw); } catch { value = Number(raw); }
-            return {
-                type: "Literal",
-                value
-            };
-        } else {
-            throw new Error(
-                `Expected an identifier or a number, got ${this.tokens[this.idx].value}`
-            );
-        }
+        if (this.tokens[this.idx].type === TokenType.IDENTIFIER) return this.getIdentifier();
+        else if (this.tokens[this.idx].type === TokenType.NUMBER) return this.getLiteral();
+        throw new Error(`Expected identifier or literal, got ${this.tokens[this.idx].value}`);
+    }
+
+    private getIdentifier(): Identifier {
+        return {
+            type: "Identifier",
+            name: this.tokens[this.idx++].value
+        };
+    }
+
+    private getLiteral(): Literal {
+        const raw = this.tokens[this.idx++].value;
+        let value: bigint | number;
+        // prettier-ignore
+        try { value = BigInt(raw); } catch { value = Number(raw); }
+        return {
+            type: "Literal",
+            value
+        };
     }
 
     private parseCallExpression(func_name: Identifier): CallExpression {

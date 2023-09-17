@@ -19,6 +19,9 @@ export enum TokenType {
 
     FN = "fn",
     RETURN = "return",
+    IF = "if",
+    ELSE = "else",
+    FOR = "for",
 
     SIGNED = "signed",
     UNSIGNED = "unsigned",

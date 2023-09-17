@@ -24,7 +24,8 @@ import type {
     Literal,
     AssignmentExpression,
     Identifier,
-    CallExpression
+    CallExpression,
+    IfExpression
 } from "../types/nodes.js";
 
 export function programToModule(program: Program): binaryen.Module {
@@ -173,7 +174,6 @@ function variableDeclarationToExpression(
             declaration.init!
         );
         const ref = ctx.mod.local.set(lookForVariable(ctx, declaration.id.name).index, expr.ref);
-        console.log(lookForVariable(ctx, declaration.id.name))
         expressions.push({
             ref,
             type: "void",
@@ -213,6 +213,8 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
         expr = assignmentExpressionToExpression(ctx, value);
     } else if (value.type === "CallExpression") {
         expr = callExpressionToExpression(ctx, value);
+    } else if (value.type === "IfExpression") {
+        expr = ifExpressionToExpression(ctx, value);
     } else {
         throw new Error(`Unknown statement type: ${value.type}`);
     }
@@ -308,5 +310,25 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): Expres
             args.map((arg) => arg.ref),
             fn.results.binaryenType
         )
+    };
+}
+
+function ifExpressionToExpression(ctx: Context, value: IfExpression): ExpressionInformation {
+    const condition = expressionToExpression(
+        {
+            ...ctx,
+            expected: {
+                type: "i32",
+                binaryenType: binaryen.i32
+            }
+        },
+        value.test
+    );
+    const true_branch = expressionToExpression(ctx, value.consequent);
+    const false_branch = value.alternate ? expressionToExpression(ctx, value.alternate) : undefined;
+
+    return {
+        ...true_branch,
+        ref: ctx.mod.if(condition.ref, true_branch.ref, false_branch?.ref)
     };
 }

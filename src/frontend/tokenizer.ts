@@ -96,6 +96,15 @@ export function tokenize(input: string): Token[] {
                     case "return":
                         tokens.push({ type: TokenType.RETURN, value });
                         break;
+                    case "if":
+                        tokens.push({ type: TokenType.IF, value });
+                        break;
+                    case "else":
+                        tokens.push({ type: TokenType.ELSE, value });
+                        break;
+                    case "for":
+                        tokens.push({ type: TokenType.FOR, value });
+                        break;
                     case "signed":
                         tokens.push({ type: TokenType.SIGNED, value });
                         break;

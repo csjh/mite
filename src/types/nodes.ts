@@ -82,20 +82,17 @@ export interface BaseFunction extends BaseNode {
 export type Function = FunctionDeclaration | FunctionExpression;
 
 export type Statement =
-    | ExpressionStatement // should be expression
-    | ReturnStatement // should be expression
-    | LabeledStatement // should be expression or nonexistent
+    | ExpressionStatement
+    | ReturnStatement
     | BreakStatement
     | ContinueStatement
-    | IfStatement // should be expression
+    | LabeledStatement // should be expression or nonexistent actually maybe not, syntax would look weird
     | SwitchStatement // should be expression 1000%
     | ThrowStatement
     | TryStatement
-    | WhileStatement // should be expressioN?
+    | WhileStatement // should be expression?
     | DoWhileStatement // should be expression?
     | ForStatement // should be expression
-    | ForInStatement // should be expression
-    | ForOfStatement // should be expression
     | Declaration;
 
 export interface BaseStatement extends BaseNode {}
@@ -113,13 +110,6 @@ export interface BlockExpression extends BaseStatement {
 export interface ExpressionStatement extends BaseStatement {
     type: "ExpressionStatement";
     expression: Expression;
-}
-
-export interface IfStatement extends BaseStatement {
-    type: "IfStatement";
-    test: Expression;
-    consequent: Statement;
-    alternate?: Statement | null | undefined;
 }
 
 export interface LabeledStatement extends BaseStatement {
@@ -228,11 +218,12 @@ export interface ExpressionMap {
     AssignmentExpression: AssignmentExpression;
     AwaitExpression: AwaitExpression;
     BinaryExpression: BinaryExpression;
+    BlockExpression: BlockExpression;
     CallExpression: CallExpression;
     ChainExpression: ChainExpression;
-    ConditionalExpression: ConditionalExpression;
     FunctionExpression: FunctionExpression;
     Identifier: Identifier;
+    IfExpression: IfExpression;
     ImportExpression: ImportExpression;
     Literal: Literal;
     LogicalExpression: LogicalExpression;
@@ -342,10 +333,10 @@ export interface LogicalExpression extends BaseExpression {
     right: Expression;
 }
 
-export interface ConditionalExpression extends BaseExpression {
-    type: "ConditionalExpression";
+export interface IfExpression extends BaseExpression {
+    type: "IfExpression";
     test: Expression;
-    alternate: Expression;
+    alternate: Expression | null;
     consequent: Expression;
 }
 
