@@ -4,6 +4,8 @@ fn divide(a: i32, b: i32): f32 {
 
 fn main(): f32 {
     i32 hundred = 100;
+    log_i32(hundred);
+
     i32 four_hundred = 400;
 
     i32 sum = hundred + four_hundred, second_decl = four_hundred - hundred;
