@@ -31,7 +31,12 @@ export enum TokenType {
 
     EOF = "EOF"
 }
-export type BinaryOperator = TokenType.PLUS | TokenType.MINUS | TokenType.SLASH | TokenType.STAR | TokenType.LESS_THAN;
+export type BinaryOperator =
+    | TokenType.PLUS
+    | TokenType.MINUS
+    | TokenType.SLASH
+    | TokenType.STAR
+    | TokenType.LESS_THAN;
 
 export const BINARY_OPERATORS: Set<BinaryOperator> = new Set([
     TokenType.PLUS,
