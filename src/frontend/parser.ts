@@ -184,7 +184,12 @@ export class Parser {
         this.expectToken(TokenType.LEFT_PAREN);
         this.idx++;
 
-        const init = this.parseExpression();
+        let init;
+        try {
+            init = this.parseVariableDeclarationOrAssignment("declaration");
+        } catch {
+            init = this.parseExpression();
+        }
         this.expectToken(TokenType.SEMICOLON);
         this.idx++;
 
