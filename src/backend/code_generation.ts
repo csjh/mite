@@ -6,11 +6,7 @@ import {
     createTypeOperations,
     lookForVariable
 } from "./utils.js";
-import type {
-    Context,
-    ExpressionInformation,
-    LocalVariableInformation
-} from "../types/code_gen.js";
+import type { Context, ExpressionInformation } from "../types/code_gen.js";
 import { TYPES } from "../types/code_gen.js";
 import type {
     Program,
@@ -45,17 +41,17 @@ export function programToModule(program: Program): binaryen.Module {
     ctx.functions = new Map(
         program.body
             .filter((x): x is FunctionDeclaration => x.type === "FunctionDeclaration")
-            .map((node) => [
-                node.id.name,
+            .map(({ id, params, returnType }) => [
+                id.name,
                 {
-                    name: node.id.name,
-                    params: node.params.map((param) => ({
-                        type: TYPES[param.typeAnnotation.name],
-                        isUnsigned: param.typeAnnotation.isUnsigned
+                    name: id.name,
+                    params: params.map(({ typeAnnotation }) => ({
+                        type: TYPES[typeAnnotation.name],
+                        isUnsigned: typeAnnotation.isUnsigned
                     })),
                     results: {
-                        type: TYPES[node.returnType.name],
-                        isUnsigned: node.returnType.isUnsigned
+                        type: TYPES[returnType.name],
+                        isUnsigned: returnType.isUnsigned
                     }
                 }
             ])
@@ -71,76 +67,7 @@ export function programToModule(program: Program): binaryen.Module {
     for (const node of program.body) {
         switch (node.type) {
             case "FunctionDeclaration":
-                // only has top-level variables
-                // todo: implement nested variables
-                // probably just a recursive check thru fields w/ 'type' and fat switch
-                const parameter_vars = node.params;
-                const declared_vars = node.body.body
-                    .filter<VariableDeclaration>(
-                        (node): node is VariableDeclaration => node.type === "VariableDeclaration"
-                    )
-                    .flatMap((variable) => variable.declarations)
-                    .map(
-                        (variable) =>
-                            ({
-                                type: "TypedParameter",
-                                name: variable.id,
-                                typeAnnotation: variable.typeAnnotation
-                            }) as TypedParameter
-                    );
-
-                const function_variables = [...parameter_vars, ...declared_vars];
-
-                const weird_type = function_variables.find(
-                    (variable) => !(variable.typeAnnotation.name in TYPES)
-                );
-
-                if (weird_type) {
-                    throw new Error(
-                        `Unknown type found: ${weird_type.name.name} is of type ${weird_type.typeAnnotation.name}`
-                    );
-                }
-
-                let var_index = 0;
-                ctx.variables = new Map(
-                    function_variables.map(
-                        ({ name, typeAnnotation }) =>
-                            [
-                                name.name,
-                                {
-                                    index: var_index++,
-                                    type: TYPES[typeAnnotation.name],
-                                    isUnsigned: typeAnnotation.isUnsigned
-                                }
-                            ] as const
-                    )
-                );
-
-                const { params, results } = ctx.functions.get(node.id.name)!;
-
-                ctx.mod.addFunction(
-                    node.id.name,
-                    binaryen.createType(params.map((param) => param.type)),
-                    results.type,
-                    function_variables.map((declaration) => TYPES[declaration.typeAnnotation.name]),
-                    ctx.mod.block(
-                        null,
-                        node.body.body
-                            .flatMap((statement) =>
-                                statementToExpression(
-                                    {
-                                        ...ctx,
-                                        current_function: {
-                                            results
-                                        }
-                                    },
-                                    statement
-                                )
-                            )
-                            .map((x) => x.ref)
-                    )
-                );
-
+                buildFunctionDeclaration(ctx, node);
                 break;
         }
     }
@@ -152,10 +79,45 @@ export function programToModule(program: Program): binaryen.Module {
     return ctx.mod;
 }
 
-function statementToExpression(
-    ctx: Context,
-    value: Statement
-): ExpressionInformation | ExpressionInformation[] {
+function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void {
+    ctx.variables = new Map(
+        node.params.map(
+            ({ name, typeAnnotation }, index) =>
+                [
+                    name.name,
+                    {
+                        index,
+                        type: TYPES[typeAnnotation.name],
+                        isUnsigned: typeAnnotation.isUnsigned
+                    }
+                ] as const
+        )
+    );
+
+    const { params, results } = ctx.functions.get(node.id.name)!;
+
+    const function_body = ctx.mod.block(
+        null,
+        node.body.body.map(
+            (statement) =>
+                statementToExpression({ ...ctx, current_function: { results } }, statement).ref
+        )
+    );
+
+    const function_variables = Array.from(ctx.variables.values()).filter(
+        (variable) => variable.index >= node.params.length // get rid of parameter variables
+    );
+
+    ctx.mod.addFunction(
+        node.id.name,
+        binaryen.createType(params.map(({ type }) => type)),
+        results.type,
+        function_variables.map(({ type }) => type),
+        function_body
+    );
+}
+
+function statementToExpression(ctx: Context, value: Statement): ExpressionInformation {
     switch (value.type) {
         case "VariableDeclaration":
             return variableDeclarationToExpression(ctx, value);
@@ -171,22 +133,28 @@ function statementToExpression(
 function variableDeclarationToExpression(
     ctx: Context,
     value: VariableDeclaration
-): ExpressionInformation[] {
-    const withInitializers = value.declarations.filter((declaration) => declaration.init);
+): ExpressionInformation {
+    const expressions = [];
+    for (const { id, typeAnnotation, init } of value.declarations) {
+        const variable = {
+            index: ctx.variables.size,
+            type: TYPES[typeAnnotation.name],
+            isUnsigned: typeAnnotation.isUnsigned
+        };
 
-    const expressions: ExpressionInformation[] = [];
-    for (const declaration of withInitializers) {
-        const expr = expressionToExpression(
-            { ...ctx, expected: lookForVariable(ctx, declaration.id.name) },
-            declaration.init!
-        );
-        const ref = ctx.mod.local.set(lookForVariable(ctx, declaration.id.name).index, expr.ref);
-        expressions.push({
-            ref,
-            type: TYPES.void
-        });
+        ctx.variables.set(id.name, variable);
+
+        if (!init) continue;
+
+        const expr = expressionToExpression({ ...ctx, expected: variable }, init);
+        const ref = ctx.mod.local.set(variable.index, expr.ref);
+        expressions.push(ref);
     }
-    return expressions;
+
+    return {
+        ref: ctx.mod.block(null, expressions),
+        type: TYPES.void
+    };
 }
 
 function returnStatementToExpression(ctx: Context, value: ReturnStatement): ExpressionInformation {
@@ -392,15 +360,7 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
     const body = expressionToExpression(ctx, value.body);
 
     const forloop = [];
-    if (init) {
-        const init_as_arr = Array.isArray(init) ? init : [init];
-        forloop.push(
-            ctx.mod.block(
-                null,
-                init_as_arr.map((x) => x.ref)
-            )
-        );
-    }
+    if (init) forloop.push(init.ref);
     if (test) forloop.push(ctx.mod.br_if("forloop", ctx.mod.i32.eqz(test.ref)));
 
     const loopbody = [];
@@ -421,22 +381,17 @@ function blockExpressionToExpression(ctx: Context, value: BlockExpression): Expr
     const return_value = value.body.at(-1);
     let return_type = TYPES.void;
     if (return_value) {
-        const return_expr = statementToExpression(ctx, return_value);
-        if (!Array.isArray(return_expr)) {
-            return_type = binaryen.getExpressionType(return_expr.ref);
-            if (!(return_type in TYPES)) {
-                throw new Error(`Unknown return type: ${return_type}`);
-            }
+        const { ref } = statementToExpression(ctx, return_value);
+        return_type = binaryen.getExpressionType(ref);
+        if (!(return_type in TYPES)) {
+            throw new Error(`Unknown return type: ${return_type}`);
         }
     }
 
     return {
         ref: ctx.mod.block(
             null,
-            value.body
-                .map((statement) => statementToExpression(ctx, statement))
-                .flat()
-                .map((x) => x.ref),
+            value.body.map((statement) => statementToExpression(ctx, statement).ref),
             return_type
         ),
         type: return_type
