@@ -28,6 +28,8 @@ export enum TokenType {
     BITWISE_XOR = "^",
     BITWISE_AND = "&",
 
+    NOT = "!",
+
     ASSIGNMENT = "=",
 
     FN = "fn",

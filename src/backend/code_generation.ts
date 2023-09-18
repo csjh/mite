@@ -23,7 +23,9 @@ import type {
     CallExpression,
     IfExpression,
     ForExpression,
-    BlockExpression
+    BlockExpression,
+    DoWhileExpression,
+    WhileExpression
 } from "../types/nodes.js";
 import { TokenType } from "../types/tokens.js";
 
@@ -192,6 +194,10 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
         expr = forExpressionToExpression(ctx, value);
     } else if (value.type === "BlockExpression") {
         expr = blockExpressionToExpression(ctx, value);
+    } else if (value.type === "DoWhileExpression") {
+        expr = doWhileExpressionToExpression(ctx, value);
+    } else if (value.type === "WhileExpression") {
+        expr = whileExpressionToExpression(ctx, value);
     } else {
         throw new Error(`Unknown statement type: ${value.type}`);
     }
@@ -366,14 +372,54 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
     const loopbody = [];
     loopbody.push(body.ref);
     if (update) loopbody.push(update.ref);
-    if (test) loopbody.push(ctx.mod.br_if("loopbody", test.ref));
+    if (test) loopbody.push(ctx.mod.br_if("forloopbody", test.ref));
 
-    forloop.push(ctx.mod.loop("loopbody", ctx.mod.block(null, loopbody)));
+    forloop.push(ctx.mod.loop("forloopbody", ctx.mod.block(null, loopbody)));
 
     return {
         ...body,
         // todo: add depth to ctx
         ref: ctx.mod.block("forloop", forloop)
+    };
+}
+
+function doWhileExpressionToExpression(
+    ctx: Context,
+    value: DoWhileExpression
+): ExpressionInformation {
+    const body = expressionToExpression(ctx, value.body);
+    let test = {
+        ref: ctx.mod.i32.const(0),
+        type: TYPES.i32
+    };
+    if (value.test) {
+        test = expressionToExpression({ ...ctx, expected: { type: TYPES.i32 } }, value.test);
+    }
+
+    return {
+        ...body,
+        ref: ctx.mod.loop(
+            "dowhileloopbody",
+            ctx.mod.block(null, [body.ref, ctx.mod.br_if("dowhileloopbody", test.ref)])
+        )
+    };
+}
+
+function whileExpressionToExpression(ctx: Context, value: WhileExpression): ExpressionInformation {
+    if (!value.test) return { ref: ctx.mod.nop(), type: TYPES.void };
+
+    const test = expressionToExpression({ ...ctx, expected: { type: TYPES.i32 } }, value.test);
+    const body = expressionToExpression(ctx, value.body);
+
+    return {
+        ...body,
+        ref: ctx.mod.if(
+            test.ref,
+            ctx.mod.loop(
+                "whileloop",
+                ctx.mod.block(null, [body.ref, ctx.mod.br_if("whileloop", test.ref)])
+            )
+        )
     };
 }
 

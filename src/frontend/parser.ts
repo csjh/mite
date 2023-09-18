@@ -17,7 +17,9 @@ import type {
     TypedParameter,
     IfExpression,
     ForExpression,
-    SequenceExpression
+    SequenceExpression,
+    DoWhileExpression,
+    WhileExpression
 } from "../types/nodes.js";
 
 export class Parser {
@@ -205,6 +207,51 @@ export class Parser {
         };
     }
 
+    private parseDoWhileLoop(): DoWhileExpression {
+        this.expectToken(TokenType.DO);
+        this.idx++;
+
+        const body = this.parseExpression();
+
+        this.expectToken(TokenType.WHILE);
+        this.idx++;
+
+        this.expectToken(TokenType.LEFT_PAREN);
+        this.idx++;
+
+        const test = this.parseExpression();
+
+        this.expectToken(TokenType.RIGHT_PAREN);
+        this.idx++;
+
+        return {
+            type: "DoWhileExpression",
+            body,
+            test
+        };
+    }
+
+    private parseWhileLoop(): WhileExpression {
+        this.expectToken(TokenType.WHILE);
+        this.idx++;
+
+        this.expectToken(TokenType.LEFT_PAREN);
+        this.idx++;
+
+        const test = this.parseExpression();
+
+        this.expectToken(TokenType.RIGHT_PAREN);
+        this.idx++;
+
+        const body = this.parseExpression();
+
+        return {
+            type: "WhileExpression",
+            test,
+            body
+        };
+    }
+
     private parseSequenceExpression(): SequenceExpression {
         const expression: SequenceExpression = {
             type: "SequenceExpression",
@@ -353,6 +400,10 @@ export class Parser {
                 return expression;
             case TokenType.FOR:
                 return this.parseForExpression();
+            case TokenType.DO:
+                return this.parseDoWhileLoop();
+            case TokenType.WHILE:
+                return this.parseWhileLoop();
             default:
                 break;
         }

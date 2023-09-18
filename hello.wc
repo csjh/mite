@@ -16,6 +16,19 @@ fn main(): f32 {
         log_i32(shooby);
     };
 
+    shooby = 10 * 1;
+
+    while (shooby > 0) {
+        log_i32(shooby);
+        shooby = shooby - 1;
+    };
+
+    i32 i = 0;
+    do {
+        log_i32(i);
+        i = i + 1;
+    } while (i < 5);
+
     i64 unused;
     unused = 100;
     unused = 9223372036854776000;

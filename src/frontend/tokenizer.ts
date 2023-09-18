@@ -55,8 +55,32 @@ export function tokenize(input: string): Token[] {
                 token = { type: TokenType.LESS_THAN, value: "<" };
                 i++;
                 break;
+            case ">":
+                token = { type: TokenType.GREATER_THAN, value: ">" };
+                i++;
+                break;
             case "=":
                 token = { type: TokenType.ASSIGNMENT, value: "=" };
+                i++;
+                break;
+            case "!":
+                token = { type: TokenType.NOT, value: "!" };
+                i++;
+                break;
+            case "%":
+                token = { type: TokenType.MODULUS, value: "%" };
+                i++;
+                break;
+            case "|":
+                token = { type: TokenType.BITWISE_OR, value: "|" };
+                i++;
+                break;
+            case "^":
+                token = { type: TokenType.BITWISE_XOR, value: "^" };
+                i++;
+                break;
+            case "&":
+                token = { type: TokenType.BITWISE_AND, value: "&" };
                 i++;
                 break;
             case "0":
@@ -152,6 +176,14 @@ export function tokenize(input: string): Token[] {
                 } else if (input[i] === ">") {
                     token = { type: TokenType.BITSHIFT_RIGHT, value: ">>" };
                     i++;
+                }
+                break;
+            case TokenType.NOT:
+                if (input[i] === "=") {
+                    token = { type: TokenType.NOT_EQUALS, value: "!=" };
+                    i++;
+                } else {
+                    throw new Error("not is unsupported")
                 }
                 break;
         }
