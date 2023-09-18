@@ -183,7 +183,7 @@ export function tokenize(input: string): Token[] {
                     token = { type: TokenType.NOT_EQUALS, value: "!=" };
                     i++;
                 } else {
-                    throw new Error("not is unsupported")
+                    throw new Error("not is unsupported");
                 }
                 break;
         }
