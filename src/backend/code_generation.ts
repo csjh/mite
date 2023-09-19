@@ -353,10 +353,16 @@ function ifExpressionToExpression(ctx: Context, value: IfExpression): Expression
 }
 
 function forExpressionToExpression(ctx: Context, value: ForExpression): ExpressionInformation {
-    const for_loop_container_block = `ForLoopContainerBlock$${ctx.stacks.depth}`;
-    const for_loop_body_block = `ForLoopBody$${ctx.stacks.depth}`;
-    ctx.stacks.block.push(for_loop_container_block);
-    ctx.stacks.loop.push(for_loop_body_block);
+    const for_loop_container_label = `ForLoopOuterContainerBlock$${ctx.stacks.depth}`;
+    const for_loop_loop_part_label = `ForLoopBodyTestUpdateLoop$${ctx.stacks.depth}`;
+    const for_loop_user_body_label = `ForLoopUserDefinedBody$${ctx.stacks.depth}`;
+
+    // breaks break out of the whole loop
+    ctx.stacks.block.push(for_loop_container_label);
+
+    // this is not a mistake; continues need to break out of the main body and re-execute
+    // update and test, and main_body only contains the user-defined body
+    ctx.stacks.loop.push(for_loop_user_body_label);
     ctx.stacks.depth++;
 
     const init = value.init
@@ -382,18 +388,24 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
     const update = value.update ? expressionToExpression(ctx, value.update) : undefined;
     const body = expressionToExpression(ctx, value.body);
 
-    const forloop = [];
-    if (init) forloop.push(init.ref);
-    if (test) forloop.push(ctx.mod.br_if(for_loop_container_block, ctx.mod.i32.eqz(test.ref)));
+    const for_loop_container = [];
+    if (init) for_loop_container.push(init.ref);
+    if (test) {
+        // if test fails, don't even start the loop
+        for_loop_container.push(ctx.mod.br_if(for_loop_container_label, ctx.mod.i32.eqz(test.ref)));
+    }
 
-    const loopbody = [];
-    loopbody.push(body.ref);
-    if (update) loopbody.push(update.ref);
-    if (test) loopbody.push(ctx.mod.br_if(for_loop_body_block, test.ref));
+    const for_loop_loop_part = [];
 
-    forloop.push(ctx.mod.loop(for_loop_body_block, ctx.mod.block(null, loopbody)));
+    for_loop_loop_part.push(ctx.mod.block(for_loop_user_body_label, [body.ref]));
+    if (update) for_loop_loop_part.push(update.ref);
+    if (test) for_loop_loop_part.push(ctx.mod.br_if(for_loop_loop_part_label, test.ref));
 
-    const ref = ctx.mod.block(for_loop_container_block, forloop);
+    for_loop_container.push(
+        ctx.mod.loop(for_loop_loop_part_label, ctx.mod.block(null, for_loop_loop_part))
+    );
+
+    const ref = ctx.mod.block(for_loop_container_label, for_loop_container);
 
     ctx.stacks.block.pop();
     ctx.stacks.loop.pop();

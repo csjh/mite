@@ -91,4 +91,117 @@ describe("for loops should work with expressions", () => {
 
         compileAndRun(program2, 10);
     });
+
+    it("should work fine with break", () => {
+        const program = `
+        fn main(): i32 {
+            i32 sum = 0;
+            for (i32 i = 0; i < 10; i = i + 1) {
+                sum = sum + i;
+                if (i == 5) {
+                    break;
+                };
+            };
+            return sum;
+        }
+        `;
+
+        compileAndRun(program, 15);
+
+        const program2 = `
+        fn main(): i32 {
+            i32 sum = 0;
+            for (;;) {
+                sum = sum + 1;
+                if (sum == 10) {
+                    break;
+                };
+            };
+            return sum;
+        }
+        `;
+
+        compileAndRun(program2, 10);
+
+        const program3 = `
+        fn main(): i32 {
+            i32 sum = 0;
+            for (;;) {
+                sum = sum + 1;
+                log_i32(sum);
+                for (;;) {
+                    sum = sum + 1;
+                    if (sum >= 10) {
+                        break;
+                    };
+                };
+                if (sum >= 20) {
+                    break;
+                };
+            };
+            return sum;
+        }
+        `;
+
+        compileAndRun(program3, 20);
+    });
+
+    it("should work fine with continue", () => {
+        const program = `
+        fn main(): i32 {
+            i32 sum = 0;
+            for (i32 i = 0; i < 10; i = i + 1) {
+                if (i == 5) {
+                    continue;
+                };
+                sum = sum + i;
+            };
+            return sum;
+        }
+        `;
+
+        compileAndRun(program, 40);
+
+        const program2 = `
+        fn main(): i32 {
+            i32 sum = 0;
+            for (i32 i = 0; i < 100; i = i + 1) {
+                if (i % 10) {
+                    continue;
+                };
+                sum = sum + i;
+            };
+            return sum;
+        }
+        `;
+
+        compileAndRun(program2, 450);
+
+        const program3 = `
+        fn main(): i32 {
+            i32 sum = 0;
+            for (i32 i = 0; i < 100; i = i + 1) {
+                if (i % 10) {
+                    continue;
+                };
+                sum = sum + i;
+                for (i32 j = 0; j < 100; j = j + 1) {
+                    if (j % 10) {
+                        continue;
+                    };
+                    sum = sum + j;
+                    if (sum >= 20) {
+                        break;
+                    };
+                };
+                if (sum >= 20) {
+                    break;
+                };
+            };
+            return sum;
+        }
+        `;
+
+        compileAndRun(program3, 30);
+    });
 });
