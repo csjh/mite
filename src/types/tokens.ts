@@ -59,7 +59,9 @@ export type BinaryOperator =
     | TokenType.MODULUS
     | TokenType.BITWISE_OR
     | TokenType.BITWISE_XOR
-    | TokenType.BITWISE_AND;
+    | TokenType.BITWISE_AND
+    | TokenType.EQUALS
+    | TokenType.NOT_EQUALS;
 
 export const BINARY_OPERATORS: Set<BinaryOperator> = new Set([
     TokenType.PLUS,
@@ -75,7 +77,9 @@ export const BINARY_OPERATORS: Set<BinaryOperator> = new Set([
     TokenType.MODULUS,
     TokenType.BITWISE_OR,
     TokenType.BITWISE_XOR,
-    TokenType.BITWISE_AND
+    TokenType.BITWISE_AND,
+    TokenType.EQUALS,
+    TokenType.NOT_EQUALS
 ] as const);
 
 export type Token = {
