@@ -152,6 +152,12 @@ export function tokenize(input: string): Token[] {
                     case "unsigned":
                         token = { type: TokenType.UNSIGNED, value: "unsigned" };
                         break;
+                    case "continue":
+                        token = { type: TokenType.CONTINUE, value: "continue" };
+                        break;
+                    case "break":
+                        token = { type: TokenType.BREAK, value: "break" };
+                        break;
                 }
                 break;
             case TokenType.ASSIGNMENT:

@@ -184,10 +184,12 @@ export class Parser {
         this.expectToken(TokenType.LEFT_PAREN);
         this.idx++;
 
-        let init;
+        let init,
+            prev_idx = this.idx;
         try {
             init = this.parseVariableDeclarationOrAssignment("declaration");
         } catch {
+            this.idx = prev_idx;
             init = this.parseExpression();
         }
         this.expectToken(TokenType.SEMICOLON);
@@ -340,6 +342,7 @@ export class Parser {
             };
 
             const isUnsigned = this.getSignedness();
+            this.expectToken(TokenType.IDENTIFIER);
             const variable_type = this.tokens[this.idx++].value;
             this.expectTypeName(variable_type);
             do {
@@ -409,6 +412,12 @@ export class Parser {
                 return this.parseDoWhileLoop();
             case TokenType.WHILE:
                 return this.parseWhileLoop();
+            case TokenType.CONTINUE:
+                this.idx++;
+                return { type: "ContinueExpression" };
+            case TokenType.BREAK:
+                this.idx++;
+                return { type: "BreakExpression" };
             default:
                 break;
         }

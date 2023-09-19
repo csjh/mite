@@ -39,6 +39,8 @@ export enum TokenType {
     FOR = "for",
     DO = "do",
     WHILE = "while",
+    CONTINUE = "continue",
+    BREAK = "break",
 
     SIGNED = "signed",
     UNSIGNED = "unsigned",

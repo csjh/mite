@@ -32,6 +32,11 @@ export type Context = {
     functions: Map<string, FunctionInformation>;
     expected?: VariableInformation;
     type_operations: ReturnType<typeof import("../backend/utils.js").createTypeOperations>;
+    stacks: {
+        loop: string[];
+        block: string[];
+        depth: number;
+    };
     current_function: {
         results: VariableInformation;
     };

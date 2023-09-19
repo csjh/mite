@@ -84,8 +84,6 @@ export type Function = FunctionDeclaration | FunctionExpression;
 export type Statement =
     | ExpressionStatement
     | ReturnStatement
-    | BreakStatement
-    | ContinueStatement
     | LabeledStatement // should be expression or nonexistent actually maybe not, syntax would look weird
     | SwitchStatement // should be expression 1000%
     | ThrowStatement
@@ -111,13 +109,13 @@ export interface LabeledStatement extends BaseStatement {
     body: Statement;
 }
 
-export interface BreakStatement extends BaseStatement {
-    type: "BreakStatement";
+export interface BreakExpression extends BaseExpression {
+    type: "BreakExpression";
     label?: Identifier | null | undefined;
 }
 
-export interface ContinueStatement extends BaseStatement {
-    type: "ContinueStatement";
+export interface ContinueExpression extends BaseExpression {
+    type: "ContinueExpression";
     label?: Identifier | null | undefined;
 }
 
@@ -212,8 +210,10 @@ export interface ExpressionMap {
     AwaitExpression: AwaitExpression;
     BinaryExpression: BinaryExpression;
     BlockExpression: BlockExpression;
+    BreakExpression: BreakExpression;
     CallExpression: CallExpression;
     ChainExpression: ChainExpression;
+    ContinueExpression: ContinueExpression;
     DoWhileExpression: DoWhileExpression;
     EmptyExpression: EmptyExpression;
     ForExpression: ForExpression;
