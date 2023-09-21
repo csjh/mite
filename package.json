@@ -1,6 +1,6 @@
 {
     "type": "module",
-    "name": "wc",
+    "name": "mite",
     "version": "0.0.1",
     "description": "a small wasm language",
     "main": "build/index.js",
