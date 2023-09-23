@@ -1,37 +1,34 @@
 import binaryen from "binaryen";
 import { writeFileSync } from "fs";
 
-const myModule = new binaryen.Module();
-myModule.setFeatures(binaryen.Features.All);
+const mod = new binaryen.Module();
+mod.setFeatures(binaryen.Features.All);
 
-myModule.addFunction(
+mod.addFunction(
     "main",
     binaryen.createType([]),
     binaryen.i64,
     [],
-    myModule.block(null, [
-        myModule.return(
-            myModule.i64.const(
-                0b00000000000000000000000000000000,
-                0b10000000000000000000000000000000
-            )
+    mod.block(null, [
+        mod.return(
+            mod.i64.const(0b00000000000000000000000000000000, 0b10000000000000000000000000000000)
         )
     ])
 );
 
-myModule.addFunctionExport("main", "main");
+mod.addFunctionExport("main", "main");
 
 // Optimize the module using default passes and levels
-myModule.optimize();
+mod.optimize();
 
-console.log(myModule.emitText());
-writeFileSync("out.wasm", myModule.emitBinary());
+console.log(mod.emitText());
+writeFileSync("out.wasm", mod.emitBinary());
 
 // Validate the module
-if (!myModule.validate()) throw new Error("validation error");
+if (!mod.validate()) throw new Error("validation error");
 
 // Generate text format and binary
-const wasmData = myModule.emitBinary();
+const wasmData = mod.emitBinary();
 
 // Example usage with the WebAssembly API
 const compiled = new WebAssembly.Module(wasmData);
