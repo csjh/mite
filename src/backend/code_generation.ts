@@ -408,12 +408,10 @@ function doWhileExpressionToExpression(
               type: TYPES.i32
           };
 
-    const ref = ctx.mod.block(do_while_loop_container_block, [
-        ctx.mod.loop(
-            do_while_loop_body_block,
-            ctx.mod.block(null, [body.ref, ctx.mod.br_if(do_while_loop_body_block, test.ref)])
-        )
-    ]);
+    const ref = ctx.mod.loop(
+        do_while_loop_body_block,
+        ctx.mod.block(do_while_loop_container_block, [body.ref, ctx.mod.br_if(do_while_loop_body_block, test.ref)])
+    );
 
     ctx.stacks.break.pop();
     ctx.stacks.continue.pop();
