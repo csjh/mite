@@ -4,7 +4,8 @@ import {
     coerceBinaryExpression,
     coerceToExpected,
     createTypeOperations,
-    lookForVariable
+    lookForVariable,
+    updateExpected
 } from "./utils.js";
 import type { Context, ExpressionInformation } from "../types/code_gen.js";
 import { TYPES } from "../types/code_gen.js";
@@ -38,7 +39,7 @@ export function programToModule(program: Program): binaryen.Module {
         variables: new Map(),
         functions: new Map(),
         type_operations: createTypeOperations(mod), // goal of this is easier extensibility
-        stacks: { loop: [], block: [], depth: 0 },
+        stacks: { continue: [], break: [], depth: 0 },
         // @ts-expect-error initially we're not in a function
         current_function: null
     };
@@ -151,31 +152,26 @@ function variableDeclarationToExpression(
 
         if (!init) continue;
 
-        const expr = expressionToExpression({ ...ctx, expected: variable }, init);
+        const expr = expressionToExpression(updateExpected(ctx, variable), init);
         const ref = ctx.mod.local.set(variable.index, expr.ref);
         expressions.push(ref);
     }
 
     return {
         ref: ctx.mod.block(null, expressions),
-        type: TYPES.void
+        type: TYPES.void,
+        expression: binaryen.ExpressionIds.Block
     };
 }
 
 function returnStatementToExpression(ctx: Context, value: ReturnStatement): ExpressionInformation {
-    if (!value.argument) {
-        return {
-            ref: ctx.mod.return(),
-            type: TYPES.void
-        };
-    }
-    const expr = expressionToExpression(
-        { ...ctx, expected: ctx.current_function.results },
-        value.argument
-    );
+    const expr =
+        value.argument &&
+        expressionToExpression(updateExpected(ctx, ctx.current_function.results), value.argument);
     return {
-        ...expr,
-        ref: ctx.mod.return(expr.ref)
+        ref: ctx.mod.return(expr?.ref),
+        type: TYPES.void,
+        expression: binaryen.ExpressionIds.Return
     };
 }
 
@@ -202,7 +198,7 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
     } else if (value.type === "WhileExpression") {
         expr = whileExpressionToExpression(ctx, value);
     } else if (value.type === "EmptyExpression") {
-        expr = { ref: ctx.mod.nop(), type: TYPES.void };
+        expr = { ref: ctx.mod.nop(), type: TYPES.void, expression: binaryen.ExpressionIds.Nop };
     } else if (value.type === "ContinueExpression") {
         expr = continueExpressionToExpression(ctx, value);
     } else if (value.type === "BreakExpression") {
@@ -214,18 +210,9 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
 }
 
 function literalToExpression(ctx: Context, value: Literal): ExpressionInformation {
-    if (!ctx.expected) {
-        const type = typeof value.value === "bigint" ? "i64" : "f64";
-        return {
-            ref:
-                typeof value.value === "bigint"
-                    ? ctx.mod.i64.const(...bigintToLowAndHigh(value.value))
-                    : ctx.mod.f64.const(value.value),
-            type: TYPES[type]
-        };
-    }
+    const type = ctx.expected?.type ?? typeof value.value === "bigint" ? TYPES.i64 : TYPES.f64;
     let ref;
-    switch (ctx.expected.type) {
+    switch (type as TYPES) {
         case TYPES.i32:
             ref = ctx.mod.i32.const(Number(value.value));
             break;
@@ -239,15 +226,19 @@ function literalToExpression(ctx: Context, value: Literal): ExpressionInformatio
             ref = ctx.mod.f64.const(Number(value.value));
             break;
         default:
-            throw new Error(`Unknown literal type: ${ctx.expected.type}`);
+            throw new Error(`Unknown literal type: ${type}`);
     }
-    return { ...ctx.expected, ref };
+    return {
+        ref,
+        type,
+        expression: binaryen.ExpressionIds.Const
+    };
 }
 
 function identifierToExpression(ctx: Context, value: Identifier): ExpressionInformation {
     const { index, type } = lookForVariable(ctx, value.name);
     const ref = ctx.mod.local.get(index, type);
-    return { ref, type };
+    return { ref, type, expression: binaryen.ExpressionIds.LocalGet };
 }
 
 function binaryExpressionToExpression(
@@ -309,46 +300,40 @@ function assignmentExpressionToExpression(
     value: AssignmentExpression
 ): ExpressionInformation {
     const expr = expressionToExpression(
-        { ...ctx, expected: lookForVariable(ctx, value.left.name) },
+        updateExpected(ctx, lookForVariable(ctx, value.left.name)),
         value.right
     );
 
     const ref = ctx.mod.local.set(lookForVariable(ctx, value.left.name).index, expr.ref);
-    return { ref, type: TYPES.void };
+    return { ref, type: TYPES.void, expression: binaryen.ExpressionIds.LocalSet };
 }
 
 function callExpressionToExpression(ctx: Context, value: CallExpression): ExpressionInformation {
     const fn = ctx.functions.get(value.callee.name)!;
     const args = value.arguments.map((arg, i) =>
-        expressionToExpression({ ...ctx, expected: fn.params[i] }, arg)
+        expressionToExpression(updateExpected(ctx, fn.params[i]), arg)
     );
 
     return {
-        ...fn.results,
         ref: ctx.mod.call(
             value.callee.name,
             args.map((arg) => arg.ref),
             fn.results.type
-        )
+        ),
+        type: fn.results.type,
+        expression: binaryen.ExpressionIds.Call
     };
 }
 
 function ifExpressionToExpression(ctx: Context, value: IfExpression): ExpressionInformation {
-    const condition = expressionToExpression(
-        {
-            ...ctx,
-            expected: {
-                type: TYPES.i32
-            }
-        },
-        value.test
-    );
+    const condition = expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.test);
     const true_branch = expressionToExpression(ctx, value.consequent);
-    const false_branch = value.alternate ? expressionToExpression(ctx, value.alternate) : undefined;
+    const false_branch = value.alternate && expressionToExpression(ctx, value.alternate);
 
     return {
-        ...true_branch,
-        ref: ctx.mod.if(condition.ref, true_branch.ref, false_branch?.ref)
+        ref: ctx.mod.if(condition.ref, true_branch.ref, false_branch?.ref),
+        type: true_branch.type,
+        expression: binaryen.ExpressionIds.If
     };
 }
 
@@ -358,34 +343,26 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
     const for_loop_user_body_label = `ForLoopUserDefinedBody$${ctx.stacks.depth}`;
 
     // breaks break out of the whole loop
-    ctx.stacks.block.push(for_loop_container_label);
+    ctx.stacks.break.push(for_loop_container_label);
 
     // this is not a mistake; continues need to break out of the main body and re-execute
     // update and test, and main_body only contains the user-defined body
-    ctx.stacks.loop.push(for_loop_user_body_label);
+    ctx.stacks.continue.push(for_loop_user_body_label);
     ctx.stacks.depth++;
 
-    const init = value.init
-        ? value.init.type === "VariableDeclaration"
+    const init =
+        value.init &&
+        (value.init.type === "VariableDeclaration"
             ? variableDeclarationToExpression(ctx, value.init)
-            : expressionToExpression(ctx, value.init)
-        : undefined;
+            : expressionToExpression(ctx, value.init));
 
-    const test = value.test
-        ? value.test.type === "EmptyExpression"
+    const test =
+        value.test &&
+        (value.test.type === "EmptyExpression"
             ? { type: TYPES.i32, ref: ctx.mod.i32.const(1) }
-            : expressionToExpression(
-                  {
-                      ...ctx,
-                      expected: {
-                          type: TYPES.i32
-                      }
-                  },
-                  value.test
-              )
-        : undefined;
+            : expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.test));
 
-    const update = value.update ? expressionToExpression(ctx, value.update) : undefined;
+    const update = value.update && expressionToExpression(ctx, value.update);
     const body = expressionToExpression(ctx, value.body);
 
     const for_loop_container = [];
@@ -407,11 +384,10 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
 
     const ref = ctx.mod.block(for_loop_container_label, for_loop_container);
 
-    ctx.stacks.block.pop();
-    ctx.stacks.loop.pop();
-    ctx.stacks.depth--;
+    ctx.stacks.break.pop();
+    ctx.stacks.continue.pop();
 
-    return { ...body, ref };
+    return { ref, type: TYPES.void, expression: binaryen.ExpressionIds.Block };
 }
 
 function doWhileExpressionToExpression(
@@ -420,100 +396,96 @@ function doWhileExpressionToExpression(
 ): ExpressionInformation {
     const do_while_loop_container_block = `DoWhileLoopContainerBlock$${ctx.stacks.depth}`;
     const do_while_loop_body_block = `DoWhileLoopBody$${ctx.stacks.depth}`;
-    ctx.stacks.block.push(do_while_loop_container_block);
-    ctx.stacks.loop.push(do_while_loop_body_block);
+    ctx.stacks.break.push(do_while_loop_container_block);
+    ctx.stacks.continue.push(do_while_loop_body_block);
     ctx.stacks.depth++;
 
     const body = expressionToExpression(ctx, value.body);
-    let test = {
-        ref: ctx.mod.i32.const(0),
-        type: TYPES.i32
-    };
-    if (value.test) {
-        test = expressionToExpression({ ...ctx, expected: { type: TYPES.i32 } }, value.test);
-    }
+    const test = value.test
+        ? expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.test)
+        : {
+              ref: ctx.mod.i32.const(0),
+              type: TYPES.i32
+          };
 
-    const ref = ctx.mod.loop(
-        do_while_loop_body_block,
-        ctx.mod.block(do_while_loop_container_block, [
-            body.ref,
-            ctx.mod.br_if(do_while_loop_body_block, test.ref)
-        ])
-    );
+    const ref = ctx.mod.block(do_while_loop_container_block, [
+        ctx.mod.loop(
+            do_while_loop_body_block,
+            ctx.mod.block(null, [body.ref, ctx.mod.br_if(do_while_loop_body_block, test.ref)])
+        )
+    ]);
 
-    ctx.stacks.block.pop();
-    ctx.stacks.loop.pop();
-    ctx.stacks.depth--;
+    ctx.stacks.break.pop();
+    ctx.stacks.continue.pop();
 
-    return { ...body, ref };
+    return { ref, type: TYPES.void, expression: binaryen.ExpressionIds.Loop };
 }
 
 function whileExpressionToExpression(ctx: Context, value: WhileExpression): ExpressionInformation {
-    if (!value.test) return { ref: ctx.mod.nop(), type: TYPES.void };
-
     const while_loop_container_block = `WhileLoopContainerBlock$${ctx.stacks.depth}`;
     const while_loop_body_block = `WhileLoopBody$${ctx.stacks.depth}`;
-    ctx.stacks.block.push(while_loop_container_block);
-    ctx.stacks.loop.push(while_loop_body_block);
+    ctx.stacks.break.push(while_loop_container_block);
+    ctx.stacks.continue.push(while_loop_body_block);
     ctx.stacks.depth++;
 
-    const test = expressionToExpression({ ...ctx, expected: { type: TYPES.i32 } }, value.test);
+    const test = expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.test);
     const body = expressionToExpression(ctx, value.body);
 
     const ref = ctx.mod.if(
         test.ref, // if test.ref tries to continue or break it might be weird
-        ctx.mod.loop(
-            while_loop_body_block,
-            ctx.mod.block(while_loop_container_block, [
-                body.ref,
-                ctx.mod.br_if(while_loop_body_block, test.ref)
-            ])
-        )
+        ctx.mod.block(while_loop_container_block, [
+            ctx.mod.loop(
+                while_loop_body_block,
+                ctx.mod.block(null, [body.ref, ctx.mod.br_if(while_loop_body_block, test.ref)])
+            )
+        ])
     );
 
-    ctx.stacks.block.pop();
-    ctx.stacks.loop.pop();
-    ctx.stacks.depth--;
+    ctx.stacks.break.pop();
+    ctx.stacks.continue.pop();
 
     return {
-        ...body,
-        ref
+        ref,
+        type: TYPES.void,
+        expression: binaryen.ExpressionIds.If
     };
 }
 
 function blockExpressionToExpression(ctx: Context, value: BlockExpression): ExpressionInformation {
+    // note: currently can't break out of blocks
     const block = `Block$${ctx.stacks.depth}`;
     ctx.stacks.depth++;
 
     const ref = ctx.mod.block(
         block,
-        value.body.map((statement) => statementToExpression(ctx, statement).ref)
+        value.body.map((statement) => statementToExpression(ctx, statement).ref),
+        binaryen.auto
     );
-
     const type = binaryen.getExpressionType(ref);
 
-    ctx.stacks.depth--;
-
-    return { ref, type };
+    return { ref, type, expression: binaryen.ExpressionIds.Block };
 }
 
 function continueExpressionToExpression(
     ctx: Context,
     value: ContinueExpression
 ): ExpressionInformation {
-    const loop = ctx.stacks.loop.at(-1);
+    const loop = ctx.stacks.continue.at(-1);
     if (!loop) throw new Error("Cannot continue outside of loop");
     return {
         ref: ctx.mod.br(loop),
-        type: TYPES.void
+        type: TYPES.void,
+        expression: binaryen.ExpressionIds.Break
     };
 }
 
+// todo: support labeled breaks;
 function breakExpressionToExpression(ctx: Context, value: BreakExpression): ExpressionInformation {
-    const block = ctx.stacks.block.at(-1);
+    const block = ctx.stacks.break.at(-1);
     if (!block) throw new Error("Cannot break outside of a block");
     return {
         ref: ctx.mod.br(block),
-        type: TYPES.void
+        type: TYPES.void,
+        expression: binaryen.ExpressionIds.Break
     };
 }

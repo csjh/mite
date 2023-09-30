@@ -18,6 +18,7 @@ export type LocalVariableInformation = VariableInformation & {
 };
 
 export type ExpressionInformation = VariableInformation & {
+    expression: binaryen.ExpressionIds;
     ref: binaryen.ExpressionRef;
 };
 
@@ -33,8 +34,8 @@ export type Context = {
     expected?: VariableInformation;
     type_operations: ReturnType<typeof import("../backend/utils.js").createTypeOperations>;
     stacks: {
-        loop: string[];
-        block: string[];
+        continue: string[];
+        break: string[];
         depth: number;
     };
     current_function: {

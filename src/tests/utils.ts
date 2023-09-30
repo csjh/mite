@@ -8,7 +8,7 @@ export function compileAndRun(
     func: string = "main"
 ) {
     const compiled = compile(program);
-    console.log(compile(program, { as: "wat" }));
+    // console.log(compile(program, { as: "wat" }));
 
     const module = new WebAssembly.Module(compiled);
 
