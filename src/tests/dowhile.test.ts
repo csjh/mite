@@ -3,14 +3,16 @@
 import { describe, it } from "bun:test";
 import { compileAndRun } from "./utils.js";
 
-describe("for loops should work", () => {
+describe("do while loops should work", () => {
     it("should compile and run", () => {
         const program = `
         fn main(): i32 {
             i32 sum = 0;
-            for (i32 i = 0; i < 10; i = i + 1) {
+            i32 i = 0;
+            do {
                 sum = sum + i;
-            };
+                i = i + 1;
+            } while (i < 10);
             return sum;
         }
         `;
@@ -19,29 +21,16 @@ describe("for loops should work", () => {
     });
 });
 
-describe("for loops should work with expressions", () => {
-    it("should allow a variable assignment in the initializer", () => {
+describe("do while loops should work with expressions", () => {
+    it("should allow a block expression in the test", () => {
         const program = `
         fn main(): i32 {
             i32 sum = 0;
-            i32 i;
-            for (i = 0; i < 10; i = i + 1) {
+            i32 i = 0;
+            do {
                 sum = sum + i;
-            };
-            return sum;
-        }
-        `;
-
-        compileAndRun(program, 45);
-    });
-
-    it("should allow a block expression in the update", () => {
-        const program = `
-        fn main(): i32 {
-            i32 sum = 0;
-            for (i32 i = 0; i < 10; { i = i + 1; }) {
-                sum = sum + i;
-            };
+                i = i + 1;
+            } while ({ i < 10; });
             return sum;
         }
         `;
@@ -53,11 +42,13 @@ describe("for loops should work with expressions", () => {
         const program = `
         fn main(): i32 {
             i32 sum = 0;
-            for (i32 i = 0; i < 10; i = i + 1) {
+            i32 i = 0;
+            do {
                 {
                     sum = sum + i;
                 };
-            };
+                i = i + 1;
+            } while (i < 10);
             return sum;
         }
         `;
@@ -69,25 +60,27 @@ describe("for loops should work with expressions", () => {
         const program = `
         fn main(): i32 {
             i32 sum = 0;
-            for (;;) {break;};
+            do {} while (0);
             return sum;
         }
         `;
+        console.log("first");
 
         compileAndRun(program, 0);
 
         const program2 = `
         fn main(): i32 {
             i32 sum = 0;
-            for (;;) {
+            do {
                 sum = sum + 1;
                 if (sum == 10) {
                     break;
                 };
-            };
+            } while (1);
             return sum;
         }
         `;
+        console.log("second");
 
         compileAndRun(program2, 10);
     });
@@ -96,12 +89,14 @@ describe("for loops should work with expressions", () => {
         const program = `
         fn main(): i32 {
             i32 sum = 0;
-            for (i32 i = 0; i < 10; i = i + 1) {
+            i32 i = 0;
+            do {
                 sum = sum + i;
                 if (i == 5) {
                     break;
                 };
-            };
+                i = i + 1;
+            } while (i < 10);
             return sum;
         }
         `;
@@ -111,12 +106,12 @@ describe("for loops should work with expressions", () => {
         const program2 = `
         fn main(): i32 {
             i32 sum = 0;
-            for (;;) {
+            do {
                 sum = sum + 1;
                 if (sum == 10) {
                     break;
                 };
-            };
+            } while (1);
             return sum;
         }
         `;
@@ -126,18 +121,18 @@ describe("for loops should work with expressions", () => {
         const program3 = `
         fn main(): i32 {
             i32 sum = 0;
-            for (;;) {
+            do {
                 sum = sum + 1;
-                for (;;) {
+                do {
                     sum = sum + 1;
                     if (sum >= 10) {
                         break;
                     };
-                };
+                } while (1);
                 if (sum >= 20) {
                     break;
                 };
-            };
+            } while (1);
             return sum;
         }
         `;
@@ -149,42 +144,50 @@ describe("for loops should work with expressions", () => {
         const program = `
         fn main(): i32 {
             i32 sum = 0;
-            for (i32 i = 0; i < 10; i = i + 1) {
+            i32 i = 0;
+            do {
+                sum = sum + i;
+                i = i + 1;
                 if (i == 5) {
                     continue;
                 };
-                sum = sum + i;
-            };
+            } while (i < 10);
             return sum;
         }
         `;
 
-        compileAndRun(program, 40);
+        compileAndRun(program, 45);
 
         const program2 = `
         fn main(): i32 {
             i32 sum = 0;
-            for (i32 i = 0; i < 100; i = i + 1) {
+            i32 i = 0;
+            do {
+                i = i + 1;
                 if (i % 10) {
                     continue;
                 };
                 sum = sum + i;
-            };
+            } while (i < 100);
             return sum;
         }
         `;
 
-        compileAndRun(program2, 450);
+        compileAndRun(program2, 550);
 
         const program3 = `
         fn main(): i32 {
             i32 sum = 0;
-            for (i32 i = 0; i < 100; i = i + 1) {
+            i32 i = 0;
+            do {
+                i = i + 1;
                 if (i % 10) {
                     continue;
                 };
                 sum = sum + i;
-                for (i32 j = 0; j < 100; j = j + 1) {
+                i32 j = 0;
+                do {
+                    j = j + 1;
                     if (j % 10) {
                         continue;
                     };
@@ -192,15 +195,15 @@ describe("for loops should work with expressions", () => {
                     if (sum >= 20) {
                         break;
                     };
-                };
+                } while (j < 100);
                 if (sum >= 20) {
                     break;
                 };
-            };
+            } while (i < 100);
             return sum;
         }
         `;
 
-        compileAndRun(program3, 30);
+        compileAndRun(program3, 20);
     });
 });
