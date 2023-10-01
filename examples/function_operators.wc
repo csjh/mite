@@ -1,0 +1,25 @@
+fn main(): void {
+    i32 one = 1;
+
+    i32 example_num = 16;
+    log_i32(clz(example_num));
+    log_i32(ctz(example_num));
+
+    example_num = example_num + 3;
+    log_i32(popcnt(example_num));
+
+    example_num = 1;
+    log_i32(rotr(example_num, one));
+
+    example_num = 2147483648;
+    log_i32(rotl(example_num, one));
+
+    example_num = 1080295424;
+    log_f32(reinterpret(example_num));
+
+    log_i64(clz(16));
+    log_i64(ctz(16));
+    log_i64(popcnt(19));
+    log_i64(rotr(1, 1));
+    log_i64(rotl(1, 1));
+}

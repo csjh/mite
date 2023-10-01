@@ -542,3 +542,62 @@ export function coerceToExpected(ctx: Context, expr: ExpressionInformation): Exp
     }
     return expr;
 }
+
+// prettier-ignore
+const function_operators = new Map([
+    ["clz", [[[TYPES.i32], TYPES.i32], [[TYPES.i64], TYPES.i64]]],
+    ["ctz", [[[TYPES.i32], TYPES.i32], [[TYPES.i64], TYPES.i64]]],
+    ["popcnt", [[[TYPES.i32], TYPES.i32], [[TYPES.i64], TYPES.i64]]],
+    ["rotl", [[[TYPES.i32, TYPES.i32], TYPES.i32], [[TYPES.i64, TYPES.i64], TYPES.i64]]],
+    ["rotr", [[[TYPES.i32, TYPES.i32], TYPES.i32], [[TYPES.i64, TYPES.i64], TYPES.i64]]],
+    ["abs", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
+    ["ceil", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
+    ["floor", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
+    ["trunc", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
+    ["nearest", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
+    ["sqrt", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
+    ["min", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
+    ["max", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
+    ["copysign", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
+    ["reinterpret", [[[TYPES.f32], TYPES.i32], [[TYPES.f64], TYPES.i64], [[TYPES.i32], TYPES.f32], [[TYPES.i64], TYPES.f64]]]
+] satisfies [string, [TYPES[], TYPES][]][]);
+
+type FunctionOperators = typeof function_operators extends Map<infer T, unknown> ? T : never;
+
+export function isFunctionOperator(operator: string): operator is FunctionOperators {
+    return function_operators.has(operator);
+}
+
+export function handleFunctionOperator(
+    ctx: Context,
+    operator: FunctionOperators,
+    args: ExpressionInformation[]
+) {
+    const expected = function_operators.get(operator)!;
+    const actual = args.map((arg) => arg.type);
+    const index = expected.findIndex((types) => types[0].every((type, i) => type === actual[i]));
+    if (index === -1)
+        throw new Error(
+            `Unknown function operator: ${operator}(${actual
+                .map((type) => TYPES[type])
+                .join(", ")})`
+        );
+
+    const namespace = expected[index][1];
+    // @ts-expect-error ooooo typescript big mad!!!
+    if (!ctx.mod[TYPES[namespace]][operator])
+        throw new Error(`Unknown function operator: ${operator}(${actual.join(", ")})`);
+
+    console.log(
+        operator,
+        args.map((arg) => arg.ref)
+    );
+
+    return {
+        type: namespace,
+        // @ts-expect-error it just doesn't know
+        ref: ctx.mod[TYPES[namespace]][operator](...args.map((arg) => arg.ref)),
+        expression:
+            expected.length === 1 ? binaryen.ExpressionIds.Unary : binaryen.ExpressionIds.Binary
+    };
+}

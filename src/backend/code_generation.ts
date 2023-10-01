@@ -4,6 +4,8 @@ import {
     coerceBinaryExpression,
     coerceToExpected,
     createTypeOperations,
+    handleFunctionOperator,
+    isFunctionOperator,
     lookForVariable,
     updateExpected
 } from "./utils.js";
@@ -309,10 +311,14 @@ function assignmentExpressionToExpression(
 }
 
 function callExpressionToExpression(ctx: Context, value: CallExpression): ExpressionInformation {
-    const fn = ctx.functions.get(value.callee.name)!;
+    const fn = ctx.functions.get(value.callee.name);
     const args = value.arguments.map((arg, i) =>
-        expressionToExpression(updateExpected(ctx, fn.params[i]), arg)
+        expressionToExpression(updateExpected(ctx, fn?.params[i]), arg)
     );
+
+    if (isFunctionOperator(value.callee.name)) {
+        return handleFunctionOperator(ctx, value.callee.name, args);
+    } else if (!fn) throw new Error(`Unknown function: ${value.callee.name}`);
 
     return {
         ref: ctx.mod.call(
