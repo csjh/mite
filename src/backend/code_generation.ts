@@ -369,7 +369,12 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
     if (init) for_loop_container.push(init.ref);
     if (test) {
         // if test fails, don't even start the loop
-        for_loop_container.push(ctx.mod.br_if(for_loop_container_label, ctx.mod.i32.eqz(test.ref)));
+        for_loop_container.push(
+            ctx.mod.br_if(
+                for_loop_container_label,
+                ctx.mod.i32.eqz(ctx.mod.copyExpression(test.ref))
+            )
+        );
     }
 
     const for_loop_loop_part = [];
@@ -410,7 +415,10 @@ function doWhileExpressionToExpression(
 
     const ref = ctx.mod.loop(
         do_while_loop_body_block,
-        ctx.mod.block(do_while_loop_container_block, [body.ref, ctx.mod.br_if(do_while_loop_body_block, test.ref)])
+        ctx.mod.block(do_while_loop_container_block, [
+            body.ref,
+            ctx.mod.br_if(do_while_loop_body_block, test.ref)
+        ])
     );
 
     ctx.stacks.break.pop();
@@ -434,7 +442,10 @@ function whileExpressionToExpression(ctx: Context, value: WhileExpression): Expr
         ctx.mod.block(while_loop_container_block, [
             ctx.mod.loop(
                 while_loop_body_block,
-                ctx.mod.block(null, [body.ref, ctx.mod.br_if(while_loop_body_block, test.ref)])
+                ctx.mod.block(null, [
+                    body.ref,
+                    ctx.mod.br_if(while_loop_body_block, ctx.mod.copyExpression(test.ref))
+                ])
             )
         ])
     );
