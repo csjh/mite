@@ -588,11 +588,6 @@ export function handleFunctionOperator(
     if (!ctx.mod[TYPES[namespace]][operator])
         throw new Error(`Unknown function operator: ${operator}(${actual.join(", ")})`);
 
-    console.log(
-        operator,
-        args.map((arg) => arg.ref)
-    );
-
     return {
         type: namespace,
         // @ts-expect-error it just doesn't know
