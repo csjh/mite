@@ -1,6 +1,8 @@
 // adapter from estree
 // shoutout estree
 
+import { TYPES } from "./code_gen.js";
+
 export interface BaseNodeWithoutComments {
     // Every leaf interface that extends BaseNode must specify a type property.
     // The type property should be a string literal. For example, Identifier
@@ -381,6 +383,7 @@ export interface TypeIdentifier extends Identifier {
 
 export interface Literal extends BaseNode, BaseExpression {
     type: "Literal";
+    literalType: TYPES;
     value: number | bigint; // todo: add back string
     raw?: string | undefined;
 }

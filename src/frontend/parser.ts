@@ -21,6 +21,7 @@ import type {
     DoWhileExpression,
     WhileExpression
 } from "../types/nodes.js";
+import { TYPES } from "../types/code_gen.js";
 
 export class Parser {
     idx: number;
@@ -505,6 +506,11 @@ export class Parser {
         try { value = BigInt(raw); } catch { value = Number(raw); }
         return {
             type: "Literal",
+            literalType: raw.includes(".")
+                ? TYPES.f64
+                : typeof value === "bigint"
+                ? TYPES.i64
+                : TYPES.i32,
             value
         };
     }

@@ -559,7 +559,11 @@ const function_operators = new Map([
     ["min", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
     ["max", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
     ["copysign", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f64]]],
-    ["reinterpret", [[[TYPES.f32], TYPES.i32], [[TYPES.f64], TYPES.i64], [[TYPES.i32], TYPES.f32], [[TYPES.i64], TYPES.f64]]]
+    ["reinterpret", [[[TYPES.f32], TYPES.i32], [[TYPES.f64], TYPES.i64], [[TYPES.i32], TYPES.f32], [[TYPES.i64], TYPES.f64]]],
+    ["i32", [[[TYPES.f32], TYPES.i32], [[TYPES.f64], TYPES.i32], [[TYPES.i32], TYPES.i32], [[TYPES.i64], TYPES.i32]]],
+    ["i64", [[[TYPES.f32], TYPES.i64], [[TYPES.f64], TYPES.i64], [[TYPES.i32], TYPES.i64], [[TYPES.i64], TYPES.i64]]],
+    ["f32", [[[TYPES.f32], TYPES.f32], [[TYPES.f64], TYPES.f32], [[TYPES.i32], TYPES.f32], [[TYPES.i64], TYPES.f32]]],
+    ["f64", [[[TYPES.f32], TYPES.f64], [[TYPES.f64], TYPES.f64], [[TYPES.i32], TYPES.f64], [[TYPES.i64], TYPES.f64]]],
 ] satisfies [string, [TYPES[], TYPES][]][]);
 
 type FunctionOperators = typeof function_operators extends Map<infer T, unknown> ? T : never;
@@ -572,7 +576,7 @@ export function handleFunctionOperator(
     ctx: Context,
     operator: FunctionOperators,
     args: ExpressionInformation[]
-) {
+): ExpressionInformation {
     const expected = function_operators.get(operator)!;
     const actual = args.map((arg) => arg.type);
     const index = expected.findIndex((types) => types[0].every((type, i) => type === actual[i]));
@@ -584,15 +588,19 @@ export function handleFunctionOperator(
         );
 
     const namespace = expected[index][1];
+
+    if (["i32", "i64", "f32", "f64"].includes(operator)) {
+        return ctx.type_operations[namespace].coerce(args[0], ctx);
+    }
+
     // @ts-expect-error ooooo typescript big mad!!!
     if (!ctx.mod[TYPES[namespace]][operator])
         throw new Error(`Unknown function operator: ${operator}(${actual.join(", ")})`);
 
     return {
         type: namespace,
-        // @ts-expect-error it just doesn't know
+        // @ts-expect-error >:(
         ref: ctx.mod[TYPES[namespace]][operator](...args.map((arg) => arg.ref)),
-        expression:
-            expected.length === 1 ? binaryen.ExpressionIds.Unary : binaryen.ExpressionIds.Binary
+        expression: expected.length === 1 ? binaryen.ExpressionIds.Unary : binaryen.ExpressionIds.Binary
     };
 }

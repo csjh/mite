@@ -212,7 +212,7 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
 }
 
 function literalToExpression(ctx: Context, value: Literal): ExpressionInformation {
-    const type = ctx.expected?.type ?? typeof value.value === "bigint" ? TYPES.i64 : TYPES.f64;
+    const type = ctx.expected?.type ?? value.literalType;
     let ref;
     switch (type as TYPES) {
         case TYPES.i32:
