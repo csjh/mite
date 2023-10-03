@@ -12,7 +12,7 @@ fn main(): f32 {
 
     i32 shooby = if (1) 15 else 20;
 
-    for (shooby = 0; shooby < 5; shooby = shooby + 1) {
+    for (shooby = 0; shooby < 5; shooby += 1) {
         log_i32(shooby);
     };
 
@@ -20,13 +20,13 @@ fn main(): f32 {
 
     while (shooby > 0) {
         log_i32(shooby);
-        shooby = shooby - 1;
+        shooby -= 1;
     };
 
     i32 i = 0;
     do {
         log_i32(i);
-        i = i + 1;
+        i += 1;
     } while (i < 5);
 
     i64 unused;
@@ -34,7 +34,7 @@ fn main(): f32 {
     unused = 9223372036854776000;
     f64 big_double_literal = 9223372036854776000.15;
 
-    sum = sum + hundred + second_decl;
+    sum += hundred + second_decl;
 
     f64 three_halves = divide(3, 2);
 
