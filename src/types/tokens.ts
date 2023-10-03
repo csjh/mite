@@ -31,6 +31,16 @@ export enum TokenType {
     NOT = "!",
 
     ASSIGNMENT = "=",
+    ASSIGNMENT_PLUS = "+=",
+    ASSIGNMENT_MINUS = "-=",
+    ASSIGNMENT_SLASH = "/=",
+    ASSIGNMENT_STAR = "*=",
+    ASSIGNMENT_BITSHIFT_LEFT = "<<=",
+    ASSIGNMENT_BITSHIFT_RIGHT = ">>=",
+    ASSIGNMENT_MODULUS = "%=",
+    ASSIGNMENT_BITWISE_OR = "|=",
+    ASSIGNMENT_BITWISE_XOR = "^=",
+    ASSIGNMENT_BITWISE_AND = "&=",
 
     FN = "fn",
     RETURN = "return",
@@ -47,25 +57,8 @@ export enum TokenType {
 
     EOF = "EOF"
 }
-export type BinaryOperator =
-    | TokenType.PLUS
-    | TokenType.MINUS
-    | TokenType.SLASH
-    | TokenType.STAR
-    | TokenType.LESS_THAN
-    | TokenType.LESS_THAN_EQUALS
-    | TokenType.GREATER_THAN
-    | TokenType.GREATER_THAN_EQUALS
-    | TokenType.BITSHIFT_LEFT
-    | TokenType.BITSHIFT_RIGHT
-    | TokenType.MODULUS
-    | TokenType.BITWISE_OR
-    | TokenType.BITWISE_XOR
-    | TokenType.BITWISE_AND
-    | TokenType.EQUALS
-    | TokenType.NOT_EQUALS;
 
-export const BINARY_OPERATORS: Set<BinaryOperator> = new Set([
+export const BINARY_OPERATORS = new Set([
     TokenType.PLUS,
     TokenType.MINUS,
     TokenType.SLASH,
@@ -83,6 +76,24 @@ export const BINARY_OPERATORS: Set<BinaryOperator> = new Set([
     TokenType.EQUALS,
     TokenType.NOT_EQUALS
 ] as const);
+
+export type BinaryOperator = typeof BINARY_OPERATORS extends Set<infer T> ? T : never;
+
+export const ASSIGNMENT_OPERATORS = new Set([
+    TokenType.ASSIGNMENT,
+    TokenType.ASSIGNMENT_PLUS,
+    TokenType.ASSIGNMENT_MINUS,
+    TokenType.ASSIGNMENT_SLASH,
+    TokenType.ASSIGNMENT_STAR,
+    TokenType.ASSIGNMENT_BITSHIFT_LEFT,
+    TokenType.ASSIGNMENT_BITSHIFT_RIGHT,
+    TokenType.ASSIGNMENT_MODULUS,
+    TokenType.ASSIGNMENT_BITWISE_OR,
+    TokenType.ASSIGNMENT_BITWISE_XOR,
+    TokenType.ASSIGNMENT_BITWISE_AND
+] as const);
+
+export type AssignmentOperator = typeof ASSIGNMENT_OPERATORS extends Set<infer T> ? T : never;
 
 export type Token = {
     type: TokenType;

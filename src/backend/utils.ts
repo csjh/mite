@@ -601,6 +601,7 @@ export function handleFunctionOperator(
         type: namespace,
         // @ts-expect-error >:(
         ref: ctx.mod[TYPES[namespace]][operator](...args.map((arg) => arg.ref)),
-        expression: expected.length === 1 ? binaryen.ExpressionIds.Unary : binaryen.ExpressionIds.Binary
+        expression:
+            expected.length === 1 ? binaryen.ExpressionIds.Unary : binaryen.ExpressionIds.Binary
     };
 }

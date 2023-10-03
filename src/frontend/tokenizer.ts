@@ -160,6 +160,54 @@ export function tokenize(input: string): Token[] {
                         break;
                 }
                 break;
+            case TokenType.PLUS:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_PLUS, value: "+=" };
+                    i++;
+                }
+                break;
+            case TokenType.MINUS:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_MINUS, value: "-=" };
+                    i++;
+                }
+                break;
+            case TokenType.SLASH:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_SLASH, value: "/=" };
+                    i++;
+                }
+                break;
+            case TokenType.STAR:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_STAR, value: "*=" };
+                    i++;
+                }
+                break;
+            case TokenType.MODULUS:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_MODULUS, value: "%=" };
+                    i++;
+                }
+                break;
+            case TokenType.BITWISE_OR:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_BITWISE_OR, value: "|=" };
+                    i++;
+                }
+                break;
+            case TokenType.BITWISE_XOR:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_BITWISE_XOR, value: "^=" };
+                    i++;
+                }
+                break;
+            case TokenType.BITWISE_AND:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_BITWISE_AND, value: "&=" };
+                    i++;
+                }
+                break;
             case TokenType.ASSIGNMENT:
                 if (input[i] === "=") {
                     token = { type: TokenType.EQUALS, value: "==" };
@@ -190,6 +238,22 @@ export function tokenize(input: string): Token[] {
                     i++;
                 } else {
                     throw new Error("not is unsupported");
+                }
+                break;
+        }
+
+        // Check for 3-character tokens
+        switch (token.type) {
+            case TokenType.BITSHIFT_LEFT:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_BITSHIFT_LEFT, value: "<<=" };
+                    i++;
+                }
+                break;
+            case TokenType.BITSHIFT_RIGHT:
+                if (input[i] === "=") {
+                    token = { type: TokenType.ASSIGNMENT_BITSHIFT_RIGHT, value: ">>=" };
+                    i++;
                 }
                 break;
         }

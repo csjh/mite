@@ -1,4 +1,11 @@
-import { TokenType, Token, BINARY_OPERATORS, BinaryOperator } from "../types/tokens.js";
+import {
+    TokenType,
+    Token,
+    BINARY_OPERATORS,
+    BinaryOperator,
+    ASSIGNMENT_OPERATORS,
+    AssignmentOperator
+} from "../types/tokens.js";
 import type {
     Program,
     FunctionDeclaration,
@@ -327,6 +334,16 @@ export class Parser {
         return statement;
     }
 
+    private expectAssignmentOperator(token: string): asserts token is AssignmentOperator {
+        if (!ASSIGNMENT_OPERATORS.has(token as AssignmentOperator)) {
+            throw new Error(
+                `Expected assignment operator in (${Array.from(ASSIGNMENT_OPERATORS).join(
+                    ", "
+                )}), got ${token}`
+            );
+        }
+    }
+
     private parseVariableDeclarationOrAssignment(type: "declaration"): VariableDeclaration;
     private parseVariableDeclarationOrAssignment(
         type: "assignment",
@@ -374,12 +391,13 @@ export class Parser {
 
             return variable;
         } else if (type === "assignment") {
-            this.expectToken(TokenType.ASSIGNMENT);
+            const operator = this.token.value;
+            this.expectAssignmentOperator(operator);
             this.idx++;
 
             return {
                 type: "AssignmentExpression",
-                operator: "=",
+                operator,
                 left: left ?? {
                     type: "Identifier",
                     name: this.tokens[this.idx++].value
@@ -433,6 +451,16 @@ export class Parser {
             case TokenType.ELSE: // end of an if statement
                 return next;
             case TokenType.ASSIGNMENT:
+            case TokenType.ASSIGNMENT_BITSHIFT_LEFT:
+            case TokenType.ASSIGNMENT_BITSHIFT_RIGHT:
+            case TokenType.ASSIGNMENT_BITWISE_AND:
+            case TokenType.ASSIGNMENT_BITWISE_OR:
+            case TokenType.ASSIGNMENT_BITWISE_XOR:
+            case TokenType.ASSIGNMENT_MINUS:
+            case TokenType.ASSIGNMENT_MODULUS:
+            case TokenType.ASSIGNMENT_PLUS:
+            case TokenType.ASSIGNMENT_SLASH:
+            case TokenType.ASSIGNMENT_STAR:
                 if (next.type !== "Identifier") throw new Error("Expected identifier, got literal");
                 return this.parseVariableDeclarationOrAssignment("assignment", next);
             case TokenType.PLUS:

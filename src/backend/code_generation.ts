@@ -305,8 +305,74 @@ function assignmentExpressionToExpression(
         updateExpected(ctx, lookForVariable(ctx, value.left.name)),
         value.right
     );
+    const variable = lookForVariable(ctx, value.left.name);
 
-    const ref = ctx.mod.local.set(lookForVariable(ctx, value.left.name).index, expr.ref);
+    let operation: keyof (typeof ctx.type_operations)[number] | false = false;
+    switch (value.operator) {
+        case "=":
+            break;
+        case "+=":
+            operation = "add";
+            break;
+        case "-=":
+            operation = "sub";
+            break;
+        case "*=":
+            operation = "mul";
+            break;
+        case "/=":
+            operation = "div";
+            break;
+        case "%=":
+            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
+                throw new Error("Cannot perform modulo on floats");
+            operation = "mod";
+            break;
+        case "<<=":
+            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
+                throw new Error("Cannot bit shift floats");
+            operation = "shl";
+            break;
+        case ">>=":
+            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
+                throw new Error("Cannot bit shift floats");
+            operation = "shr";
+            break;
+        case "|=":
+            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
+                throw new Error("Cannot bitwise or floats");
+            operation = "or";
+            break;
+        case "^=":
+            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
+                throw new Error("Cannot xor floats");
+            operation = "xor";
+            break;
+        case "&=":
+            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
+                throw new Error("Cannot bitwise and floats");
+            operation = "and";
+            break;
+        case "||=":
+        case "&&=":
+            throw new Error("Logical assignment operators are not supported");
+    }
+
+    const ref = ctx.mod.local.set(
+        variable.index,
+        !operation
+            ? expr.ref
+            : ctx.type_operations[expr.type][operation]!(
+                  // todo: this shouldn't be done inline
+                  {
+                      ref: ctx.mod.local.get(variable.index, variable.type),
+                      expression: binaryen.ExpressionIds.LocalGet,
+                      type: variable.type
+                  },
+                  expr
+              ).ref
+    );
+
     return { ref, type: TYPES.void, expression: binaryen.ExpressionIds.LocalSet };
 }
 
