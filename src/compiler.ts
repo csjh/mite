@@ -16,13 +16,15 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     const program = Parser.parse(tokens);
     const mod = programToModule(program);
 
+    mod.setFeatures(binaryen.Features.All);
+    // this might be icky
+    mod.autoDrop();
+
     mod.addFunctionImport("log_i32", "console", "log", binaryen.i32, binaryen.none);
     mod.addFunctionImport("log_i64", "console", "log", binaryen.i64, binaryen.none);
     mod.addFunctionImport("log_f32", "console", "log", binaryen.f32, binaryen.none);
     mod.addFunctionImport("log_f64", "console", "log", binaryen.f64, binaryen.none);
 
-    // this might be icky
-    mod.autoDrop();
     mod.validate();
 
     if (options.as === "wat") {
