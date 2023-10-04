@@ -194,6 +194,9 @@ export function tokenize(input: string): Token[] {
                 if (input[i] === "=") {
                     token = { type: TokenType.ASSIGNMENT_BITWISE_OR, value: "|=" };
                     i++;
+                } else if (input[i] === "|") {
+                    token = { type: TokenType.LOGICAL_OR, value: "||" };
+                    i++;
                 }
                 break;
             case TokenType.BITWISE_XOR:
@@ -205,6 +208,9 @@ export function tokenize(input: string): Token[] {
             case TokenType.BITWISE_AND:
                 if (input[i] === "=") {
                     token = { type: TokenType.ASSIGNMENT_BITWISE_AND, value: "&=" };
+                    i++;
+                } else if (input[i] === "&") {
+                    token = { type: TokenType.LOGICAL_AND, value: "&&" };
                     i++;
                 }
                 break;

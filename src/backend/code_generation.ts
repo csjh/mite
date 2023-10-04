@@ -30,7 +30,9 @@ import type {
     DoWhileExpression,
     WhileExpression,
     ContinueExpression,
-    BreakExpression
+    BreakExpression,
+    LogicalExpression,
+    EmptyExpression
 } from "../types/nodes.js";
 import { TokenType } from "../types/tokens.js";
 
@@ -185,6 +187,8 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
         expr = identifierToExpression(ctx, value);
     } else if (value.type === "BinaryExpression") {
         expr = binaryExpressionToExpression(ctx, value);
+    } else if (value.type === "LogicalExpression") {
+        expr = logicalExpressionToExpression(ctx, value);
     } else if (value.type === "AssignmentExpression") {
         expr = assignmentExpressionToExpression(ctx, value);
     } else if (value.type === "CallExpression") {
@@ -200,7 +204,7 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
     } else if (value.type === "WhileExpression") {
         expr = whileExpressionToExpression(ctx, value);
     } else if (value.type === "EmptyExpression") {
-        expr = { ref: ctx.mod.nop(), type: TYPES.void, expression: binaryen.ExpressionIds.Nop };
+        expr = emptyExpressionToExpression(ctx, value);
     } else if (value.type === "ContinueExpression") {
         expr = continueExpressionToExpression(ctx, value);
     } else if (value.type === "BreakExpression") {
@@ -297,6 +301,39 @@ function binaryExpressionToExpression(
     throw new Error(`Unknown binary operator: ${value.operator}`);
 }
 
+function logicalExpressionToExpression(
+    ctx: Context,
+    value: LogicalExpression
+): ExpressionInformation {
+    const left = expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.left),
+        right = expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.right);
+
+    switch (value.operator) {
+        case TokenType.LOGICAL_OR:
+            return {
+                ref: ctx.mod.if(
+                    left.ref,
+                    ctx.mod.i32.const(1),
+                    ctx.mod.i32.ne(right.ref, ctx.mod.i32.const(0))
+                ),
+                expression: binaryen.ExpressionIds.If,
+                type: TYPES.i32
+            };
+        case TokenType.LOGICAL_AND:
+            return {
+                ref: ctx.mod.if(
+                    ctx.mod.i32.eqz(left.ref),
+                    ctx.mod.i32.const(0),
+                    ctx.mod.i32.ne(right.ref, ctx.mod.i32.const(0))
+                ),
+                expression: binaryen.ExpressionIds.If,
+                type: TYPES.i32
+            };
+    }
+
+    throw new Error(`Unknown logical operator: ${value.operator}`);
+}
+
 function assignmentExpressionToExpression(
     ctx: Context,
     value: AssignmentExpression
@@ -353,9 +390,6 @@ function assignmentExpressionToExpression(
                 throw new Error("Cannot bitwise and floats");
             operation = "and";
             break;
-        case "||=":
-        case "&&=":
-            throw new Error("Logical assignment operators are not supported");
     }
 
     const ref = ctx.mod.local.set(
@@ -569,4 +603,8 @@ function breakExpressionToExpression(ctx: Context, value: BreakExpression): Expr
         type: TYPES.void,
         expression: binaryen.ExpressionIds.Break
     };
+}
+
+function emptyExpressionToExpression(ctx: Context, value: EmptyExpression): ExpressionInformation {
+    return { ref: ctx.mod.nop(), type: TYPES.void, expression: binaryen.ExpressionIds.Nop };
 }

@@ -27,6 +27,8 @@ export enum TokenType {
     BITWISE_OR = "|",
     BITWISE_XOR = "^",
     BITWISE_AND = "&",
+    LOGICAL_AND = "&&",
+    LOGICAL_OR = "||",
 
     NOT = "!",
 
@@ -94,6 +96,10 @@ export const ASSIGNMENT_OPERATORS = new Set([
 ] as const);
 
 export type AssignmentOperator = typeof ASSIGNMENT_OPERATORS extends Set<infer T> ? T : never;
+
+export const LOGICAL_OPERATORS = new Set([TokenType.LOGICAL_AND, TokenType.LOGICAL_OR] as const);
+
+export type LogicalOperator = typeof LOGICAL_OPERATORS extends Set<infer T> ? T : never;
 
 export type Token = {
     type: TokenType;

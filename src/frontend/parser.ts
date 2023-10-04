@@ -4,7 +4,8 @@ import {
     BINARY_OPERATORS,
     BinaryOperator,
     ASSIGNMENT_OPERATORS,
-    AssignmentOperator
+    AssignmentOperator,
+    LogicalOperator
 } from "../types/tokens.js";
 import type {
     Program,
@@ -26,7 +27,8 @@ import type {
     ForExpression,
     SequenceExpression,
     DoWhileExpression,
-    WhileExpression
+    WhileExpression,
+    LogicalExpression
 } from "../types/nodes.js";
 import { TYPES } from "../types/code_gen.js";
 
@@ -480,6 +482,9 @@ export class Parser {
             case TokenType.BITWISE_XOR:
             case TokenType.BITWISE_AND:
                 return this.parseBinaryExpression(next);
+            case TokenType.LOGICAL_AND:
+            case TokenType.LOGICAL_OR:
+                return this.parseLogicalExpression(next);
             case TokenType.LEFT_PAREN:
                 if (next.type === "Identifier") return this.parseCallExpression(next);
             default:
@@ -504,14 +509,33 @@ export class Parser {
 
         const right = this.parseExpression();
 
-        const binary_expression: BinaryExpression = {
+        return {
             type: "BinaryExpression",
             operator,
             left,
             right
         };
+    }
 
-        return binary_expression;
+    private expectLogicalOperator(token: string): asserts token is LogicalOperator {
+        if (!["&&", "||"].includes(token)) {
+            throw new Error(`Expected logical operator, got ${token}`);
+        }
+    }
+
+    private parseLogicalExpression(left: Identifier | Literal): LogicalExpression {
+        const operator = this.token.value;
+        this.expectLogicalOperator(operator);
+        this.idx++;
+
+        const right = this.parseExpression();
+
+        return {
+            type: "LogicalExpression",
+            operator,
+            left,
+            right
+        };
     }
 
     private getIdentifierOrLiteral(): Identifier | Literal {
