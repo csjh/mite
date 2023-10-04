@@ -21,6 +21,8 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     mod.addFunctionImport("log_f32", "console", "log", binaryen.f32, binaryen.none);
     mod.addFunctionImport("log_f64", "console", "log", binaryen.f64, binaryen.none);
 
+    // this might be icky
+    mod.autoDrop();
     mod.validate();
 
     if (options.as === "wat") {

@@ -210,7 +210,27 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
     } else if (value.type === "BreakExpression") {
         expr = breakExpressionToExpression(ctx, value);
     } else {
-        throw new Error(`Unknown statement type: ${value.type}`);
+        switch (value.type) {
+            case "ArrayExpression":
+            case "AwaitExpression":
+            case "ChainExpression":
+            case "FunctionExpression":
+            case "ImportExpression":
+            case "MemberExpression":
+            case "MetaProperty":
+            case "ObjectExpression":
+            case "SequenceExpression":
+            case "TaggedTemplateExpression":
+            case "TemplateLiteral":
+            case "ThisExpression":
+            case "UnaryExpression":
+            case "UpdateExpression":
+            case "YieldExpression":
+                throw new Error(`Currently unsupported statement type: ${value.type}`);
+            default:
+                // @ts-expect-error value should be `never` here
+                throw new Error(`Unknown statement type: ${value.type}`);
+        }
     }
     return coerceToExpected(ctx, expr);
 }
@@ -392,7 +412,7 @@ function assignmentExpressionToExpression(
             break;
     }
 
-    const ref = ctx.mod.local.set(
+    const ref = ctx.mod.local.tee(
         variable.index,
         !operation
             ? expr.ref
@@ -404,10 +424,11 @@ function assignmentExpressionToExpression(
                       type: variable.type
                   },
                   expr
-              ).ref
+              ).ref,
+        variable.type
     );
 
-    return { ref, type: TYPES.void, expression: binaryen.ExpressionIds.LocalSet };
+    return { ref, type: variable.type, expression: binaryen.ExpressionIds.LocalSet };
 }
 
 function callExpressionToExpression(ctx: Context, value: CallExpression): ExpressionInformation {
