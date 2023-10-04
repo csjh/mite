@@ -5,6 +5,7 @@ import binaryen from "binaryen";
 
 type CompileOptions = {
     as?: "wat" | "wasm";
+    optimize?: boolean;
 };
 
 export function compile(source: string, options: CompileOptions & { as: "wat" }): string;
@@ -26,6 +27,13 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     mod.addFunctionImport("log_f64", "console", "log", binaryen.f64, binaryen.none);
 
     mod.validate();
+
+    if (options.optimize) {
+        binaryen.setOptimizeLevel(0);
+        binaryen.setShrinkLevel(2);
+        binaryen.setLowMemoryUnused(true);
+        mod.optimize();
+    }
 
     if (options.as === "wat") {
         return mod.emitText();
