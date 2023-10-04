@@ -302,16 +302,16 @@ export function createTypeOperations(mod: binaryen.Module) {
                         return {
                             type: TYPES.i32,
                             ref: ctx.expected?.isUnsigned
-                                ? mod.i32.trunc_u.f32(expr.ref)
-                                : mod.i32.trunc_s.f32(expr.ref),
+                                ? mod.i32.trunc_u_sat.f32(expr.ref)
+                                : mod.i32.trunc_s_sat.f32(expr.ref),
                             expression: binaryen.ExpressionIds.Unary
                         };
                     case TYPES.f64:
                         return {
                             type: TYPES.i32,
                             ref: ctx.expected?.isUnsigned
-                                ? mod.i32.trunc_u.f64(expr.ref)
-                                : mod.i32.trunc_s.f64(expr.ref),
+                                ? mod.i32.trunc_u_sat.f64(expr.ref)
+                                : mod.i32.trunc_s_sat.f64(expr.ref),
                             expression: binaryen.ExpressionIds.Unary
                         };
                     case TYPES.i32:
@@ -428,16 +428,16 @@ export function createTypeOperations(mod: binaryen.Module) {
                         return {
                             type: TYPES.i64,
                             ref: ctx.expected?.isUnsigned
-                                ? mod.i64.trunc_u.f32(expr.ref)
-                                : mod.i64.trunc_s.f32(expr.ref),
+                                ? mod.i64.trunc_u_sat.f32(expr.ref)
+                                : mod.i64.trunc_s_sat.f32(expr.ref),
                             expression: binaryen.ExpressionIds.Unary
                         };
                     case TYPES.f64:
                         return {
                             type: TYPES.i64,
                             ref: ctx.expected?.isUnsigned
-                                ? mod.i64.trunc_u.f64(expr.ref)
-                                : mod.i64.trunc_s.f64(expr.ref),
+                                ? mod.i64.trunc_u_sat.f64(expr.ref)
+                                : mod.i64.trunc_s_sat.f64(expr.ref),
                             expression: binaryen.ExpressionIds.Unary
                         };
                     case TYPES.i32:
