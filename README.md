@@ -8,22 +8,23 @@ Mite was made to accompany my learning during my introduction to C university co
 
 ## Features
 
-- All the basic arithmetic, logical, comparison, and bitwise operators
-- Variables
-- Functions
-- If, for, while, do-while expressions
+-   All the basic arithmetic, logical, comparison, and bitwise operators
+-   Variables
+-   Functions
+-   If, for, while, do-while expressions
 
 ## Roadmap
+
 > In no particular order
 
-- [ ] Stack
-- [ ] Structs
-- [ ] SIMD
-- [ ] 0-copy Mite -> Javascript Interop
-- [ ] Javascript Helper Mode
-- [ ] Standard Library
-- [ ] Closures
-- [ ] C++ Port
-- [ ] Heap [^1]
+-   [ ] Stack
+-   [ ] Structs
+-   [ ] SIMD
+-   [ ] 0-copy Mite -> Javascript Interop
+-   [ ] Javascript Helper Mode
+-   [ ] Standard Library
+-   [ ] Closures
+-   [ ] C++ Port
+-   [ ] Heap [^1]
 
 [^1]: A traditional heap (with malloc and free and stuff) is kinda iffy right now, unsure of where it will land atm.
