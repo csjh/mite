@@ -21,10 +21,10 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     // this might be icky
     mod.autoDrop();
 
-    mod.addFunctionImport("log_i32", "console", "log", binaryen.i32, binaryen.none);
-    mod.addFunctionImport("log_i64", "console", "log", binaryen.i64, binaryen.none);
-    mod.addFunctionImport("log_f32", "console", "log", binaryen.f32, binaryen.none);
-    mod.addFunctionImport("log_f64", "console", "log", binaryen.f64, binaryen.none);
+    for (const type of ["i32", "i64", "f32", "f64"]) {
+        // @ts-ignore
+        mod.addFunctionImport(`log_${type}`, "console", "log", binaryen[type], binaryen.none);
+    }
 
     mod.validate();
 
