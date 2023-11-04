@@ -3,9 +3,9 @@ import { compile } from "./compiler.js";
 
 const program = await fs.readFile(process.argv[2], "utf8");
 
-const output = compile(program);
+console.log(compile(program, { as: "wat", optimize: true }));
 
-console.log(compile(program, { as: "wat" }));
+const output = compile(program);
 
 const compiled = new WebAssembly.Module(output);
 // @ts-ignore
