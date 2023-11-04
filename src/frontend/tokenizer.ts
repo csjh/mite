@@ -23,6 +23,14 @@ export function tokenize(input: string): Token[] {
                 token = { type: TokenType.RIGHT_BRACE, value: "}" };
                 i++;
                 break;
+            case "[":
+                token = { type: TokenType.LEFT_BRACKET, value: "[" };
+                i++;
+                break;
+            case "]":
+                token = { type: TokenType.RIGHT_BRACKET, value: "]" };
+                i++;
+                break;
             case ":":
                 token = { type: TokenType.COLON, value: ":" };
                 i++;
@@ -81,6 +89,10 @@ export function tokenize(input: string): Token[] {
                 break;
             case "&":
                 token = { type: TokenType.BITWISE_AND, value: "&" };
+                i++;
+                break;
+            case ".":
+                token = { type: TokenType.PERIOD, value: "." };
                 i++;
                 break;
             case "0":
@@ -146,17 +158,14 @@ export function tokenize(input: string): Token[] {
                     case "while":
                         token = { type: TokenType.WHILE, value: "while" };
                         break;
-                    case "signed":
-                        token = { type: TokenType.SIGNED, value: "signed" };
-                        break;
-                    case "unsigned":
-                        token = { type: TokenType.UNSIGNED, value: "unsigned" };
-                        break;
                     case "continue":
                         token = { type: TokenType.CONTINUE, value: "continue" };
                         break;
                     case "break":
                         token = { type: TokenType.BREAK, value: "break" };
+                        break;
+                    case "struct":
+                        token = { type: TokenType.STRUCT, value: "struct" };
                         break;
                 }
                 break;

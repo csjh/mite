@@ -1,7 +1,7 @@
 // adapter from estree
 // shoutout estree
 
-import { TYPES } from "./code_gen.js";
+import { BinaryOperator } from "./tokens.js";
 
 export interface BaseNodeWithoutComments {
     // Every leaf interface that extends BaseNode must specify a type property.
@@ -184,7 +184,7 @@ export interface DebuggerStatement extends BaseStatement {
     type: "DebuggerStatement";
 }
 
-export type Declaration = FunctionDeclaration | VariableDeclaration;
+export type Declaration = FunctionDeclaration | VariableDeclaration | StructDeclaration;
 
 export interface BaseDeclaration extends BaseStatement {}
 
@@ -192,6 +192,18 @@ export interface FunctionDeclaration extends BaseFunction, BaseDeclaration {
     type: "FunctionDeclaration";
     id: Identifier;
     body: BlockExpression;
+}
+
+export interface StructField extends BaseNode {
+    type: "StructField";
+    name: Identifier;
+    typeAnnotation: TypeIdentifier;
+}
+
+export interface StructDeclaration extends BaseDeclaration {
+    type: "StructDeclaration";
+    id: Identifier;
+    fields: StructField[];
 }
 
 export interface VariableDeclaration extends BaseDeclaration {
@@ -318,7 +330,7 @@ export interface BinaryExpression extends BaseExpression {
 export interface AssignmentExpression extends BaseExpression {
     type: "AssignmentExpression";
     operator: AssignmentOperator;
-    left: Identifier;
+    left: Identifier | MemberExpression;
     right: Expression;
 }
 
@@ -351,10 +363,8 @@ export interface CallExpression extends BaseExpression {
 
 export interface MemberExpression extends BaseExpression, BasePattern {
     type: "MemberExpression";
-    object: Expression;
-    property: Expression | PrivateIdentifier;
-    computed: boolean;
-    optional: boolean;
+    object: Identifier | MemberExpression;
+    property: Identifier;
 }
 
 export interface BasePattern extends BaseNode {}
@@ -377,13 +387,12 @@ export interface Identifier extends BaseNode, BaseExpression, BasePattern {
 }
 
 export interface TypeIdentifier extends Identifier {
-    name: "i64" | "i32" | "f64" | "f32" | "void";
-    isUnsigned: boolean;
+    name: string;
 }
 
 export interface Literal extends BaseNode, BaseExpression {
     type: "Literal";
-    literalType: TYPES;
+    literalType: string;
     value: number | bigint; // todo: add back string
     raw?: string | undefined;
 }
@@ -400,6 +409,7 @@ export interface RegExpLiteral extends BaseNode, BaseExpression {
 
 export type UnaryOperator = "-" | "+" | "!" | "~" | "typeof" | "void" | "delete";
 
+/*
 export type BinaryOperator =
     | "=="
     | "!="
@@ -423,6 +433,7 @@ export type BinaryOperator =
     | "&"
     | "in"
     | "instanceof";
+*/
 
 export type LogicalOperator = "||" | "&&";
 
