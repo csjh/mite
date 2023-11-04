@@ -7,9 +7,12 @@ export enum TokenType {
     RIGHT_PAREN = ")",
     LEFT_BRACE = "{",
     RIGHT_BRACE = "}",
+    LEFT_BRACKET = "[",
+    RIGHT_BRACKET = "]",
     COLON = ":",
     COMMA = ",",
     SEMICOLON = ";",
+    PERIOD = ".",
 
     PLUS = "+",
     MINUS = "-",
@@ -45,6 +48,7 @@ export enum TokenType {
     ASSIGNMENT_BITWISE_AND = "&=",
 
     FN = "fn",
+    STRUCT = "struct",
     RETURN = "return",
     IF = "if",
     ELSE = "else",
@@ -53,9 +57,6 @@ export enum TokenType {
     WHILE = "while",
     CONTINUE = "continue",
     BREAK = "break",
-
-    SIGNED = "signed",
-    UNSIGNED = "unsigned",
 
     EOF = "EOF"
 }
