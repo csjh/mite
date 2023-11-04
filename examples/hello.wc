@@ -1,5 +1,7 @@
 fn divide(a: i32, b: i32): f32 {
-    return a / b;
+    f32 c = f32(a);
+    f32 d = f32(b);
+    return c / d;
 }
 
 fn main(): f32 {
@@ -36,9 +38,11 @@ fn main(): f32 {
 
     sum += hundred + second_decl;
 
-    f64 three_halves = divide(3, 2);
+    f64 three_halves = f64(divide(3, 2));
 
-    f32 blah = three_halves * big_double_literal;
+    f64 blah = three_halves * big_double_literal;
 
-    return sum + three_halves - blah;
+    f64 ffsixtyfour = f64(sum);
+
+    return f32(ffsixtyfour + three_halves - blah);
 }
