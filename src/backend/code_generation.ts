@@ -192,7 +192,7 @@ function variableDeclarationToExpression(
 
     return {
         ref: ctx.mod.block(null, expressions),
-        type: { classification: "primitive", name: "void" },
+        type: ctx.types.void,
         expression: binaryen.ExpressionIds.Block
     };
 }
@@ -216,7 +216,7 @@ function returnStatementToExpression(ctx: Context, value: ReturnStatement): Expr
 
     return {
         ref,
-        type: { classification: "primitive", name: "void" },
+        type: ctx.types.void,
         expression: binaryen.ExpressionIds.Return
     };
 }
@@ -280,7 +280,7 @@ function literalToExpression(ctx: Context, value: Literal): ExpressionInformatio
     if (ctx.expected?.classification && ctx.expected.classification !== "primitive")
         throw new Error(`Expected primitive type, got ${ctx.expected?.classification}`);
 
-    const type = ctx.expected ?? { classification: "primitive", name: value.literalType };
+    const type = ctx.expected ?? ctx.types[value.literalType];
     let ref;
     switch (type.name) {
         case "i32":
@@ -327,14 +327,8 @@ function logicalExpressionToExpression(
     ctx: Context,
     value: LogicalExpression
 ): ExpressionInformation {
-    const left = expressionToExpression(
-            updateExpected(ctx, { classification: "primitive", name: "i32" }),
-            value.left
-        ),
-        right = expressionToExpression(
-            updateExpected(ctx, { classification: "primitive", name: "i32" }),
-            value.right
-        );
+    const left = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.left),
+        right = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.right);
 
     switch (value.operator) {
         case TokenType.LOGICAL_OR:
@@ -345,7 +339,7 @@ function logicalExpressionToExpression(
                     ctx.mod.i32.ne(right.ref, ctx.mod.i32.const(0))
                 ),
                 expression: binaryen.ExpressionIds.If,
-                type: { classification: "primitive", name: "i32" }
+                type: ctx.types.i32
             };
         case TokenType.LOGICAL_AND:
             return {
@@ -355,7 +349,7 @@ function logicalExpressionToExpression(
                     ctx.mod.i32.ne(right.ref, ctx.mod.i32.const(0))
                 ),
                 expression: binaryen.ExpressionIds.If,
-                type: { classification: "primitive", name: "i32" }
+                type: ctx.types.i32
             };
     }
 
@@ -478,7 +472,7 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
 
     return {
         ref,
-        type: { classification: "primitive", name: "void" },
+        type: ctx.types.void,
         expression: binaryen.ExpressionIds.Block
     };
 }
@@ -514,7 +508,7 @@ function doWhileExpressionToExpression(
 
     return {
         ref,
-        type: { classification: "primitive", name: "void" },
+        type: ctx.types.void,
         expression: binaryen.ExpressionIds.Loop
     };
 }
@@ -547,7 +541,7 @@ function whileExpressionToExpression(ctx: Context, value: WhileExpression): Expr
 
     return {
         ref,
-        type: { classification: "primitive", name: "void" },
+        type: ctx.types.void,
         expression: binaryen.ExpressionIds.If
     };
 }
@@ -558,7 +552,7 @@ function blockExpressionToExpression(ctx: Context, value: BlockExpression): Expr
     ctx.stacks.depth++;
 
     const refs = [];
-    let type: TypeInformation = { classification: "primitive", name: "void" };
+    let type: TypeInformation = ctx.types.void;
     for (const statement of value.body) {
         const expr = statementToExpression(ctx, statement);
         refs.push(expr.ref);
@@ -578,7 +572,7 @@ function continueExpressionToExpression(
     if (!loop) throw new Error("Cannot continue outside of loop");
     return {
         ref: ctx.mod.br(loop),
-        type: { classification: "primitive", name: "void" },
+        type: ctx.types.void,
         expression: binaryen.ExpressionIds.Break
     };
 }
@@ -589,7 +583,7 @@ function breakExpressionToExpression(ctx: Context, value: BreakExpression): Expr
     if (!block) throw new Error("Cannot break outside of a block");
     return {
         ref: ctx.mod.br(block),
-        type: { classification: "primitive", name: "void" },
+        type: ctx.types.void,
         expression: binaryen.ExpressionIds.Break
     };
 }
@@ -597,7 +591,7 @@ function breakExpressionToExpression(ctx: Context, value: BreakExpression): Expr
 function emptyExpressionToExpression(ctx: Context, value: EmptyExpression): ExpressionInformation {
     return {
         ref: ctx.mod.nop(),
-        type: { classification: "primitive", name: "void" },
+        type: ctx.types.void,
         expression: binaryen.ExpressionIds.Nop
     };
 }
