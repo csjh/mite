@@ -1,23 +1,29 @@
 import binaryen from "binaryen";
 import {
     bigintToLowAndHigh,
-    coerceBinaryExpression,
-    coerceToExpected,
-    createTypeOperations,
-    handleFunctionOperator,
-    isFunctionOperator,
+    createMiteType,
     lookForVariable,
-    updateExpected
+    miteSignatureToBinaryenSignature,
+    updateExpected,
+    STACK_POINTER,
+    typeInformationToBinaryen,
+    getBinaryOperator,
+    unwrapPossibleMemberExpression
 } from "./utils.js";
-import type { Context, ExpressionInformation } from "../types/code_gen.js";
-import { TYPES } from "../types/code_gen.js";
+import {
+    Context,
+    ExpressionInformation,
+    IntrinsicHandlers,
+    ProgramToModuleOptions,
+    TypeInformation,
+    intrinsic_names
+} from "../types/code_gen.js";
 import type {
     Program,
     Statement,
     Expression,
     BinaryExpression,
     VariableDeclaration,
-    TypedParameter,
     FunctionDeclaration,
     ReturnStatement,
     Literal,
@@ -32,21 +38,41 @@ import type {
     ContinueExpression,
     BreakExpression,
     LogicalExpression,
-    EmptyExpression
+    EmptyExpression,
+    MemberExpression
 } from "../types/nodes.js";
-import { TokenType } from "../types/tokens.js";
+import { BinaryOperator, TokenType } from "../types/tokens.js";
+import { AllocationLocation, MiteType, Primitive, Struct } from "./type_classes.js";
+import {
+    createIntrinsics,
+    identifyStructs,
+    createTypeOperations,
+    createConversions
+} from "./context_initialization.js";
 
-export function programToModule(program: Program): binaryen.Module {
+export function programToModule(
+    program: Program,
+    { stack_size = 64 * 1024 }: ProgramToModuleOptions = {}
+): binaryen.Module {
+    const structs = Object.fromEntries(identifyStructs(program).map((x) => [x.name, x]));
+    const primitives = Object.fromEntries(Primitive.primitives.entries());
+
     const mod = new binaryen.Module();
     const ctx: Context = {
         mod,
         variables: new Map(),
         functions: new Map(),
-        type_operations: createTypeOperations(mod), // goal of this is easier extensibility
+        operators: createTypeOperations(mod),
+        intrinsics: createIntrinsics(mod),
+        conversions: createConversions(mod),
         stacks: { continue: [], break: [], depth: 0 },
+        types: { ...primitives, ...structs },
         // @ts-expect-error initially we're not in a function
         current_function: null
     };
+
+    ctx.mod.setMemory(256, 256, "memory");
+    ctx.mod.addGlobal(STACK_POINTER, binaryen.i32, true, ctx.mod.i32.const(stack_size));
 
     ctx.functions = new Map(
         program.body
@@ -54,23 +80,16 @@ export function programToModule(program: Program): binaryen.Module {
             .map(({ id, params, returnType }) => [
                 id.name,
                 {
-                    name: id.name,
-                    params: params.map(({ typeAnnotation }) => ({
-                        type: TYPES[typeAnnotation.name],
-                        isUnsigned: typeAnnotation.isUnsigned
-                    })),
-                    results: {
-                        type: TYPES[returnType.name],
-                        isUnsigned: returnType.isUnsigned
-                    }
+                    params: params.map(({ typeAnnotation }) => ctx.types[typeAnnotation.name]),
+                    results: ctx.types[returnType.name]
                 }
             ])
     );
 
-    for (const type of ["i32", "i64", "f32", "f64"] as const) {
+    for (const type of ["i32", "i64", "f32", "f64"]) {
         ctx.functions.set(`log_${type}`, {
-            params: [{ type: TYPES[type], isUnsigned: false }],
-            results: { type: TYPES.void, isUnsigned: false }
+            params: [ctx.types[type]],
+            results: ctx.types.void
         });
     }
 
@@ -78,6 +97,9 @@ export function programToModule(program: Program): binaryen.Module {
         switch (node.type) {
             case "FunctionDeclaration":
                 buildFunctionDeclaration(ctx, node);
+                break;
+            case "StructDeclaration":
+                // struct declarations don't carry any runtime weight
                 break;
         }
     }
@@ -90,39 +112,36 @@ export function programToModule(program: Program): binaryen.Module {
 }
 
 function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void {
-    ctx.variables = new Map(
-        node.params.map(
-            ({ name, typeAnnotation }, index) =>
-                [
-                    name.name,
-                    {
-                        index,
-                        type: TYPES[typeAnnotation.name],
-                        isUnsigned: typeAnnotation.isUnsigned
-                    }
-                ] as const
-        )
+    const params = new Map(
+        node.params.map(({ name, typeAnnotation }, index) => [
+            name.name,
+            createMiteType(ctx, typeAnnotation.name, index, 0)
+        ])
     );
 
-    const { params, results } = ctx.functions.get(node.id.name)!;
+    ctx.variables = new Map(params);
+    ctx.variables.set(
+        "Local Stack Pointer", // put spaces in so it doesn't conflict with user-defined variables
+        new Primitive(ctx, ctx.types.i32, AllocationLocation.Local, node.params.length, 0)
+    );
+
+    const current_function = { ...ctx.functions.get(node.id.name)!, stack_frame_size: 0 };
 
     const function_body = ctx.mod.block(
         null,
         node.body.body.map(
-            (statement) =>
-                statementToExpression({ ...ctx, current_function: { results } }, statement).ref
+            (statement) => statementToExpression({ ...ctx, current_function }, statement).ref
         )
     );
 
-    const function_variables = Array.from(ctx.variables.values()).filter(
-        (variable) => variable.index >= node.params.length // get rid of parameter variables
-    );
+    const function_variables = Array.from(ctx.variables.entries())
+        .filter(([name]) => !params.has(name))
+        .map(([, { type }]) => type);
 
-    ctx.mod.addFunction(
+    miteSignatureToBinaryenSignature(
+        { ...ctx, current_function },
         node.id.name,
-        binaryen.createType(params.map(({ type }) => type)),
-        results.type,
-        function_variables.map(({ type }) => type),
+        function_variables,
         function_body
     );
 }
@@ -146,24 +165,34 @@ function variableDeclarationToExpression(
 ): ExpressionInformation {
     const expressions = [];
     for (const { id, typeAnnotation, init } of value.declarations) {
-        const variable = {
-            index: ctx.variables.size,
-            type: TYPES[typeAnnotation.name],
-            isUnsigned: typeAnnotation.isUnsigned
-        };
+        const type = ctx.types[typeAnnotation.name];
+
+        let variable: MiteType;
+
+        if (type.classification === "struct") {
+            variable = createMiteType(
+                ctx,
+                type.name,
+                lookForVariable(ctx, "Local Stack Pointer").get(),
+                ctx.current_function.stack_frame_size
+            );
+            ctx.current_function.stack_frame_size += type.sizeof;
+        } else {
+            variable = createMiteType(ctx, type.name, ctx.variables.size, 0);
+        }
 
         ctx.variables.set(id.name, variable);
 
         if (!init) continue;
 
-        const expr = expressionToExpression(updateExpected(ctx, variable), init);
-        const ref = ctx.mod.local.set(variable.index, expr.ref);
+        const expr = expressionToExpression(updateExpected(ctx, variable.type), init);
+        const { ref } = variable.set(expr);
         expressions.push(ref);
     }
 
     return {
         ref: ctx.mod.block(null, expressions),
-        type: TYPES.void,
+        type: { classification: "primitive", name: "void" },
         expression: binaryen.ExpressionIds.Block
     };
 }
@@ -172,43 +201,57 @@ function returnStatementToExpression(ctx: Context, value: ReturnStatement): Expr
     const expr =
         value.argument &&
         expressionToExpression(updateExpected(ctx, ctx.current_function.results), value.argument);
+
+    // i really need to have a better system for this
+    const ref = ctx.mod.block(null, [
+        ctx.mod.global.set(
+            STACK_POINTER,
+            ctx.mod.i32.add(
+                ctx.mod.global.get(STACK_POINTER, binaryen.i32),
+                ctx.mod.i32.const(ctx.current_function.stack_frame_size)
+            )
+        ),
+        ctx.mod.return(expr?.ref)
+    ]);
+
     return {
-        ref: ctx.mod.return(expr?.ref),
-        type: TYPES.void,
+        ref,
+        type: { classification: "primitive", name: "void" },
         expression: binaryen.ExpressionIds.Return
     };
 }
 
 function expressionToExpression(ctx: Context, value: Expression): ExpressionInformation {
-    let expr: ExpressionInformation;
     if (value.type === "Literal") {
-        expr = literalToExpression(ctx, value);
+        return literalToExpression(ctx, value);
     } else if (value.type === "Identifier") {
-        expr = identifierToExpression(ctx, value);
+        return identifierToExpression(ctx, value);
     } else if (value.type === "BinaryExpression") {
-        expr = binaryExpressionToExpression(ctx, value);
+        return binaryExpressionToExpression(ctx, value);
     } else if (value.type === "LogicalExpression") {
-        expr = logicalExpressionToExpression(ctx, value);
+        return logicalExpressionToExpression(ctx, value);
     } else if (value.type === "AssignmentExpression") {
-        expr = assignmentExpressionToExpression(ctx, value);
+        return assignmentExpressionToExpression(ctx, value);
     } else if (value.type === "CallExpression") {
-        expr = callExpressionToExpression(ctx, value);
+        return callExpressionToExpression(ctx, value);
     } else if (value.type === "IfExpression") {
-        expr = ifExpressionToExpression(ctx, value);
+        return ifExpressionToExpression(ctx, value);
     } else if (value.type === "ForExpression") {
-        expr = forExpressionToExpression(ctx, value);
+        return forExpressionToExpression(ctx, value);
     } else if (value.type === "BlockExpression") {
-        expr = blockExpressionToExpression(ctx, value);
+        return blockExpressionToExpression(ctx, value);
     } else if (value.type === "DoWhileExpression") {
-        expr = doWhileExpressionToExpression(ctx, value);
+        return doWhileExpressionToExpression(ctx, value);
     } else if (value.type === "WhileExpression") {
-        expr = whileExpressionToExpression(ctx, value);
+        return whileExpressionToExpression(ctx, value);
     } else if (value.type === "EmptyExpression") {
-        expr = emptyExpressionToExpression(ctx, value);
+        return emptyExpressionToExpression(ctx, value);
     } else if (value.type === "ContinueExpression") {
-        expr = continueExpressionToExpression(ctx, value);
+        return continueExpressionToExpression(ctx, value);
     } else if (value.type === "BreakExpression") {
-        expr = breakExpressionToExpression(ctx, value);
+        return breakExpressionToExpression(ctx, value);
+    } else if (value.type === "MemberExpression") {
+        return memberExpressionToExpression(ctx, value);
     } else {
         switch (value.type) {
             case "ArrayExpression":
@@ -216,7 +259,6 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
             case "ChainExpression":
             case "FunctionExpression":
             case "ImportExpression":
-            case "MemberExpression":
             case "MetaProperty":
             case "ObjectExpression":
             case "SequenceExpression":
@@ -232,23 +274,27 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
                 throw new Error(`Unknown statement type: ${value.type}`);
         }
     }
-    return coerceToExpected(ctx, expr);
 }
 
 function literalToExpression(ctx: Context, value: Literal): ExpressionInformation {
-    const type = ctx.expected?.type ?? value.literalType;
+    if (ctx.expected?.classification && ctx.expected.classification !== "primitive")
+        throw new Error(`Expected primitive type, got ${ctx.expected?.classification}`);
+
+    const type = ctx.expected ?? { classification: "primitive", name: value.literalType };
     let ref;
-    switch (type as TYPES) {
-        case TYPES.i32:
+    switch (type.name) {
+        case "i32":
+        case "u32":
             ref = ctx.mod.i32.const(Number(value.value));
             break;
-        case TYPES.i64:
+        case "i64":
+        case "u64":
             ref = ctx.mod.i64.const(...bigintToLowAndHigh(value.value));
             break;
-        case TYPES.f32:
+        case "f32":
             ref = ctx.mod.f32.const(Number(value.value));
             break;
-        case TYPES.f64:
+        case "f64":
             ref = ctx.mod.f64.const(Number(value.value));
             break;
         default:
@@ -261,72 +307,34 @@ function literalToExpression(ctx: Context, value: Literal): ExpressionInformatio
     };
 }
 
-function identifierToExpression(ctx: Context, value: Identifier): ExpressionInformation {
-    const { index, type } = lookForVariable(ctx, value.name);
-    const ref = ctx.mod.local.get(index, type);
-    return { ref, type, expression: binaryen.ExpressionIds.LocalGet };
+function identifierToExpression(ctx: Context, { name }: Identifier): ExpressionInformation {
+    const value = lookForVariable(ctx, name);
+    return value.get();
 }
 
 function binaryExpressionToExpression(
     ctx: Context,
     value: BinaryExpression
 ): ExpressionInformation {
-    const args: [ExpressionInformation, ExpressionInformation] = [
-        expressionToExpression(ctx, value.left),
-        expressionToExpression(ctx, value.right)
-    ];
-    const [coerced_left, coerced_right] = coerceBinaryExpression(ctx, args);
-    const type = coerced_left.type;
+    const left = expressionToExpression(ctx, value.left);
+    const right = expressionToExpression(ctx, value.right);
 
-    switch (value.operator) {
-        case TokenType.PLUS:
-            return ctx.type_operations[type].add(coerced_left, coerced_right);
-        case TokenType.MINUS:
-            return ctx.type_operations[type].sub(coerced_left, coerced_right);
-        case TokenType.STAR:
-            return ctx.type_operations[type].mul(coerced_left, coerced_right);
-        case TokenType.SLASH:
-            return ctx.type_operations[type].div(coerced_left, coerced_right);
-        case TokenType.EQUALS:
-            return ctx.type_operations[type].eq(coerced_left, coerced_right);
-        case TokenType.NOT_EQUALS:
-            return ctx.type_operations[type].ne(coerced_left, coerced_right);
-        case TokenType.LESS_THAN:
-            return ctx.type_operations[type].lt(coerced_left, coerced_right);
-        case TokenType.LESS_THAN_EQUALS:
-            return ctx.type_operations[type].lte(coerced_left, coerced_right);
-        case TokenType.GREATER_THAN:
-            return ctx.type_operations[type].gt(coerced_left, coerced_right);
-        case TokenType.GREATER_THAN_EQUALS:
-            return ctx.type_operations[type].gte(coerced_left, coerced_right);
-    }
-
-    if (type === TYPES.i32 || type === TYPES.i64) {
-        switch (value.operator) {
-            case TokenType.BITSHIFT_LEFT:
-                return ctx.type_operations[type].shl!(coerced_left, coerced_right);
-            case TokenType.BITSHIFT_RIGHT:
-                return ctx.type_operations[type].shr!(coerced_left, coerced_right);
-            case TokenType.MODULUS:
-                return ctx.type_operations[type].mod!(coerced_left, coerced_right);
-            case TokenType.BITWISE_OR:
-                return ctx.type_operations[type].or!(coerced_left, coerced_right);
-            case TokenType.BITWISE_XOR:
-                return ctx.type_operations[type].xor!(coerced_left, coerced_right);
-            case TokenType.BITWISE_AND:
-                return ctx.type_operations[type].and!(coerced_left, coerced_right);
-        }
-    }
-
-    throw new Error(`Unknown binary operator: ${value.operator}`);
+    const operator = getBinaryOperator(ctx, left.type, value.operator);
+    return operator(left, right);
 }
 
 function logicalExpressionToExpression(
     ctx: Context,
     value: LogicalExpression
 ): ExpressionInformation {
-    const left = expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.left),
-        right = expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.right);
+    const left = expressionToExpression(
+            updateExpected(ctx, { classification: "primitive", name: "i32" }),
+            value.left
+        ),
+        right = expressionToExpression(
+            updateExpected(ctx, { classification: "primitive", name: "i32" }),
+            value.right
+        );
 
     switch (value.operator) {
         case TokenType.LOGICAL_OR:
@@ -337,7 +345,7 @@ function logicalExpressionToExpression(
                     ctx.mod.i32.ne(right.ref, ctx.mod.i32.const(0))
                 ),
                 expression: binaryen.ExpressionIds.If,
-                type: TYPES.i32
+                type: { classification: "primitive", name: "i32" }
             };
         case TokenType.LOGICAL_AND:
             return {
@@ -347,7 +355,7 @@ function logicalExpressionToExpression(
                     ctx.mod.i32.ne(right.ref, ctx.mod.i32.const(0))
                 ),
                 expression: binaryen.ExpressionIds.If,
-                type: TYPES.i32
+                type: { classification: "primitive", name: "i32" }
             };
     }
 
@@ -358,102 +366,51 @@ function assignmentExpressionToExpression(
     ctx: Context,
     value: AssignmentExpression
 ): ExpressionInformation {
-    const expr = expressionToExpression(
-        updateExpected(ctx, lookForVariable(ctx, value.left.name)),
-        value.right
-    );
-    const variable = lookForVariable(ctx, value.left.name);
+    const variable = unwrapPossibleMemberExpression(ctx, value.left);
 
-    let operation: keyof (typeof ctx.type_operations)[number] | false = false;
-    switch (value.operator) {
-        case "=":
-            break;
-        case "+=":
-            operation = "add";
-            break;
-        case "-=":
-            operation = "sub";
-            break;
-        case "*=":
-            operation = "mul";
-            break;
-        case "/=":
-            operation = "div";
-            break;
-        case "%=":
-            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
-                throw new Error("Cannot perform modulo on floats");
-            operation = "mod";
-            break;
-        case "<<=":
-            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
-                throw new Error("Cannot bit shift floats");
-            operation = "shl";
-            break;
-        case ">>=":
-            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
-                throw new Error("Cannot bit shift floats");
-            operation = "shr";
-            break;
-        case "|=":
-            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
-                throw new Error("Cannot bitwise or floats");
-            operation = "or";
-            break;
-        case "^=":
-            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
-                throw new Error("Cannot xor floats");
-            operation = "xor";
-            break;
-        case "&=":
-            if (variable.type === TYPES.f32 || variable.type === TYPES.f64)
-                throw new Error("Cannot bitwise and floats");
-            operation = "and";
-            break;
-    }
+    const expr = expressionToExpression(updateExpected(ctx, variable.type), value.right);
+    if (value.operator === "=") return variable.set(expr);
+    if (variable.type.classification !== "primitive")
+        throw new Error("Cannot use operator assignment on non-primitive type");
 
-    const ref = ctx.mod.local.tee(
-        variable.index,
-        !operation
-            ? expr.ref
-            : ctx.type_operations[expr.type][operation]!(
-                  // todo: this shouldn't be done inline
-                  {
-                      ref: ctx.mod.local.get(variable.index, variable.type),
-                      expression: binaryen.ExpressionIds.LocalGet,
-                      type: variable.type
-                  },
-                  expr
-              ).ref,
-        variable.type
-    );
+    const operation = value.operator.slice(0, -1) as BinaryOperator;
+    const operator = getBinaryOperator(ctx, variable.type, operation);
 
-    return { ref, type: variable.type, expression: binaryen.ExpressionIds.LocalSet };
+    return variable.set(operator(variable.get(), expr));
 }
 
 function callExpressionToExpression(ctx: Context, value: CallExpression): ExpressionInformation {
-    const fn = ctx.functions.get(value.callee.name);
+    const function_name = value.callee.name;
+    const fn = ctx.functions.get(function_name);
     const args = value.arguments.map((arg, i) =>
         expressionToExpression(updateExpected(ctx, fn?.params[i]), arg)
     );
 
-    if (isFunctionOperator(value.callee.name)) {
-        return handleFunctionOperator(ctx, value.callee.name, args);
-    } else if (!fn) throw new Error(`Unknown function: ${value.callee.name}`);
+    const primary_argument = args?.[0].type.name;
+    if (intrinsic_names.has(function_name)) {
+        if (!primary_argument) throw new Error("Intrinsic must have primary argument");
+        const intrinsic =
+            ctx.intrinsics[primary_argument][function_name as keyof IntrinsicHandlers];
+        if (!intrinsic)
+            throw new Error(`Intrinsic ${function_name} not defined for ${primary_argument}`);
+        return intrinsic(args[0], args[1]);
+    } else if (function_name in ctx.conversions[primary_argument]) {
+        return ctx.conversions[primary_argument][function_name](args[0]);
+    } else if (!fn) throw new Error(`Unknown function: ${function_name}`);
 
     return {
         ref: ctx.mod.call(
-            value.callee.name,
+            function_name,
             args.map((arg) => arg.ref),
-            fn.results.type
+            typeInformationToBinaryen(fn.results)
         ),
-        type: fn.results.type,
+        type: fn.results,
         expression: binaryen.ExpressionIds.Call
     };
 }
 
 function ifExpressionToExpression(ctx: Context, value: IfExpression): ExpressionInformation {
-    const condition = expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.test);
+    const condition = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test);
     const true_branch = expressionToExpression(ctx, value.consequent);
     const false_branch = value.alternate && expressionToExpression(ctx, value.alternate);
 
@@ -486,8 +443,8 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
     const test =
         value.test &&
         (value.test.type === "EmptyExpression"
-            ? { type: TYPES.i32, ref: ctx.mod.i32.const(1) }
-            : expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.test));
+            ? { type: ctx.types.i32, ref: ctx.mod.i32.const(1) }
+            : expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test));
 
     const update = value.update && expressionToExpression(ctx, value.update);
     const body = expressionToExpression(ctx, value.body);
@@ -519,7 +476,11 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
     ctx.stacks.break.pop();
     ctx.stacks.continue.pop();
 
-    return { ref, type: TYPES.void, expression: binaryen.ExpressionIds.Block };
+    return {
+        ref,
+        type: { classification: "primitive", name: "void" },
+        expression: binaryen.ExpressionIds.Block
+    };
 }
 
 function doWhileExpressionToExpression(
@@ -534,10 +495,10 @@ function doWhileExpressionToExpression(
 
     const body = expressionToExpression(ctx, value.body);
     const test = value.test
-        ? expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.test)
+        ? expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test)
         : {
               ref: ctx.mod.i32.const(0),
-              type: TYPES.i32
+              type: ctx.types.i32
           };
 
     const ref = ctx.mod.loop(
@@ -551,7 +512,11 @@ function doWhileExpressionToExpression(
     ctx.stacks.break.pop();
     ctx.stacks.continue.pop();
 
-    return { ref, type: TYPES.void, expression: binaryen.ExpressionIds.Loop };
+    return {
+        ref,
+        type: { classification: "primitive", name: "void" },
+        expression: binaryen.ExpressionIds.Loop
+    };
 }
 
 function whileExpressionToExpression(ctx: Context, value: WhileExpression): ExpressionInformation {
@@ -561,7 +526,7 @@ function whileExpressionToExpression(ctx: Context, value: WhileExpression): Expr
     ctx.stacks.continue.push(while_loop_body_block);
     ctx.stacks.depth++;
 
-    const test = expressionToExpression(updateExpected(ctx, { type: TYPES.i32 }), value.test);
+    const test = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test);
     const body = expressionToExpression(ctx, value.body);
 
     const ref = ctx.mod.if(
@@ -582,7 +547,7 @@ function whileExpressionToExpression(ctx: Context, value: WhileExpression): Expr
 
     return {
         ref,
-        type: TYPES.void,
+        type: { classification: "primitive", name: "void" },
         expression: binaryen.ExpressionIds.If
     };
 }
@@ -592,12 +557,15 @@ function blockExpressionToExpression(ctx: Context, value: BlockExpression): Expr
     const block = `Block$${ctx.stacks.depth}`;
     ctx.stacks.depth++;
 
-    const ref = ctx.mod.block(
-        block,
-        value.body.map((statement) => statementToExpression(ctx, statement).ref),
-        binaryen.auto
-    );
-    const type = binaryen.getExpressionType(ref);
+    const refs = [];
+    let type: TypeInformation = { classification: "primitive", name: "void" };
+    for (const statement of value.body) {
+        const expr = statementToExpression(ctx, statement);
+        refs.push(expr.ref);
+        type = expr.type ?? type;
+    }
+
+    const ref = ctx.mod.block(block, refs, binaryen.auto);
 
     return { ref, type, expression: binaryen.ExpressionIds.Block };
 }
@@ -610,7 +578,7 @@ function continueExpressionToExpression(
     if (!loop) throw new Error("Cannot continue outside of loop");
     return {
         ref: ctx.mod.br(loop),
-        type: TYPES.void,
+        type: { classification: "primitive", name: "void" },
         expression: binaryen.ExpressionIds.Break
     };
 }
@@ -621,11 +589,23 @@ function breakExpressionToExpression(ctx: Context, value: BreakExpression): Expr
     if (!block) throw new Error("Cannot break outside of a block");
     return {
         ref: ctx.mod.br(block),
-        type: TYPES.void,
+        type: { classification: "primitive", name: "void" },
         expression: binaryen.ExpressionIds.Break
     };
 }
 
 function emptyExpressionToExpression(ctx: Context, value: EmptyExpression): ExpressionInformation {
-    return { ref: ctx.mod.nop(), type: TYPES.void, expression: binaryen.ExpressionIds.Nop };
+    return {
+        ref: ctx.mod.nop(),
+        type: { classification: "primitive", name: "void" },
+        expression: binaryen.ExpressionIds.Nop
+    };
+}
+
+function memberExpressionToExpression(
+    ctx: Context,
+    value: MemberExpression
+): ExpressionInformation {
+    const variable = unwrapPossibleMemberExpression(ctx, value);
+    return variable.get();
 }
