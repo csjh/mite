@@ -1,0 +1,23 @@
+struct coord {
+    x: i32,
+    y: i32
+}
+
+struct locations {
+    home: coord,
+    work: coord
+}
+
+fn main(): i32 {
+    coord home;
+    home.x = 3;
+    home.y = 4;
+    coord work;
+    work.x = 5;
+    work.y = 6;
+    locations l;
+    l.home = home;
+    l.work = work;
+    l.work.y = 8;
+    return l.home.x + l.home.y + l.work.x + l.work.y;
+}
