@@ -1,10 +1,11 @@
 import { writeFileSync } from "node:fs";
 import { compile } from "../compiler.js";
 import assert from "node:assert";
+import { expect } from "bun:test";
 
 export function compileAndRun(
     program: string,
-    expected_output: string[] | number,
+    expected_output: string[] | number | "error",
     func: string = "main"
 ) {
     const compiled = compile(program);
@@ -20,6 +21,12 @@ export function compileAndRun(
             log: (x: number) => string_array_output.push(String(x))
         }
     });
+
+    if (expected_output === "error") {
+        // @ts-expect-error
+        assert.throws(() => instance.exports[func]());
+        return;
+    }
 
     // @ts-expect-error
     const number = instance.exports[func]();

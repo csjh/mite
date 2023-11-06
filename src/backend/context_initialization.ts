@@ -956,7 +956,7 @@ function detectCycles(adj_list: Map<string, Set<string>>): Error | null {
         while (stack.length > 0) {
             const vertex = stack.pop()!;
             if (visited.has(vertex)) {
-                return new Error(`Struct dependency cycle detected: ${vertex}`);
+                return new Error(`Struct dependency cycle detected: ${vertex} uses itself`);
             }
             visited.add(vertex);
             seen.add(vertex);
@@ -973,16 +973,17 @@ function topologicalSort(adj_list: Map<string, Set<string>>): string[] {
     const L: string[] = [];
 
     const has_incoming_edge = new Set(Array.from(adj_list.values(), (x) => Array.from(x)).flat());
-    const S = new Set<string>(Array.from(adj_list.keys()).filter((x) => !has_incoming_edge.has(x)));
+    const S = Array.from(adj_list.keys()).filter((x) => !has_incoming_edge.has(x));
 
-    while (S.size) {
-        const n = S.values().next().value;
-        S.delete(n);
+    // awful efficiency, should reverse the adjacency list and use a real queue
+    // doesn't matter though because small N
+    while (S.length) {
+        const n = S.shift()!;
         L.push(n);
         for (const m of adj_list.get(n)!) {
             adj_list.get(n)!.delete(m);
-            if (!adj_list.get(m)!.size) {
-                S.add(m);
+            if (!Array.from(adj_list.values()).some((x) => x.has(m))) {
+                S.push(m);
             }
         }
     }

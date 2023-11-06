@@ -614,11 +614,9 @@ export class Parser {
         this.expectToken(TokenType.LEFT_PAREN);
         this.idx++;
 
-        while (true) {
+        while (this.token.type !== TokenType.RIGHT_PAREN && ++this.idx) {
             const argument = this.parseExpression();
             call_expression.arguments.push(argument);
-            if (this.token.type === TokenType.RIGHT_PAREN) break;
-            this.idx++;
         }
 
         this.expectToken(TokenType.RIGHT_PAREN);
