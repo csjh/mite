@@ -8,7 +8,7 @@ struct locations {
     work: coord
 }
 
-fn main(): i32 {
+export fn main(): i32 {
     coord home;
     home.x = 3;
     home.y = 4;

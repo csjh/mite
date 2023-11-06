@@ -39,7 +39,8 @@ import type {
     BreakExpression,
     LogicalExpression,
     EmptyExpression,
-    MemberExpression
+    MemberExpression,
+    Declaration
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import { AllocationLocation, MiteType, Primitive, Struct } from "./type_classes.js";
@@ -76,6 +77,7 @@ export function programToModule(
 
     ctx.functions = new Map(
         program.body
+            .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
             .filter((x): x is FunctionDeclaration => x.type === "FunctionDeclaration")
             .map(({ id, params, returnType }) => [
                 id.name,
@@ -95,20 +97,43 @@ export function programToModule(
 
     for (const node of program.body) {
         switch (node.type) {
+            case "ExportNamedDeclaration":
             case "FunctionDeclaration":
-                buildFunctionDeclaration(ctx, node);
-                break;
             case "StructDeclaration":
-                // struct declarations don't carry any runtime weight
+                handleDeclaration(ctx, node);
                 break;
+            default:
+                throw new Error(`Unknown node type: ${node.type}`);
         }
     }
 
-    for (const key of ctx.functions.keys()) {
-        ctx.mod.addFunctionExport(key, key);
-    }
-
     return ctx.mod;
+}
+
+function handleDeclaration(ctx: Context, node: Declaration): void {
+    switch (node.type) {
+        case "ExportNamedDeclaration":
+            handleDeclaration(ctx, node.declaration);
+            const { declaration } = node;
+            if (declaration.type === "FunctionDeclaration") {
+                ctx.mod.addFunctionExport(declaration.id.name, declaration.id.name);
+            } else if (declaration.type === "VariableDeclaration") {
+                for (const { id } of declaration.declarations) {
+                    ctx.mod.addGlobalExport(id.name, id.name);
+                }
+            } else if (declaration.type === "StructDeclaration") {
+                // struct exports don't carry any runtime weight
+            } else {
+                throw new Error(`Unknown export type: ${declaration.type}`);
+            }
+            break;
+        case "FunctionDeclaration":
+            buildFunctionDeclaration(ctx, node);
+            break;
+        case "StructDeclaration":
+            // struct declarations don't carry any runtime weight
+            break;
+    }
 }
 
 function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void {

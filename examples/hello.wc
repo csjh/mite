@@ -4,7 +4,7 @@ fn divide(a: i32, b: i32): f32 {
     return c / d;
 }
 
-fn main(): f32 {
+export fn main(): f32 {
     i32 hundred = 100;
     log_i32(hundred);
 

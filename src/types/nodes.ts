@@ -184,7 +184,11 @@ export interface DebuggerStatement extends BaseStatement {
     type: "DebuggerStatement";
 }
 
-export type Declaration = FunctionDeclaration | VariableDeclaration | StructDeclaration;
+export type Declaration =
+    | FunctionDeclaration
+    | VariableDeclaration
+    | StructDeclaration
+    | ExportNamedDeclaration;
 
 export interface BaseDeclaration extends BaseStatement {}
 
@@ -523,11 +527,7 @@ export interface MetaProperty extends BaseExpression {
     property: Identifier;
 }
 
-export type ModuleDeclaration =
-    | ImportDeclaration
-    | ExportNamedDeclaration
-    | ExportDefaultDeclaration
-    | ExportAllDeclaration;
+export type ModuleDeclaration = ImportDeclaration | ExportNamedDeclaration | ExportAllDeclaration;
 export interface BaseModuleDeclaration extends BaseNode {}
 
 export type ModuleSpecifier =
@@ -565,19 +565,12 @@ export interface ImportNamespaceSpecifier extends BaseModuleSpecifier {
 
 export interface ExportNamedDeclaration extends BaseModuleDeclaration {
     type: "ExportNamedDeclaration";
-    declaration?: Declaration | null | undefined;
-    specifiers: ExportSpecifier[];
-    source?: Literal | null | undefined;
+    declaration: Declaration;
 }
 
 export interface ExportSpecifier extends BaseModuleSpecifier {
     type: "ExportSpecifier";
     exported: Identifier;
-}
-
-export interface ExportDefaultDeclaration extends BaseModuleDeclaration {
-    type: "ExportDefaultDeclaration";
-    declaration: Declaration | Expression;
 }
 
 export interface ExportAllDeclaration extends BaseModuleDeclaration {

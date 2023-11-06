@@ -1,4 +1,4 @@
-fn main(): void {
+export fn main(): void {
     i32 eye32 = 1;
     eye32 = 2;
     eye32 += 1;

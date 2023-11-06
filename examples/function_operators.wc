@@ -1,4 +1,4 @@
-fn main(): void {
+export fn main(): void {
     i32 one = 1;
 
     i32 example_num = 16;

@@ -6,7 +6,7 @@ import { compileAndRun } from "./utils.js";
 describe("for loops should work", () => {
     it("should compile and run", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (i32 i = 0; i < 10; i = i + 1) {
                 sum = sum + i;
@@ -22,7 +22,7 @@ describe("for loops should work", () => {
 describe("for loops should work with expressions", () => {
     it("should allow a variable assignment in the initializer", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             i32 i;
             for (i = 0; i < 10; i = i + 1) {
@@ -37,7 +37,7 @@ describe("for loops should work with expressions", () => {
 
     it("should allow a block expression in the update", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (i32 i = 0; i < 10; { i = i + 1; }) {
                 sum = sum + i;
@@ -51,7 +51,7 @@ describe("for loops should work with expressions", () => {
 
     it("should allow a block expression in the body", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (i32 i = 0; i < 10; i = i + 1) {
                 {
@@ -67,7 +67,7 @@ describe("for loops should work with expressions", () => {
 
     it("should allow an empty everything", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (;;) {break;};
             return sum;
@@ -77,7 +77,7 @@ describe("for loops should work with expressions", () => {
         compileAndRun(program, 0);
 
         const program2 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (;;) {
                 sum = sum + 1;
@@ -94,7 +94,7 @@ describe("for loops should work with expressions", () => {
 
     it("should work fine with break", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (i32 i = 0; i < 10; i = i + 1) {
                 sum = sum + i;
@@ -109,7 +109,7 @@ describe("for loops should work with expressions", () => {
         compileAndRun(program, 15);
 
         const program2 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (;;) {
                 sum = sum + 1;
@@ -124,7 +124,7 @@ describe("for loops should work with expressions", () => {
         compileAndRun(program2, 10);
 
         const program3 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (;;) {
                 sum = sum + 1;
@@ -147,7 +147,7 @@ describe("for loops should work with expressions", () => {
 
     it("should work fine with continue", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (i32 i = 0; i < 10; i = i + 1) {
                 if (i == 5) {
@@ -162,7 +162,7 @@ describe("for loops should work with expressions", () => {
         compileAndRun(program, 40);
 
         const program2 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (i32 i = 0; i < 100; i = i + 1) {
                 if (i % 10) {
@@ -177,7 +177,7 @@ describe("for loops should work with expressions", () => {
         compileAndRun(program2, 450);
 
         const program3 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             for (i32 i = 0; i < 100; i = i + 1) {
                 if (i % 10) {

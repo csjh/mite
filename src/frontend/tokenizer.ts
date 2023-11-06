@@ -167,6 +167,9 @@ export function tokenize(input: string): Token[] {
                     case "struct":
                         token = { type: TokenType.STRUCT, value: "struct" };
                         break;
+                    case "export":
+                        token = { type: TokenType.EXPORT, value: "export" };
+                        break;
                 }
                 break;
             case TokenType.PLUS:

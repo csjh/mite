@@ -6,7 +6,7 @@ import { compileAndRun } from "./utils.js";
 describe("do while loops should work", () => {
     it("should compile and run", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             i32 i = 0;
             do {
@@ -24,7 +24,7 @@ describe("do while loops should work", () => {
 describe("do while loops should work with expressions", () => {
     it("should allow a block expression in the test", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             i32 i = 0;
             do {
@@ -40,7 +40,7 @@ describe("do while loops should work with expressions", () => {
 
     it("should allow a block expression in the body", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             i32 i = 0;
             do {
@@ -58,7 +58,7 @@ describe("do while loops should work with expressions", () => {
 
     it("should allow an empty everything", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             do {} while (0);
             return sum;
@@ -69,7 +69,7 @@ describe("do while loops should work with expressions", () => {
         compileAndRun(program, 0);
 
         const program2 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             do {
                 sum = sum + 1;
@@ -87,7 +87,7 @@ describe("do while loops should work with expressions", () => {
 
     it("should work fine with break", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             i32 i = 0;
             do {
@@ -104,7 +104,7 @@ describe("do while loops should work with expressions", () => {
         compileAndRun(program, 15);
 
         const program2 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             do {
                 sum = sum + 1;
@@ -119,7 +119,7 @@ describe("do while loops should work with expressions", () => {
         compileAndRun(program2, 10);
 
         const program3 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             do {
                 sum = sum + 1;
@@ -142,7 +142,7 @@ describe("do while loops should work with expressions", () => {
 
     it("should work fine with continue", () => {
         const program = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             i32 i = 0;
             do {
@@ -159,7 +159,7 @@ describe("do while loops should work with expressions", () => {
         compileAndRun(program, 45);
 
         const program2 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             i32 i = 0;
             do {
@@ -176,7 +176,7 @@ describe("do while loops should work with expressions", () => {
         compileAndRun(program2, 550);
 
         const program3 = `
-        fn main(): i32 {
+        export fn main(): i32 {
             i32 sum = 0;
             i32 i = 0;
             do {

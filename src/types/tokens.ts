@@ -48,6 +48,7 @@ export enum TokenType {
     ASSIGNMENT_BITWISE_AND = "&=",
 
     FN = "fn",
+    EXPORT = "export",
     STRUCT = "struct",
     RETURN = "return",
     IF = "if",

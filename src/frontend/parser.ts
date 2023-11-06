@@ -31,7 +31,9 @@ import type {
     LogicalExpression,
     StructDeclaration,
     StructField,
-    MemberExpression
+    MemberExpression,
+    ExportNamedDeclaration,
+    Declaration
 } from "../types/nodes.js";
 
 export class Parser {
@@ -55,12 +57,13 @@ export class Parser {
         // only functions can be top level right now
         $: while (this.idx < this.tokens.length) {
             switch (this.token.type) {
+                case TokenType.EXPORT:
+                    program.body.push(this.parseExport());
+                    break;
                 case TokenType.FN:
-                    this.idx++;
                     program.body.push(this.parseFunction());
                     break;
                 case TokenType.STRUCT:
-                    this.idx++;
                     program.body.push(this.parseStruct());
                     break;
                 default:
@@ -73,6 +76,28 @@ export class Parser {
         return program;
     }
 
+    private parseExport(): ExportNamedDeclaration {
+        this.expectToken(TokenType.EXPORT);
+        this.idx++;
+
+        let declaration: Declaration;
+        switch (this.token.type) {
+            case TokenType.FN:
+                declaration = this.parseFunction();
+                break;
+            case TokenType.STRUCT:
+                declaration = this.parseStruct();
+                break;
+            default:
+                throw new Error(`Unknown export type: ${this.token.value}`);
+        }
+
+        return {
+            type: "ExportNamedDeclaration",
+            declaration
+        };
+    }
+
     /*
     struct Coordinate {
         x: i32,
@@ -80,6 +105,9 @@ export class Parser {
     }
     */
     private parseStruct(): StructDeclaration {
+        this.expectToken(TokenType.STRUCT);
+        this.idx++;
+
         this.expectToken(TokenType.IDENTIFIER);
         const name = this.tokens[this.idx++].value;
 
@@ -139,8 +167,10 @@ export class Parser {
     }
     */
     private parseFunction(): FunctionDeclaration {
-        this.expectToken(TokenType.IDENTIFIER);
+        this.expectToken(TokenType.FN);
+        this.idx++;
 
+        this.expectToken(TokenType.IDENTIFIER);
         const name = this.tokens[this.idx++].value;
 
         this.expectToken(TokenType.LEFT_PAREN);
@@ -614,7 +644,7 @@ export class Parser {
         this.expectToken(TokenType.LEFT_PAREN);
         this.idx++;
 
-        while (this.token.type !== TokenType.RIGHT_PAREN && ++this.idx) {
+        while (this.token.type !== TokenType.RIGHT_PAREN) {
             const argument = this.parseExpression();
             call_expression.arguments.push(argument);
         }
