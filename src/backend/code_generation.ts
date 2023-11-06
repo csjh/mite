@@ -380,7 +380,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): Expres
         expressionToExpression(updateExpected(ctx, fn?.params[i]), arg)
     );
 
-    const primary_argument = args?.[0].type.name;
+    const primary_argument = args[0]?.type.name;
     if (intrinsic_names.has(function_name)) {
         if (!primary_argument) throw new Error("Intrinsic must have primary argument");
         const intrinsic =
@@ -388,7 +388,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): Expres
         if (!intrinsic)
             throw new Error(`Intrinsic ${function_name} not defined for ${primary_argument}`);
         return intrinsic(args[0], args[1]);
-    } else if (function_name in ctx.conversions[primary_argument]) {
+    } else if (ctx.conversions[primary_argument]?.[function_name]) {
         return ctx.conversions[primary_argument][function_name](args[0]);
     } else if (!fn) throw new Error(`Unknown function: ${function_name}`);
 
