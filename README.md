@@ -17,8 +17,6 @@ Mite was made to accompany my learning during my introduction to C university co
 
 > In no particular order
 
--   [ ] Stack
--   [ ] Structs
 -   [ ] SIMD
 -   [ ] 0-copy Mite -> Javascript Interop
 -   [ ] Javascript Helper Mode
