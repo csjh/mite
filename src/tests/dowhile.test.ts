@@ -64,7 +64,6 @@ describe("do while loops should work with expressions", () => {
             return sum;
         }
         `;
-        console.log("first");
 
         compileAndRun(program, 0);
 
@@ -80,7 +79,6 @@ describe("do while loops should work with expressions", () => {
             return sum;
         }
         `;
-        console.log("second");
 
         compileAndRun(program2, 10);
     });

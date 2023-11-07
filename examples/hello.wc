@@ -4,7 +4,7 @@ fn divide(a: i32, b: i32): f32 {
     return c / d;
 }
 
-export fn main(): f32 {
+export fn main(): f64 {
     i32 hundred = 100;
     log_i32(hundred);
 
@@ -42,7 +42,5 @@ export fn main(): f32 {
 
     f64 blah = three_halves * big_double_literal;
 
-    f64 ffsixtyfour = f64(sum);
-
-    return f32(ffsixtyfour + three_halves - blah);
+    return f64(sum) + three_halves - blah;
 }

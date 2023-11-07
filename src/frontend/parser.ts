@@ -33,8 +33,42 @@ import type {
     StructField,
     MemberExpression,
     ExportNamedDeclaration,
-    Declaration
+    Declaration,
+    EmptyExpression,
+    ContinueExpression,
+    BreakExpression
 } from "../types/nodes.js";
+
+const precedence = [
+    new Set([TokenType.STAR, TokenType.SLASH, TokenType.MODULUS]),
+    new Set([TokenType.PLUS, TokenType.MINUS]),
+    new Set([TokenType.BITSHIFT_LEFT, TokenType.BITSHIFT_RIGHT]),
+    new Set([
+        TokenType.LESS_THAN,
+        TokenType.LESS_THAN_EQUALS,
+        TokenType.GREATER_THAN,
+        TokenType.GREATER_THAN_EQUALS
+    ]),
+    new Set([TokenType.EQUALS, TokenType.NOT_EQUALS]),
+    new Set([TokenType.BITWISE_AND]),
+    new Set([TokenType.BITWISE_XOR]),
+    new Set([TokenType.BITWISE_OR]),
+    new Set([TokenType.LOGICAL_AND]),
+    new Set([TokenType.LOGICAL_OR]),
+    new Set([
+        TokenType.ASSIGNMENT,
+        TokenType.ASSIGNMENT_PLUS,
+        TokenType.ASSIGNMENT_MINUS,
+        TokenType.ASSIGNMENT_SLASH,
+        TokenType.ASSIGNMENT_STAR,
+        TokenType.ASSIGNMENT_BITSHIFT_LEFT,
+        TokenType.ASSIGNMENT_BITSHIFT_RIGHT,
+        TokenType.ASSIGNMENT_MODULUS,
+        TokenType.ASSIGNMENT_BITWISE_OR,
+        TokenType.ASSIGNMENT_BITWISE_XOR,
+        TokenType.ASSIGNMENT_BITWISE_AND
+    ])
+];
 
 export class Parser {
     idx: number;
@@ -338,6 +372,9 @@ export class Parser {
     }
 
     private parseSequenceExpression(): SequenceExpression {
+        this.expectToken(TokenType.LEFT_PAREN);
+        this.idx++;
+
         const expression: SequenceExpression = {
             type: "SequenceExpression",
             expressions: []
@@ -347,6 +384,9 @@ export class Parser {
             const node = this.parseExpression();
             expression.expressions.push(node);
         } while (this.token.type === TokenType.COMMA && ++this.idx);
+
+        this.expectToken(TokenType.RIGHT_PAREN);
+        this.idx++;
 
         return expression;
     }
@@ -465,47 +505,195 @@ export class Parser {
         }
     }
 
+    private isExpression(
+        operator_or_expression: unknown
+    ): asserts operator_or_expression is Expression {
+        if (
+            !(
+                typeof operator_or_expression === "object" &&
+                operator_or_expression !== null &&
+                "type" in operator_or_expression
+            )
+        ) {
+            throw new Error("Expected expression");
+        }
+    }
+
     private parseExpression(): Expression {
-        // expressions that start with a keyword (e.g. for, if)
-        switch (this.token.type) {
-            case TokenType.SEMICOLON:
-            case TokenType.RIGHT_PAREN: // these are both for for loops
-                return { type: "EmptyExpression" };
-            case TokenType.IF:
-                return this.parseIfExpression();
-            case TokenType.LEFT_BRACE:
-                return this.parseBlock();
-            case TokenType.LEFT_PAREN:
-                this.idx++;
-                const expression = this.parseSequenceExpression();
-                this.expectToken(TokenType.RIGHT_PAREN);
-                this.idx++;
-                return expression;
-            case TokenType.FOR:
-                return this.parseForExpression();
-            case TokenType.DO:
-                return this.parseDoWhileLoop();
-            case TokenType.WHILE:
-                return this.parseWhileLoop();
-            case TokenType.CONTINUE:
-                this.idx++;
-                return { type: "ContinueExpression" };
-            case TokenType.BREAK:
-                this.idx++;
-                return { type: "BreakExpression" };
-            default:
-                break;
+        let expression_stack: (
+            | Expression
+            | BinaryOperator
+            | AssignmentOperator
+            | LogicalOperator
+        )[] = [];
+
+        expressions: while (true) {
+            switch (this.token.type) {
+                case TokenType.SEMICOLON:
+                case TokenType.RIGHT_PAREN: // these are both for for loops
+                    expression_stack.push(this.parseEmptyExpression());
+                    break;
+                case TokenType.IF:
+                    expression_stack.push(this.parseIfExpression());
+                    break;
+                case TokenType.LEFT_BRACE:
+                    expression_stack.push(this.parseBlock());
+                    break;
+                case TokenType.LEFT_PAREN:
+                    expression_stack.push(this.parseSequenceExpression());
+                    break;
+                case TokenType.FOR:
+                    expression_stack.push(this.parseForExpression());
+                    break;
+                case TokenType.DO:
+                    expression_stack.push(this.parseDoWhileLoop());
+                    break;
+                case TokenType.WHILE:
+                    expression_stack.push(this.parseWhileLoop());
+                    break;
+                case TokenType.CONTINUE:
+                    expression_stack.push(this.parseContinueExpression());
+                    break;
+                case TokenType.BREAK:
+                    expression_stack.push(this.parseBreakExpression());
+                    break;
+                case TokenType.NUMBER:
+                    expression_stack.push(this.getLiteral());
+                    break;
+                case TokenType.IDENTIFIER:
+                    const next = this.getIdentifier();
+                    // @ts-expect-error
+                    if (this.token.type === TokenType.LEFT_PAREN) {
+                        expression_stack.push(this.parseCallExpression(next));
+                        // @ts-expect-error
+                    } else if (this.token.type === TokenType.PERIOD) {
+                        expression_stack.push(this.parseMemberExpression(next));
+                    } else {
+                        expression_stack.push(next);
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            switch (this.token.type) {
+                case TokenType.SEMICOLON:
+                case TokenType.RIGHT_PAREN: // end of a function call
+                case TokenType.COMMA: // right now commas in function call
+                case TokenType.ELSE: // end of an if statement
+                case TokenType.WHILE: // end of a do/while loop body
+                    break expressions;
+                case TokenType.ASSIGNMENT:
+                case TokenType.ASSIGNMENT_BITSHIFT_LEFT:
+                case TokenType.ASSIGNMENT_BITSHIFT_RIGHT:
+                case TokenType.ASSIGNMENT_BITWISE_AND:
+                case TokenType.ASSIGNMENT_BITWISE_OR:
+                case TokenType.ASSIGNMENT_BITWISE_XOR:
+                case TokenType.ASSIGNMENT_MINUS:
+                case TokenType.ASSIGNMENT_MODULUS:
+                case TokenType.ASSIGNMENT_PLUS:
+                case TokenType.ASSIGNMENT_SLASH:
+                case TokenType.ASSIGNMENT_STAR:
+                case TokenType.PLUS:
+                case TokenType.MINUS:
+                case TokenType.SLASH:
+                case TokenType.STAR:
+                case TokenType.EQUALS:
+                case TokenType.NOT_EQUALS:
+                case TokenType.LESS_THAN:
+                case TokenType.LESS_THAN_EQUALS:
+                case TokenType.GREATER_THAN:
+                case TokenType.GREATER_THAN_EQUALS:
+                case TokenType.BITSHIFT_LEFT:
+                case TokenType.BITSHIFT_RIGHT:
+                case TokenType.MODULUS:
+                case TokenType.BITWISE_OR:
+                case TokenType.BITWISE_XOR:
+                case TokenType.BITWISE_AND:
+                case TokenType.LOGICAL_AND:
+                case TokenType.LOGICAL_OR:
+                    expression_stack.push(this.token.type);
+                    this.idx++;
+                    break;
+                default:
+                    throw new Error(`Expected operator, got: ${this.token.value}`);
+            }
         }
 
-        // expressions that start with an identifier or literal (e.g. func(), 1 + 1, x = 5)
-        const next = this.getIdentifierOrLiteral();
+        for (const operators of precedence) {
+            // assignment operators are right to left
+            const RIGHT_TO_LEFT = operators === precedence[precedence.length - 1];
 
-        switch (this.token.value) {
-            case TokenType.SEMICOLON:
-            case TokenType.COMMA: // right now commas in function call
-            case TokenType.RIGHT_PAREN: // end of a function call
-            case TokenType.ELSE: // end of an if statement
-                return next;
+            const new_stack: typeof expression_stack = [];
+            if (!RIGHT_TO_LEFT) {
+                for (let i = 0; i < expression_stack.length; i += 2) {
+                    const left = expression_stack[i];
+                    this.isExpression(left);
+                    const operator = expression_stack[i + 1];
+                    // we're at the last element of the array
+                    if (typeof operator === "undefined") {
+                        new_stack.push(left);
+                        break;
+                    }
+                    if (typeof operator !== "string") throw new Error("Expected operator");
+
+                    if (operators.has(operator)) {
+                        const right = expression_stack[i + 2];
+                        this.isExpression(right);
+
+                        expression_stack[i + 2] = this.constructBinaryExpression(
+                            left,
+                            operator,
+                            right
+                        );
+                    } else {
+                        new_stack.push(left);
+                        new_stack.push(operator);
+                    }
+                }
+            } else {
+                for (let i = expression_stack.length - 1; i >= 0; i -= 2) {
+                    const right = expression_stack[i];
+                    this.isExpression(right);
+                    const operator = expression_stack[i - 1];
+                    // we're at the last element of the array
+                    if (typeof operator === "undefined") {
+                        new_stack.push(right);
+                        break;
+                    }
+                    if (typeof operator !== "string") throw new Error("Expected operator");
+
+                    if (operators.has(operator)) {
+                        const left = expression_stack[i - 2];
+                        this.isExpression(left);
+
+                        expression_stack[i - 2] = this.constructBinaryExpression(
+                            left,
+                            operator,
+                            right
+                        );
+                    } else {
+                        new_stack.push(right);
+                        new_stack.push(operator);
+                    }
+                }
+            }
+
+            expression_stack = new_stack;
+            if (expression_stack.length === 1) {
+                return expression_stack[0] as Expression;
+            }
+        }
+
+        throw new Error(`Something is weird in this array: ${expression_stack.join(" | ")}`);
+    }
+
+    private constructBinaryExpression(
+        left: Expression,
+        operator: BinaryOperator | AssignmentOperator | LogicalOperator,
+        right: Expression
+    ): Expression {
+        switch (operator) {
             case TokenType.ASSIGNMENT:
             case TokenType.ASSIGNMENT_BITSHIFT_LEFT:
             case TokenType.ASSIGNMENT_BITSHIFT_RIGHT:
@@ -517,9 +705,15 @@ export class Parser {
             case TokenType.ASSIGNMENT_PLUS:
             case TokenType.ASSIGNMENT_SLASH:
             case TokenType.ASSIGNMENT_STAR:
-                if (next.type !== "Identifier" && next.type !== "MemberExpression")
+                if (left.type !== "Identifier" && left.type !== "MemberExpression") {
                     throw new Error("Expected identifier, got literal");
-                return this.parseVariableDeclarationOrAssignment("assignment", next);
+                }
+                return {
+                    type: "AssignmentExpression",
+                    operator,
+                    left,
+                    right
+                } satisfies AssignmentExpression;
             case TokenType.PLUS:
             case TokenType.MINUS:
             case TokenType.SLASH:
@@ -536,71 +730,23 @@ export class Parser {
             case TokenType.BITWISE_OR:
             case TokenType.BITWISE_XOR:
             case TokenType.BITWISE_AND:
-                return this.parseBinaryExpression(next);
+                return {
+                    type: "BinaryExpression",
+                    operator,
+                    left,
+                    right
+                } satisfies BinaryExpression;
             case TokenType.LOGICAL_AND:
             case TokenType.LOGICAL_OR:
-                return this.parseLogicalExpression(next);
-            case TokenType.LEFT_PAREN:
-                if (next.type === "Identifier") return this.parseCallExpression(next);
+                return {
+                    type: "LogicalExpression",
+                    operator,
+                    left,
+                    right
+                } satisfies LogicalExpression;
             default:
-                throw new Error(`Unknown expression: ${this.token.value}`);
+                throw new Error(`Unknown operator: ${operator}`);
         }
-    }
-
-    private expectBinaryOperator(token: string): asserts token is BinaryOperator {
-        if (!BINARY_OPERATORS.has(token as BinaryOperator)) {
-            throw new Error(
-                `Expected binary operator in (${Array.from(BINARY_OPERATORS).join(
-                    ", "
-                )}), got ${token}`
-            );
-        }
-    }
-
-    private parseBinaryExpression(left: Expression): BinaryExpression {
-        const operator = this.token.value;
-        this.expectBinaryOperator(operator);
-        this.idx++;
-
-        const right = this.parseExpression();
-
-        return {
-            type: "BinaryExpression",
-            operator,
-            left,
-            right
-        };
-    }
-
-    private expectLogicalOperator(token: string): asserts token is LogicalOperator {
-        if (!["&&", "||"].includes(token)) {
-            throw new Error(`Expected logical operator, got ${token}`);
-        }
-    }
-
-    private parseLogicalExpression(left: Expression): LogicalExpression {
-        const operator = this.token.value;
-        this.expectLogicalOperator(operator);
-        this.idx++;
-
-        const right = this.parseExpression();
-
-        return {
-            type: "LogicalExpression",
-            operator,
-            left,
-            right
-        };
-    }
-
-    private getIdentifierOrLiteral(): Identifier | Literal | MemberExpression {
-        if (this.token.type === TokenType.IDENTIFIER) {
-            const identifier = this.getIdentifier();
-            // @ts-expect-error typescript can't tell the this.token getter could change i guess
-            if (this.token.type === TokenType.PERIOD) return this.parseMemberExpression(identifier);
-            return identifier;
-        } else if (this.token.type === TokenType.NUMBER) return this.getLiteral();
-        throw new Error(`Expected identifier or literal, got ${this.token.value}`);
     }
 
     private getIdentifier(): Identifier {
@@ -644,9 +790,13 @@ export class Parser {
         this.expectToken(TokenType.LEFT_PAREN);
         this.idx++;
 
-        while (this.token.type !== TokenType.RIGHT_PAREN) {
+        while (true) {
             const argument = this.parseExpression();
             call_expression.arguments.push(argument);
+
+            if (this.token.type === TokenType.RIGHT_PAREN) break;
+            this.expectToken(TokenType.COMMA);
+            this.idx++;
         }
 
         this.expectToken(TokenType.RIGHT_PAREN);
@@ -670,5 +820,21 @@ export class Parser {
         } while (this.token.type === TokenType.PERIOD);
 
         return object;
+    }
+
+    private parseEmptyExpression(): EmptyExpression {
+        return { type: "EmptyExpression" };
+    }
+
+    private parseContinueExpression(): ContinueExpression {
+        this.expectToken(TokenType.CONTINUE);
+        this.idx++;
+        return { type: "ContinueExpression" };
+    }
+
+    private parseBreakExpression(): BreakExpression {
+        this.expectToken(TokenType.BREAK);
+        this.idx++;
+        return { type: "BreakExpression" };
     }
 }
