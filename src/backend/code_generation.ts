@@ -412,7 +412,8 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): Expres
             ctx.intrinsics[primary_argument][function_name as keyof IntrinsicHandlers];
         if (!intrinsic)
             throw new Error(`Intrinsic ${function_name} not defined for ${primary_argument}`);
-        return intrinsic(args[0], args[1]);
+        // @ts-expect-error this is fine
+        return intrinsic(...args);
     } else if (ctx.conversions[primary_argument]?.[function_name]) {
         return ctx.conversions[primary_argument][function_name](args[0]);
     } else if (!fn) throw new Error(`Unknown function: ${function_name}`);
