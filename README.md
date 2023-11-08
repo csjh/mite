@@ -13,12 +13,12 @@ Mite was made to accompany my learning during my introduction to C university co
 -   Functions
 -   If, for, while, do-while expressions
 -   Stack-allocated structs
+-   First class SIMD support
 
 ## Roadmap
 
 > In no particular order
 
--   [ ] SIMD
 -   [ ] Arrays
 -   [ ] 0-copy Mite -> Javascript Interop
 -   [ ] Javascript Helper Mode
