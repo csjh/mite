@@ -96,11 +96,17 @@ export function createMiteType(
 ): MiteType {
     const type = ctx.types[type_name];
     if (type.classification === "primitive") {
-        const allocation_location =
-            typeof value_or_index === "number"
-                ? AllocationLocation.Local
-                : AllocationLocation.LinearMemory;
-        return new Primitive(ctx, type, allocation_location, value_or_index, offset);
+        if (typeof value_or_index !== "number") {
+            return new Primitive(
+                ctx,
+                type,
+                AllocationLocation.LinearMemory,
+                value_or_index,
+                offset
+            );
+        } else {
+            return new Primitive(ctx, type, AllocationLocation.Local, value_or_index, offset);
+        }
     } else if (type.classification === "struct") {
         if (typeof value_or_index === "number") {
             throw new Error("Cannot create struct with index");

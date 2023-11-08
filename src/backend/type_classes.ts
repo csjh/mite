@@ -106,6 +106,20 @@ export class Primitive implements MiteType {
         throw new Error("unreachable");
     }
 
+    public constructor(
+        ctx: Context,
+        type: TypeInformation,
+        allocation_location: AllocationLocation.LinearMemory,
+        pointer: ExpressionInformation,
+        offset: number
+    );
+    public constructor(
+        ctx: Context,
+        type: TypeInformation,
+        allocation_location: AllocationLocation.Local,
+        local_index: number,
+        offset: number
+    );
     constructor(
         private ctx: Context,
         public type: TypeInformation,
