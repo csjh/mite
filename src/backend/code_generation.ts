@@ -310,17 +310,34 @@ function literalToExpression(ctx: Context, value: Literal): ExpressionInformatio
     switch (type.name) {
         case "i32":
         case "u32":
+            if (typeof value.value === "object") throw new Error("Expected numerical literal");
             ref = ctx.mod.i32.const(Number(value.value));
             break;
         case "i64":
         case "u64":
+            if (typeof value.value === "object") throw new Error("Expected numerical literal");
             ref = ctx.mod.i64.const(...bigintToLowAndHigh(value.value));
             break;
         case "f32":
+            if (typeof value.value === "object") throw new Error("Expected numerical literal");
             ref = ctx.mod.f32.const(Number(value.value));
             break;
         case "f64":
+            if (typeof value.value === "object") throw new Error("Expected numerical literal");
             ref = ctx.mod.f64.const(Number(value.value));
+            break;
+        case "f32x4":
+        case "f64x2":
+        case "i64x2":
+        case "u64x2":
+        case "i32x4":
+        case "u32x4":
+        case "i16x8":
+        case "u16x8":
+        case "i8x16":
+        case "u8x16":
+            if (typeof value.value !== "object") throw new Error("Expected SIMD literal");
+            ref = ctx.mod.v128.const(value.value);
             break;
         default:
             throw new Error(`Unknown literal type: ${type}`);

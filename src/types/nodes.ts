@@ -396,9 +396,29 @@ export interface TypeIdentifier extends Identifier {
 
 export interface Literal extends BaseNode, BaseExpression {
     type: "Literal";
-    literalType: string;
-    value: number | bigint; // todo: add back string
     raw?: string | undefined;
+    literalType: string;
+    value: number | bigint | number[];
+}
+
+export interface NumberLiteral extends Literal {
+    literalType: "i32" | "i64" | "u32" | "u64" | "f32" | "f64";
+    value: number | bigint;
+}
+
+export interface SIMDLiteral extends Literal {
+    literalType:
+        | "f64x2"
+        | "f32x4"
+        | "u16x8"
+        | "u8x16"
+        | "u32x4"
+        | "u64x2"
+        | "i16x8"
+        | "i8x16"
+        | "i32x4"
+        | "i64x2";
+    value: number[];
 }
 
 export interface RegExpLiteral extends BaseNode, BaseExpression {

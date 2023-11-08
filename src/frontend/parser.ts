@@ -36,7 +36,9 @@ import type {
     Declaration,
     EmptyExpression,
     ContinueExpression,
-    BreakExpression
+    BreakExpression,
+    NumberLiteral,
+    SIMDLiteral
 } from "../types/nodes.js";
 
 const precedence = [
@@ -537,7 +539,11 @@ export class Parser {
                     expression_stack.push(this.parseIfExpression());
                     break;
                 case TokenType.LEFT_BRACE:
-                    expression_stack.push(this.parseBlock());
+                    if (this.tokens[this.idx + 1].type === TokenType.NUMBER) {
+                        expression_stack.push(this.getSIMDLiteral());
+                    } else {
+                        expression_stack.push(this.parseBlock());
+                    }
                     break;
                 case TokenType.LEFT_PAREN:
                     expression_stack.push(this.parseSequenceExpression());
@@ -558,7 +564,7 @@ export class Parser {
                     expression_stack.push(this.parseBreakExpression());
                     break;
                 case TokenType.NUMBER:
-                    expression_stack.push(this.getLiteral());
+                    expression_stack.push(this.getNumberLiteral());
                     break;
                 case TokenType.IDENTIFIER:
                     const next = this.getIdentifier();
@@ -760,23 +766,142 @@ export class Parser {
         };
     }
 
-    private getLiteral(): Literal {
+    private getNumberLiteral(): NumberLiteral {
         const raw = this.tokens[this.idx++].value;
         let value: bigint | number;
         // prettier-ignore
         try { value = BigInt(raw); } catch { value = Number(raw); }
+
+        if (typeof value === "number") {
+            return {
+                type: "Literal",
+                literalType: "f64",
+                value
+            };
+        }
+
+        let signed = value < 0n;
+        if (signed) {
+            if (value > -(2n ** 31n)) {
+                return {
+                    type: "Literal",
+                    literalType: "i32",
+                    value
+                };
+            } else if (value > -(2n ** 63n)) {
+                return {
+                    type: "Literal",
+                    literalType: "i64",
+                    value
+                };
+            } else {
+                throw new Error("Number literal out of range");
+            }
+        } else {
+            if (value < 2n ** 31n - 1n) {
+                return {
+                    type: "Literal",
+                    literalType: "i32",
+                    value
+                };
+            } else if (value < 2n ** 32n - 1n) {
+                return {
+                    type: "Literal",
+                    literalType: "u32",
+                    value
+                };
+            } else if (value < 2n ** 63n - 1n) {
+                return {
+                    type: "Literal",
+                    literalType: "i64",
+                    value
+                };
+            } else if (value < 2n ** 64n - 1n) {
+                return {
+                    type: "Literal",
+                    literalType: "u64",
+                    value
+                };
+            } else {
+                throw new Error("Number literal out of range");
+            }
+        }
+    }
+
+    // i32x4 n = { 1, 2, 3, 4 };
+    private getSIMDLiteral(): SIMDLiteral {
+        this.expectToken(TokenType.LEFT_BRACE);
+        this.idx++;
+
+        const values: (number | bigint)[] = [];
+        while (this.token.type !== TokenType.RIGHT_BRACE) {
+            values.push(this.getNumberLiteral().value);
+            if (this.token.type === TokenType.COMMA) this.idx++;
+        }
+
+        const has_floats = values.some((x) => typeof x === "number");
+
+        let literalType: SIMDLiteral["literalType"];
+        let bytes: TypedArray;
+        if (values.length === 2) {
+            if (has_floats) {
+                bytes = Float64Array.from(values.map(Number));
+                literalType = "f64x2";
+            } else {
+                const signed = values.some((v) => v < 0n);
+                const unsigned = values.some((v) => v > 0x7fffffffffffffffn);
+                if (signed && unsigned) {
+                    throw new Error("SIMD literal value out of range");
+                }
+                bytes = (signed ? BigInt64Array : BigUint64Array).from(values.map(BigInt));
+                literalType = signed ? "i64x2" : "u64x2";
+            }
+        } else if (values.length === 4) {
+            if (has_floats) {
+                bytes = Float32Array.from(values.map(Number));
+                literalType = "f32x4";
+            } else {
+                const signed = values.some((v) => v < 0n);
+                const unsigned = values.some((v) => v > 0x7fffffffn);
+                if (signed && unsigned) {
+                    throw new Error("SIMD literal value out of range");
+                }
+                bytes = (signed ? Int32Array : Uint32Array).from(values.map(Number));
+                literalType = signed ? "i32x4" : "u32x4";
+            }
+        } else if (values.length === 8) {
+            if (has_floats) throw new Error("i16x8 SIMD literal must be integers");
+            const signed = values.some((v) => v < 0n);
+            const unsigned = values.some((v) => v > 0x7fffn);
+            if (signed && unsigned) {
+                throw new Error("SIMD literal value out of range");
+            }
+            bytes = (signed ? Int16Array : Uint16Array).from(values.map(Number));
+            literalType = signed ? "i16x8" : "u16x8";
+        } else if (values.length === 16) {
+            if (has_floats) throw new Error("i8x16 SIMD literal must be integers");
+            const signed = values.some((v) => v < 0n);
+            const unsigned = values.some((v) => v > 0x7fn);
+            if (signed && unsigned) {
+                throw new Error("SIMD literal value out of range");
+            }
+            bytes = (signed ? Int8Array : Uint8Array).from(values.map(Number));
+            literalType = signed ? "i16x8" : "u16x8";
+        } else {
+            throw new Error(
+                `Invalid number of values in SIMD literal: ${values.length}. Values: ${values.join(
+                    ", "
+                )}}`
+            );
+        }
+
+        this.expectToken(TokenType.RIGHT_BRACE);
+        this.idx++;
+
         return {
             type: "Literal",
-            literalType: raw.includes(".")
-                ? "f64"
-                : raw.includes("-")
-                ? typeof value === "bigint"
-                    ? "i64"
-                    : "i32"
-                : typeof value === "bigint"
-                ? "u64"
-                : "u32",
-            value
+            literalType,
+            value: Array.from(new Uint8Array(bytes.buffer))
         };
     }
 
