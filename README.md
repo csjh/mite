@@ -12,17 +12,20 @@ Mite was made to accompany my learning during my introduction to C university co
 -   Variables
 -   Functions
 -   If, for, while, do-while expressions
+-   Stack-allocated structs
 
 ## Roadmap
 
 > In no particular order
 
 -   [ ] SIMD
+-   [ ] Arrays
 -   [ ] 0-copy Mite -> Javascript Interop
 -   [ ] Javascript Helper Mode
 -   [ ] Standard Library
 -   [ ] Closures
 -   [ ] C++ Port
 -   [ ] Heap [^1]
+-   [ ] (Graph-based?) IR for optimzations
 
 [^1]: A traditional heap (with malloc and free and stuff) is kinda iffy right now, unsure of where it will land atm.
