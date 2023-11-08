@@ -1,0 +1,6 @@
+export fn main(): i32 {
+    u32x4 x = { 1, 2, 3, 4 };
+    u32x4 y = { 4, 3, 2, 1 };
+    u32x4 z = { 4123, 3, 2, 1 };
+    return extract(x + y + z, 0);
+}
