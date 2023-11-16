@@ -1,3 +1,5 @@
+// don't be offput by the fact this is 3000 lines, it's almost all boilerplate
+
 import binaryen from "binaryen";
 import { StructTypeInformation, TypeInformation, Context } from "../types/code_gen.js";
 import { Program, StructDeclaration } from "../types/nodes.js";
@@ -2789,6 +2791,7 @@ function detectCycles(adj_list: Map<string, Set<string>>): Error | null {
     return null;
 }
 
+// and they said i would never use data structures and algorithms in real life....
 function topologicalSort(adj_list: Map<string, Set<string>>): string[] {
     // kahn's algorithm
     const L: string[] = [];
