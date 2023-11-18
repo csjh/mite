@@ -11,220 +11,220 @@ export function createConversions(mod: binaryen.Module): Context["conversions"] 
         i32: {
             i32: (value) => value,
             u32: (value) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i64: (value) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.extend_s(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             // TODO: make sure extend_s is proper, should be though
             u64: (value) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.extend_s(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f32: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.convert_s.i32(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f64: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.convert_s.i32(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             i32x4: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             // TODO: remove these when i8, i16 are implemented
             i16x8: (value) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             i8x16: (value) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         u32: {
             i32: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             u32: (value) => value,
             i64: (value) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.extend_u(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u64: (value) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.extend_u(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f32: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.convert_u.i32(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f64: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.convert_u.i32(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u32x4: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             // TODO: remove these when u8, u16 are implemented
             u16x8: (value) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u8x16: (value) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         i64: {
             i32: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.wrap(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u32: (value) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.wrap(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             i64: (value) => value,
             u64: (value) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             f32: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.convert_s.i64(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f64: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.convert_s.i64(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             i64x2: (value) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         u64: {
             i32: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.wrap(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u32: (value) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.wrap(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             i64: (value) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.extend_u(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u64: (value) => value,
             f32: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.convert_u.i64(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f64: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.convert_u.i64(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u64x2: (value) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         f32: {
             i32: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.trunc_s_sat.f32(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u32: (value) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.trunc_u_sat.f32(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             i64: (value) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.trunc_s_sat.f32(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u64: (value) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.trunc_u_sat.f32(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f32: (value) => value,
             f64: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.promote(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f32x4: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         f64: {
             i32: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.trunc_s_sat.f64(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u32: (value) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.trunc_u_sat.f64(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             i64: (value) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.trunc_s_sat.f64(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u64: (value) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.trunc_u_sat.f64(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f32: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.demote(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             f64: (value) => value,
             f64x2: (value) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.splat(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
@@ -232,77 +232,77 @@ export function createConversions(mod: binaryen.Module): Context["conversions"] 
         v128: {
             v128: (value) => value,
             i8x16: (value) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             u8x16: (value) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i16x8: (value) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             u16x8: (value) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i32x4: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             u32x4: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             f32x4: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i64x2: (value) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             u64x2: (value) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             f64x2: (value) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         i8x16: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i8x16: (value) => value,
             u8x16: (value) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         u8x16: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i8x16: (value) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
@@ -310,25 +310,25 @@ export function createConversions(mod: binaryen.Module): Context["conversions"] 
         },
         i16x8: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i16x8: (value) => value,
             u16x8: (value) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         u16x8: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i16x8: (value) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
@@ -336,53 +336,53 @@ export function createConversions(mod: binaryen.Module): Context["conversions"] 
         },
         i32x4: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i32x4: (value) => value,
             u32x4: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             f32x4: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.convert_i32x4_s(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         u32x4: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i32x4: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             u32x4: (value) => value,
             f32x4: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.convert_i32x4_u(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         f32x4: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i32x4: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.trunc_sat_f32x4_s(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             u32x4: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.trunc_sat_f32x4_u(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
@@ -390,25 +390,25 @@ export function createConversions(mod: binaryen.Module): Context["conversions"] 
         },
         i64x2: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i64x2: (value) => value,
             u64x2: (value) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         u64x2: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
             i64x2: (value) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
@@ -416,7 +416,7 @@ export function createConversions(mod: binaryen.Module): Context["conversions"] 
         },
         f64x2: {
             v128: (value) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: value.ref,
                 expression: binaryen.ExpressionIds.Unary
             }),
@@ -430,336 +430,336 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         void: {},
         f32: {
             sqrt: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.sqrt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             ceil: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.ceil(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             floor: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.floor(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             trunc: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.trunc(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             nearest: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.nearest(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             abs: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.abs(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             copysign: (left, right) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.copysign(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.min(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.max(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             reinterpret: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.reinterpret(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         f64: {
             sqrt: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.sqrt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             ceil: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.ceil(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             floor: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.floor(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             trunc: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.trunc(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             nearest: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.nearest(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             abs: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.abs(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             copysign: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.copysign(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.min(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.max(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             reinterpret: (value) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.reinterpret(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         i32: {
             clz: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.clz(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             ctz: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.ctz(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             popcnt: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.popcnt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             rotl: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.rotl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             rotr: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.rotr(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             reinterpret: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.reinterpret(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         u32: {
             clz: (value) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.clz(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             ctz: (value) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.ctz(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             popcnt: (value) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.popcnt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             rotl: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.rotl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             rotr: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.rotr(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             reinterpret: (value) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.reinterpret(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         i64: {
             clz: (value) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.clz(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             ctz: (value) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.ctz(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             popcnt: (value) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.popcnt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             rotl: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.rotl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             rotr: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.rotr(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             reinterpret: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.reinterpret(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         u64: {
             clz: (value) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.clz(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             ctz: (value) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.ctz(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             popcnt: (value) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.popcnt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             rotl: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.rotl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             rotr: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.rotr(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             reinterpret: (value) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.reinterpret(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         v128: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "v128" },
+                type: Primitive.primitives.get("v128")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             })
         },
         i8x16: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             swizzle: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.swizzle(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             all_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i8x16.all_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             bitmask: (value) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.bitmask(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             popcnt: (value) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.popcnt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             add_sat: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.add_saturate_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub_sat: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.sub_saturate_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.min_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.max_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             dot: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.dot_i16x8_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_low: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.extmul_low_i8x16_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_high: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.extmul_high_i8x16_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extadd_pairwise: (value) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.extadd_pairwise_i8x16_s(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_low: (value) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.extend_low_i8x16_s(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_high: (value) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.extend_high_i8x16_s(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
@@ -767,7 +767,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "i32" },
+                    type: Primitive.primitives.get("i32")!,
                     ref: mod.i8x16.extract_lane_s(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -780,7 +780,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "i8x16" },
+                    type: Primitive.primitives.get("i8x16")!,
                     ref: mod.i8x16.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -793,87 +793,87 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         },
         u8x16: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             swizzle: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.swizzle(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             all_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i8x16.all_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             bitmask: (value) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.bitmask(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             popcnt: (value) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.popcnt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             add_sat: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.add_saturate_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub_sat: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.sub_saturate_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.min_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.max_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             avgr: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.avgr_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_low: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.extmul_low_i8x16_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_high: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.extmul_high_i8x16_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extadd_pairwise: (value) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.extadd_pairwise_i8x16_u(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_low: (value) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.extend_low_i8x16_u(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_high: (value) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.extend_high_i8x16_u(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
@@ -881,7 +881,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "u32" },
+                    type: Primitive.primitives.get("u32")!,
                     ref: mod.i8x16.extract_lane_u(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -894,7 +894,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "u8x16" },
+                    type: Primitive.primitives.get("u8x16")!,
                     ref: mod.i8x16.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -907,82 +907,82 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         },
         i16x8: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             all_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i16x8.all_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             bitmask: (value) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.bitmask(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             add_sat: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.add_saturate_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub_sat: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.sub_saturate_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.min_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.max_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             q15mulr: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.q15mulr_sat_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_low: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.extmul_low_i16x8_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_high: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.extmul_high_i16x8_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extadd_pairwise: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.extadd_pairwise_i16x8_s(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_low: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.extend_low_i16x8_s(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_high: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.extend_high_i16x8_s(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             narrow: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.narrow_i16x8_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
@@ -990,7 +990,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "i32" },
+                    type: Primitive.primitives.get("i32")!,
                     ref: mod.i16x8.extract_lane_s(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1003,7 +1003,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "i16x8" },
+                    type: Primitive.primitives.get("i16x8")!,
                     ref: mod.i16x8.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1016,82 +1016,82 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         },
         u16x8: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             all_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i16x8.all_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             bitmask: (value) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.bitmask(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             add_sat: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.add_saturate_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub_sat: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.sub_saturate_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.min_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.max_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             avgr: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.avgr_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_low: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.extmul_low_i16x8_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_high: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.extmul_high_i16x8_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extadd_pairwise: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.extadd_pairwise_i16x8_u(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_low: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.extend_low_i16x8_u(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_high: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.extend_high_i16x8_u(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             narrow: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.narrow_i16x8_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
@@ -1099,7 +1099,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "i32" },
+                    type: Primitive.primitives.get("i32")!,
                     ref: mod.i16x8.extract_lane_u(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1112,7 +1112,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "u16x8" },
+                    type: Primitive.primitives.get("u16x8")!,
                     ref: mod.i16x8.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1125,62 +1125,62 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         },
         i32x4: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             all_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32x4.all_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             bitmask: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.bitmask(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.min_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.max_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             narrow: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.narrow_i32x4_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_high: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.extmul_high_i32x4_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_low: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.extmul_low_i32x4_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_high: (value) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.extend_high_i32x4_s(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_low: (value) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.extend_low_i32x4_s(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
@@ -1188,7 +1188,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "i32" },
+                    type: Primitive.primitives.get("i32")!,
                     ref: mod.i32x4.extract_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1201,7 +1201,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "i32x4" },
+                    type: Primitive.primitives.get("i32x4")!,
                     ref: mod.i32x4.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1214,62 +1214,62 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         },
         u32x4: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             all_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32x4.all_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             bitmask: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.bitmask(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.min_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.max_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             narrow: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.narrow_i32x4_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_high: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.extmul_high_i32x4_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extmul_low: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.extmul_low_i32x4_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_high: (value) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.extend_high_i32x4_u(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             extend_low: (value) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.extend_low_i32x4_u(value.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
@@ -1277,7 +1277,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "u32" },
+                    type: Primitive.primitives.get("u32")!,
                     ref: mod.i32x4.extract_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1290,7 +1290,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "u32x4" },
+                    type: Primitive.primitives.get("u32x4")!,
                     ref: mod.i32x4.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1303,27 +1303,27 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         },
         i64x2: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             all_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64x2.all_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             bitmask: (value) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.bitmask(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
@@ -1331,7 +1331,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "i64" },
+                    type: Primitive.primitives.get("i64")!,
                     ref: mod.i64x2.extract_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1344,7 +1344,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "i64x2" },
+                    type: Primitive.primitives.get("i64x2")!,
                     ref: mod.i64x2.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1357,27 +1357,27 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         },
         u64x2: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             all_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64x2.all_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             bitmask: (value) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.bitmask(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
@@ -1385,7 +1385,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "u64" },
+                    type: Primitive.primitives.get("u64")!,
                     ref: mod.i64x2.extract_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1398,7 +1398,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "u64x2" },
+                    type: Primitive.primitives.get("u64x2")!,
                     ref: mod.i64x2.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1411,82 +1411,82 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         },
         f32x4: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             abs: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.abs(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             sqrt: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.sqrt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.min(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.max(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             pmin: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.pmin(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             pmax: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.pmax(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ceil: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.ceil(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             floor: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.floor(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             trunc: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.trunc(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             nearest: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.nearest(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             trunc_sat_s: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.trunc_sat_f32x4_s(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             trunc_sat_u: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.trunc_sat_f32x4_u(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             promote_low: (value) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.promote_low_f32x4(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
@@ -1494,7 +1494,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "f32" },
+                    type: Primitive.primitives.get("f32")!,
                     ref: mod.f32x4.extract_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1507,7 +1507,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "f32" },
+                    type: Primitive.primitives.get("f32")!,
                     ref: mod.f32x4.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1520,82 +1520,82 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         },
         f64x2: {
             bitselect: (left, right, control_mask) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
                 expression: binaryen.ExpressionIds.Select
             }),
             andnot: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.v128.andnot(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             any_true: (value) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.v128.any_true(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             abs: (value) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.abs(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             sqrt: (value) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.sqrt(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             min: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.min(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             max: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.max(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             pmin: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.pmin(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             pmax: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.pmax(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ceil: (value) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.ceil(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             floor: (value) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.floor(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             trunc: (value) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.trunc(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             nearest: (value) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.nearest(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             trunc_sat_zero_s: (value) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.trunc_sat_f64x2_s_zero(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             trunc_sat_zero_u: (value) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.trunc_sat_f64x2_u_zero(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
             demote_zero: (value) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.demote_f64x2_zero(value.ref),
                 expression: binaryen.ExpressionIds.Unary
             }),
@@ -1603,7 +1603,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "f64" },
+                    type: Primitive.primitives.get("f64")!,
                     ref: mod.f64x2.extract_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1616,7 +1616,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
                 if (index.expression !== binaryen.ExpressionIds.Const)
                     throw new Error("Expected constant extraction index");
                 return {
-                    type: { classification: "primitive", name: "f64x2" },
+                    type: Primitive.primitives.get("f64x2")!,
                     ref: mod.f64x2.replace_lane(
                         value.ref,
                         // @ts-expect-error undocumented function
@@ -1636,1092 +1636,1092 @@ export function createTypeOperations(mod: binaryen.Module): Context["operators"]
         void: {},
         f32: {
             add: (left, right) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             div: (left, right) => ({
-                type: { classification: "primitive", name: "f32" },
+                type: Primitive.primitives.get("f32")!,
                 ref: mod.f32.div(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.f32.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.f32.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.f32.lt(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.f32.le(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.f32.gt(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.f32.ge(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         f64: {
             add: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             div: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.div(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.f64.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.f64.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.lt(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.le(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.gt(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "f64" },
+                type: Primitive.primitives.get("f64")!,
                 ref: mod.f64.ge(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         i32: {
             add: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             div: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.div_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.lt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.le_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.gt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.ge_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.shr_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mod: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.rem_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             and: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i32.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         u32: {
             add: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             div: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.div_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.lt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.le_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.gt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.ge_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.shr_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mod: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.rem_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             and: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "u32" },
+                type: Primitive.primitives.get("u32")!,
                 ref: mod.i32.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         i64: {
             add: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             div: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.div_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.lt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.le_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.gt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.ge_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.shr_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mod: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.rem_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             and: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "i64" },
+                type: Primitive.primitives.get("i64")!,
                 ref: mod.i64.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         u64: {
             add: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             div: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.div_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.lt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.le_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.gt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "i32" },
+                type: Primitive.primitives.get("i32")!,
                 ref: mod.i64.ge_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.shr_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mod: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.rem_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             and: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "u64" },
+                type: Primitive.primitives.get("u64")!,
                 ref: mod.i64.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         i8x16: {
             and: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.v128.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.v128.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.v128.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             add: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.lt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.le_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.gt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.ge_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "i8x16" },
+                type: Primitive.primitives.get("i8x16")!,
                 ref: mod.i8x16.shr_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         u8x16: {
             and: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.v128.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.v128.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.v128.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             add: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.lt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.le_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.gt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.ge_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "u8x16" },
+                type: Primitive.primitives.get("u8x16")!,
                 ref: mod.i8x16.shr_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         i16x8: {
             and: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.v128.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.v128.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.v128.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             add: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.lt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.le_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.gt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.ge_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "i16x8" },
+                type: Primitive.primitives.get("i16x8")!,
                 ref: mod.i16x8.shr_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         u16x8: {
             and: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.v128.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.v128.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.v128.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             add: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.lt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.le_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.gt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.ge_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "u16x8" },
+                type: Primitive.primitives.get("u16x8")!,
                 ref: mod.i16x8.shr_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         i32x4: {
             and: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.v128.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.v128.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.v128.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             add: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.lt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.le_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.gt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.ge_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "i32x4" },
+                type: Primitive.primitives.get("i32x4")!,
                 ref: mod.i32x4.shr_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         u32x4: {
             and: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.v128.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.v128.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.v128.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             add: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.lt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.le_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.gt_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.ge_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "u32x4" },
+                type: Primitive.primitives.get("u32x4")!,
                 ref: mod.i32x4.shr_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         i64x2: {
             and: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.v128.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.v128.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.v128.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             add: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.lt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.le_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.gt_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.ge_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "i64x2" },
+                type: Primitive.primitives.get("i64x2")!,
                 ref: mod.i64x2.shr_s(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         u64x2: {
             and: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.v128.and(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             or: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.v128.or(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             xor: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.v128.xor(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             add: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shl: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.shl(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             shr: (left, right) => ({
-                type: { classification: "primitive", name: "u64x2" },
+                type: Primitive.primitives.get("u64x2")!,
                 ref: mod.i64x2.shr_u(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         f32x4: {
             add: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             div: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.div(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.lt(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.le(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.gt(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "f32x4" },
+                type: Primitive.primitives.get("f32x4")!,
                 ref: mod.f32x4.ge(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
         },
         f64x2: {
             add: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.add(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             sub: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.sub(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             mul: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.mul(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             div: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.div(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             eq: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.eq(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             ne: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.ne(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lt: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.lt(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             lte: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.le(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gt: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.gt(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             }),
             gte: (left, right) => ({
-                type: { classification: "primitive", name: "f64x2" },
+                type: Primitive.primitives.get("f64x2")!,
                 ref: mod.f64x2.ge(left.ref, right.ref),
                 expression: binaryen.ExpressionIds.Binary
             })
