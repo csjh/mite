@@ -29,8 +29,8 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     mod.validate();
 
     if (options.optimize) {
-        binaryen.setOptimizeLevel(0);
-        binaryen.setShrinkLevel(2);
+        binaryen.setOptimizeLevel(3);
+        binaryen.setShrinkLevel(3);
         binaryen.setLowMemoryUnused(true);
         mod.optimize();
     }
