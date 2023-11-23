@@ -8,7 +8,11 @@ import {
     STACK_POINTER,
     typeInformationToBinaryen,
     getBinaryOperator,
-    unwrapPossibleMemberExpression
+    constant,
+    wrapArray,
+    wrapStruct,
+    newBlock,
+    parseType
 } from "./utils.js";
 import {
     Context,
@@ -68,6 +72,8 @@ export function programToModule(
         conversions: createConversions(mod),
         stacks: { continue: [], break: [], depth: 0 },
         types: { ...primitives, ...structs },
+        current_block: [],
+        local_count: 0,
         // @ts-expect-error initially we're not in a function
         current_function: null
     };
@@ -147,15 +153,19 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     ctx.variables = new Map(params);
     ctx.variables.set(
         "Local Stack Pointer", // put spaces in so it doesn't conflict with user-defined variables
-        new Primitive(ctx, ctx.types.i32, AllocationLocation.Local, node.params.length, 0)
+        new Primitive(ctx, ctx.types.i32, AllocationLocation.Local, node.params.length)
     );
 
-    const current_function = { ...ctx.functions.get(node.id.name)!, stack_frame_size: 0 };
+    const current_function = {
+        ...ctx.functions.get(node.id.name)!,
+        stack_frame_size: 0,
+        // params + local stack pointer
+        local_count: params.size + 1
+    };
 
-    const function_body = ctx.mod.block(
-        null,
-        node.body.body.map(
-            (statement) => statementToExpression({ ...ctx, current_function }, statement).ref
+    const function_body = newBlock(ctx, () =>
+        node.body.body.forEach((statement) =>
+            statementToExpression({ ...ctx, current_function }, statement)
         )
     );
 
@@ -167,18 +177,19 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
         { ...ctx, current_function },
         node.id.name,
         function_variables,
-        function_body
+        function_body.ref
     );
 }
 
-function statementToExpression(ctx: Context, value: Statement): ExpressionInformation {
+function statementToExpression(ctx: Context, value: Statement): void {
     switch (value.type) {
         case "VariableDeclaration":
             return variableDeclarationToExpression(ctx, value);
         case "ReturnStatement":
             return returnStatementToExpression(ctx, value);
         case "ExpressionStatement":
-            return expressionToExpression(ctx, value.expression);
+            ctx.current_block.push(expressionToExpression(ctx, value.expression));
+            return;
     }
 
     throw new Error(`Unknown statement type: ${value.type}`);
@@ -206,31 +217,38 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
         let variable: MiteType;
 
         if (type.classification === "struct") {
-            variable = createMiteType(
-                ctx,
-                type.name,
-                lookForVariable(ctx, "Local Stack Pointer").get(),
-                ctx.current_function.stack_frame_size
-            );
-            ctx.current_function.stack_frame_size += type.sizeof;
+            variable = createMiteType(ctx, type, {
+                ref:
+                    expr?.ref ??
+                    ctx.mod.i32.add(
+                        lookForVariable(ctx, "Local Stack Pointer").get().ref,
+                        ctx.mod.i32.const(ctx.current_function.stack_frame_size)
+                    ),
+                expression: binaryen.ExpressionIds.Binary,
+                type: ctx.types.i32
+            });
+            if (!expr) ctx.current_function.stack_frame_size += type.sizeof;
+        } else if (type.classification === "array") {
+            variable = createMiteType(ctx, type, {
+                ref:
+                    expr?.ref ??
+                    ctx.mod.i32.add(
+                        lookForVariable(ctx, "Local Stack Pointer").get().ref,
+                        ctx.mod.i32.const(ctx.current_function.stack_frame_size)
+                    ),
+                expression: binaryen.ExpressionIds.Binary,
+                type: ctx.types.i32
+            });
+            if (!expr) ctx.current_function.stack_frame_size += type.sizeof;
         } else {
-            variable = createMiteType(ctx, type.name, ctx.variables.size, 0);
+            variable = createMiteType(ctx, type, ctx.current_function.local_count++);
+            if (expr) {
+                ctx.current_block.push(variable.set(expr));
+            }
         }
 
         ctx.variables.set(id.name, variable);
-
-        if (!init) continue;
-
-        const expr = expressionToExpression(updateExpected(ctx, variable.type), init);
-        const { ref } = variable.set(expr);
-        expressions.push(ref);
     }
-
-    return {
-        ref: ctx.mod.block(null, expressions),
-        type: ctx.types.void,
-        expression: binaryen.ExpressionIds.Block
-    };
 }
 
 function returnStatementToExpression(ctx: Context, value: ReturnStatement): ExpressionInformation {
@@ -238,23 +256,23 @@ function returnStatementToExpression(ctx: Context, value: ReturnStatement): Expr
         value.argument &&
         expressionToExpression(updateExpected(ctx, ctx.current_function.results), value.argument);
 
-    // i really need to have a better system for this
-    const ref = ctx.mod.block(null, [
-        ctx.mod.global.set(
+    ctx.current_block.push({
+        ref: ctx.mod.global.set(
             STACK_POINTER,
             ctx.mod.i32.add(
                 ctx.mod.global.get(STACK_POINTER, binaryen.i32),
                 ctx.mod.i32.const(ctx.current_function.stack_frame_size)
             )
         ),
-        ctx.mod.return(expr?.ref)
-    ]);
+        expression: binaryen.ExpressionIds.GlobalSet,
+        type: ctx.types.void
+    });
 
-    return {
-        ref,
+    ctx.current_block.push({
+        ref: ctx.mod.return(expr?.ref),
         type: ctx.types.void,
         expression: binaryen.ExpressionIds.Return
-    };
+    });
 }
 
 function expressionToExpression(ctx: Context, value: Expression): ExpressionInformation {
@@ -413,7 +431,7 @@ function assignmentExpressionToExpression(
     ctx: Context,
     value: AssignmentExpression
 ): ExpressionInformation {
-    const variable = unwrapPossibleMemberExpression(ctx, value.left);
+    const variable = unwrapVariable(ctx, value.left);
 
     const expr = expressionToExpression(updateExpected(ctx, variable.type), value.right);
     if (value.operator === "=") return variable.set(expr);
@@ -484,36 +502,41 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
 
     const init =
         value.init &&
-        (value.init.type === "VariableDeclaration"
+        newBlock(ctx, () =>
+            value.init!.type === "VariableDeclaration"
             ? variableDeclarationToExpression(ctx, value.init)
-            : expressionToExpression(ctx, value.init));
+                : expressionToExpression(ctx, value.init!)
+        );
 
     const test =
         value.test &&
         (value.test.type === "EmptyExpression"
-            ? { type: ctx.types.i32, ref: ctx.mod.i32.const(1) }
-            : expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test));
+            ? ctx.mod.i32.const(1)
+            : newBlock(
+                  ctx,
+                  () => expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test!),
+                  { type: binaryen.i32 }
+              ).ref);
 
-    const update = value.update && expressionToExpression(ctx, value.update);
-    const body = expressionToExpression(ctx, value.body);
+    const update = value.update && newBlock(ctx, () => expressionToExpression(ctx, value.update!));
+    const body = newBlock(ctx, () => expressionToExpression(ctx, value.body), {
+        name: for_loop_user_body_label
+    });
 
     const for_loop_container = [];
     if (init) for_loop_container.push(init.ref);
     if (test) {
         // if test fails, don't even start the loop
         for_loop_container.push(
-            ctx.mod.br_if(
-                for_loop_container_label,
-                ctx.mod.i32.eqz(ctx.mod.copyExpression(test.ref))
-            )
+            ctx.mod.br_if(for_loop_container_label, ctx.mod.i32.eqz(ctx.mod.copyExpression(test)))
         );
     }
 
     const for_loop_loop_part = [];
 
-    for_loop_loop_part.push(ctx.mod.block(for_loop_user_body_label, [body.ref]));
+    for_loop_loop_part.push(body.ref);
     if (update) for_loop_loop_part.push(update.ref);
-    if (test) for_loop_loop_part.push(ctx.mod.br_if(for_loop_loop_part_label, test.ref));
+    if (test) for_loop_loop_part.push(ctx.mod.br_if(for_loop_loop_part_label, test));
 
     for_loop_container.push(
         ctx.mod.loop(for_loop_loop_part_label, ctx.mod.block(null, for_loop_loop_part))
@@ -541,13 +564,14 @@ function doWhileExpressionToExpression(
     ctx.stacks.continue.push(do_while_loop_body_block);
     ctx.stacks.depth++;
 
-    const body = expressionToExpression(ctx, value.body);
+    const body = newBlock(ctx, () => expressionToExpression(ctx, value.body));
     const test = value.test
-        ? expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test)
-        : {
-              ref: ctx.mod.i32.const(0),
-              type: ctx.types.i32
-          };
+        ? newBlock(
+              ctx,
+              () => expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test),
+              { type: binaryen.i32 }
+          )
+        : constant(ctx, 0);
 
     const ref = ctx.mod.loop(
         do_while_loop_body_block,
@@ -574,8 +598,12 @@ function whileExpressionToExpression(ctx: Context, value: WhileExpression): Expr
     ctx.stacks.continue.push(while_loop_body_block);
     ctx.stacks.depth++;
 
-    const test = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test);
-    const body = expressionToExpression(ctx, value.body);
+    const test = newBlock(
+        ctx,
+        () => expressionToExpression(updateExpected(ctx, ctx.types.i32), value.test),
+        { type: binaryen.i32 }
+    );
+    const body = newBlock(ctx, () => expressionToExpression(ctx, value.body));
 
     const ref = ctx.mod.if(
         test.ref, // if test.ref tries to continue or break it might be weird
@@ -602,20 +630,14 @@ function whileExpressionToExpression(ctx: Context, value: WhileExpression): Expr
 
 function blockExpressionToExpression(ctx: Context, value: BlockExpression): ExpressionInformation {
     // note: currently can't break out of blocks
-    const block = `Block$${ctx.stacks.depth}`;
+    const name = `Block$${ctx.stacks.depth}`;
     ctx.stacks.depth++;
 
-    const refs = [];
-    let type: TypeInformation = ctx.types.void;
-    for (const statement of value.body) {
-        const expr = statementToExpression(ctx, statement);
-        refs.push(expr.ref);
-        type = expr.type ?? type;
-    }
-
-    const ref = ctx.mod.block(block, refs, binaryen.auto);
-
-    return { ref, type, expression: binaryen.ExpressionIds.Block };
+    return newBlock(
+        ctx,
+        () => value.body.forEach((statement) => statementToExpression(ctx, statement)),
+        { name, type: binaryen.auto }
+    );
 }
 
 function continueExpressionToExpression(
@@ -654,6 +676,9 @@ function memberExpressionToExpression(
     ctx: Context,
     value: MemberExpression
 ): ExpressionInformation {
-    const variable = unwrapPossibleMemberExpression(ctx, value);
-    return variable.get();
+    const struct = expressionToExpression(ctx, value.object);
+    if (struct.type.classification !== "struct")
+        throw new Error("Cannot access member of non-struct");
+    return wrapStruct(ctx, struct).access(value.property.name).get();
+}
 }

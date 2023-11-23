@@ -46,24 +46,24 @@ export function getBinaryOperator(
             if (!ctx.operators[type.name].div) throw new Error(`Cannot divide ${type.name}`);
             return ctx.operators[type.name].div!;
         case TokenType.EQUALS:
-            if (!ctx.operators[type.name].div)
+            if (!ctx.operators[type.name].eq)
                 throw new Error(`Cannot check equality of ${type.name}`);
             return ctx.operators[type.name].eq!;
         case TokenType.NOT_EQUALS:
-            if (!ctx.operators[type.name].div)
+            if (!ctx.operators[type.name].ne)
                 throw new Error(`Cannot check equality of ${type.name}`);
             return ctx.operators[type.name].ne!;
         case TokenType.LESS_THAN:
-            if (!ctx.operators[type.name].div) throw new Error(`Cannot compare ${type.name}`);
+            if (!ctx.operators[type.name].lt) throw new Error(`Cannot compare ${type.name}`);
             return ctx.operators[type.name].lt!;
         case TokenType.LESS_THAN_EQUALS:
-            if (!ctx.operators[type.name].div) throw new Error(`Cannot compare ${type.name}`);
+            if (!ctx.operators[type.name].lte) throw new Error(`Cannot compare ${type.name}`);
             return ctx.operators[type.name].lte!;
         case TokenType.GREATER_THAN:
-            if (!ctx.operators[type.name].div) throw new Error(`Cannot compare ${type.name}`);
+            if (!ctx.operators[type.name].gt) throw new Error(`Cannot compare ${type.name}`);
             return ctx.operators[type.name].gt!;
         case TokenType.GREATER_THAN_EQUALS:
-            if (!ctx.operators[type.name].div) throw new Error(`Cannot compare ${type.name}`);
+            if (!ctx.operators[type.name].gte) throw new Error(`Cannot compare ${type.name}`);
             return ctx.operators[type.name].gte!;
         case TokenType.BITSHIFT_LEFT:
             if (!ctx.operators[type.name].shl) throw new Error(`Cannot shift ${type.name}`);
@@ -90,22 +90,14 @@ export function getBinaryOperator(
 
 export function createMiteType(
     ctx: Context,
-    type_name: string,
-    value_or_index: ExpressionInformation | number,
-    offset: number
+    type: TypeInformation,
+    value_or_index: ExpressionInformation | number
 ): MiteType {
-    const type = ctx.types[type_name];
     if (type.classification === "primitive") {
         if (typeof value_or_index !== "number") {
-            return new Primitive(
-                ctx,
-                type,
-                AllocationLocation.LinearMemory,
-                value_or_index,
-                offset
-            );
+            return new Primitive(ctx, type, AllocationLocation.LinearMemory, value_or_index);
         } else {
-            return new Primitive(ctx, type, AllocationLocation.Local, value_or_index, offset);
+            return new Primitive(ctx, type, AllocationLocation.Local, value_or_index);
         }
     } else if (type.classification === "struct") {
         if (typeof value_or_index === "number") {
@@ -165,11 +157,50 @@ export function miteSignatureToBinaryenSignature(
     );
 }
 
-export function unwrapPossibleMemberExpression(
+export function constant(
     ctx: Context,
-    expr: MemberExpression | Identifier
-): MiteType {
-    if (expr.type === "Identifier") return lookForVariable(ctx, expr.name);
-    const value = unwrapPossibleMemberExpression(ctx, expr.object);
-    return value.access(expr.property.name);
+    value: number,
+    type: "i32" | "i64" = "i32"
+): ExpressionInformation {
+    const ref =
+        type === "i32" ? ctx.mod.i32.const(value) : ctx.mod.i64.const(...bigintToLowAndHigh(value));
+    return {
+        ref,
+        type: ctx.types[type],
+        expression: binaryen.ExpressionIds.Const
+    };
+}
+
+export function wrapArray(ctx: Context, array: ExpressionInformation): Array {
+    if (array.type.classification !== "array") throw new Error("Cannot wrap non-array");
+    return new Array(ctx, array.type, array);
+}
+
+export function wrapStruct(ctx: Context, struct: ExpressionInformation): Struct {
+    if (struct.type.classification !== "struct") throw new Error("Cannot wrap non-struct");
+    return new Struct(ctx, struct.type, struct);
+}
+
+export function newBlock(
+    ctx: Context,
+    cb: () => ExpressionInformation | void,
+    { name = null, type }: { name?: string | null; type?: number } = {}
+): ExpressionInformation {
+    const parent_block = ctx.current_block;
+    ctx.current_block = [];
+    const expr = cb();
+    if (expr) ctx.current_block.push(expr);
+    const block = ctx.current_block;
+    ctx.current_block = parent_block;
+
+    return {
+        ref: ctx.mod.block(
+            name,
+            block.map((x) => x.ref),
+            type
+        ),
+        type: block.at(-1)?.type ?? ctx.types.void,
+        expression: binaryen.ExpressionIds.Block
+    };
+}
 }
