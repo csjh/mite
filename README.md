@@ -19,7 +19,6 @@ Mite was made to accompany my learning during my introduction to C university co
 
 > In no particular order
 
--   [ ] Arrays
 -   [ ] 0-copy Mite -> Javascript Interop
 -   [ ] Javascript Helper Mode
 -   [ ] Standard Library
