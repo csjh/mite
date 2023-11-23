@@ -14,6 +14,7 @@ Mite was made to accompany my learning during my introduction to C university co
 -   If, for, while, do-while expressions
 -   Stack-allocated structs
 -   First class SIMD support
+-   Structs and arrays
 
 ## Roadmap
 
