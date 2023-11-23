@@ -433,11 +433,10 @@ export class Parser {
 
         this.expectToken(TokenType.LET);
         this.idx++;
-        const id = this.getIdentifier();
         do {
             const declaration: Partial<VariableDeclarator> = {
                 type: "VariableDeclarator",
-                id
+                id: this.getIdentifier()
             };
 
             if (this.token.type === TokenType.COLON) {

@@ -197,15 +197,19 @@ export function newBlock(
     const block = ctx.current_block;
     ctx.current_block = parent_block;
 
-    return {
-        ref: ctx.mod.block(
-            name,
-            block.map((x) => x.ref),
-            type
-        ),
-        type: block.at(-1)?.type ?? ctx.types.void,
-        expression: binaryen.ExpressionIds.Block
-    };
+    if (block.length === 1 && !name) {
+        return block[0];
+    } else {
+        return {
+            ref: ctx.mod.block(
+                name,
+                block.map((x) => x.ref),
+                type
+            ),
+            type: block.at(-1)?.type ?? ctx.types.void,
+            expression: binaryen.ExpressionIds.Block
+        };
+    }
 }
 
 const array_regex = /\[(.*); ([0-9]*)\]/;

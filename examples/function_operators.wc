@@ -1,7 +1,7 @@
 export fn main(): void {
-    i32 one = 1;
+    let one: u32 = 1;
 
-    i32 example_num = 16;
+    let example_num: u32 = 16;
     log_i32(clz(example_num));
     log_i32(ctz(example_num));
 
@@ -17,9 +17,9 @@ export fn main(): void {
     example_num = 1080295424;
     log_f32(reinterpret(example_num));
 
-    log_i64(clz(16));
-    log_i64(ctz(16));
-    log_i64(popcnt(19));
-    log_i64(rotr(1, 1));
-    log_i64(rotl(1, 1));
+    log_i32(clz(16));
+    log_i32(ctz(16));
+    log_i32(popcnt(19));
+    log_i32(rotr(1, 1));
+    log_i32(rotl(1, 1));
 }

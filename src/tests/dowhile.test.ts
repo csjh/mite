@@ -7,8 +7,8 @@ describe("do while loops should work", () => {
     it("should compile and run", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            i32 i = 0;
+            let sum = 0;
+            let i = 0;
             do {
                 sum = sum + i;
                 i = i + 1;
@@ -25,8 +25,8 @@ describe("do while loops should work with expressions", () => {
     it("should allow a block expression in the test", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            i32 i = 0;
+            let sum = 0;
+            let i = 0;
             do {
                 sum = sum + i;
                 i = i + 1;
@@ -41,8 +41,8 @@ describe("do while loops should work with expressions", () => {
     it("should allow a block expression in the body", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            i32 i = 0;
+            let sum = 0;
+            let i = 0;
             do {
                 {
                     sum = sum + i;
@@ -59,7 +59,7 @@ describe("do while loops should work with expressions", () => {
     it("should allow an empty everything", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
+            let sum = 0;
             do {} while (0);
             return sum;
         }
@@ -69,7 +69,7 @@ describe("do while loops should work with expressions", () => {
 
         const program2 = `
         export fn main(): i32 {
-            i32 sum = 0;
+            let sum = 0;
             do {
                 sum = sum + 1;
                 if (sum == 10) {
@@ -86,8 +86,8 @@ describe("do while loops should work with expressions", () => {
     it("should work fine with break", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            i32 i = 0;
+            let sum = 0;
+            let i = 0;
             do {
                 sum = sum + i;
                 if (i == 5) {
@@ -103,7 +103,7 @@ describe("do while loops should work with expressions", () => {
 
         const program2 = `
         export fn main(): i32 {
-            i32 sum = 0;
+            let sum = 0;
             do {
                 sum = sum + 1;
                 if (sum == 10) {
@@ -118,7 +118,7 @@ describe("do while loops should work with expressions", () => {
 
         const program3 = `
         export fn main(): i32 {
-            i32 sum = 0;
+            let sum = 0;
             do {
                 sum = sum + 1;
                 do {
@@ -141,8 +141,8 @@ describe("do while loops should work with expressions", () => {
     it("should work fine with continue", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            i32 i = 0;
+            let sum = 0;
+            let i = 0;
             do {
                 sum = sum + i;
                 i = i + 1;
@@ -158,8 +158,8 @@ describe("do while loops should work with expressions", () => {
 
         const program2 = `
         export fn main(): i32 {
-            i32 sum = 0;
-            i32 i = 0;
+            let sum = 0;
+            let i = 0;
             do {
                 i = i + 1;
                 if (i % 10) {
@@ -175,15 +175,15 @@ describe("do while loops should work with expressions", () => {
 
         const program3 = `
         export fn main(): i32 {
-            i32 sum = 0;
-            i32 i = 0;
+            let sum = 0;
+            let i = 0;
             do {
                 i = i + 1;
                 if (i % 10) {
                     continue;
                 };
                 sum = sum + i;
-                i32 j = 0;
+                let j = 0;
                 do {
                     j = j + 1;
                     if (j % 10) {

@@ -1,18 +1,18 @@
 fn divide(a: i32, b: i32): f32 {
-    f32 c = f32(a);
-    f32 d = f32(b);
+    let c = f32(a);
+    let d = f32(b);
     return c / d;
 }
 
 export fn main(): f64 {
-    i32 hundred = 100;
+    let hundred = 100;
     log_i32(hundred);
 
-    i32 four_hundred = 400;
+    let four_hundred = 400;
 
-    i32 sum = hundred + four_hundred, second_decl = four_hundred - hundred;
+    let sum = hundred + four_hundred, second_decl = four_hundred - hundred;
 
-    i32 shooby = if (1) 15 else 20;
+    let shooby = if (1) 15 else 20;
 
     for (shooby = 0; shooby < 5; shooby += 1) {
         log_i32(shooby);
@@ -25,22 +25,22 @@ export fn main(): f64 {
         shooby -= 1;
     };
 
-    i32 i = 0;
+    let i = 0;
     do {
         log_i32(i);
         i += 1;
     } while (i < 5);
 
-    i64 unused;
+    let unused: i64;
     unused = 100;
     unused = 9223372036854776000;
-    f64 big_double_literal = 9223372036854776000.15;
+    let big_double_literal = 9223372036854776000.15;
 
     sum += hundred + second_decl;
 
-    f64 three_halves = f64(divide(3, 2));
+    let three_halves = f64(divide(3, 2));
 
-    f64 blah = three_halves * big_double_literal;
+    let blah = three_halves * big_double_literal;
 
     return f64(sum) + three_halves - blah;
 }

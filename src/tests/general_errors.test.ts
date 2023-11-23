@@ -24,7 +24,7 @@ describe("general errors", () => {
     it("should not stack overflow with a 64kb stack", () => {
         const program = `
         export fn main(): i32 {
-            struct_12 x;
+            let x: struct_12;
             x.x.x.x.x.x.x.x.x.x.x.x.x.x = 5;
         
             return 0;
@@ -102,9 +102,9 @@ describe("general errors", () => {
     it("should stack overflow with a 64kb + 16 bytes stack", () => {
         const program = `
         export fn main(): i32 {
-            struct_12 x;
+            let x: struct_12;
             x.x.x.x.x.x.x.x.x.x.x.x.x.x = 5;
-            struct_0 breaking_point;
+            let breaking_point: struct_0;
             breaking_point.x = 6;
         
             return 0;

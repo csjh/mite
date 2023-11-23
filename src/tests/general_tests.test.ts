@@ -76,7 +76,7 @@ describe("operator precendence", () => {
     it("should work with variables", () => {
         const program1 = `
         export fn main(): i32 {
-            i32 x = 5 * 3 + 2;
+            let x = 5 * 3 + 2;
             return x;
         }
         `;
@@ -85,7 +85,7 @@ describe("operator precendence", () => {
 
         const program2 = `
         export fn main(): i32 {
-            i32 y = 0;
+            let y = 0;
             return y += 4 % 2;
         }
         `;
@@ -94,7 +94,7 @@ describe("operator precendence", () => {
 
         const program3 = `
         export fn main(): i32 {
-            i32 z = 63;
+            let z = 63;
             z >>= 2 & 3;
             return z;
         }
@@ -104,7 +104,7 @@ describe("operator precendence", () => {
 
         const program4 = `
         export fn main(): i32 {
-            i32 a = 3;
+            let a = 3;
             a <<= 2 | 3;
             return a;
         }
@@ -114,7 +114,7 @@ describe("operator precendence", () => {
 
         const program5 = `
         export fn main(): i32 {
-            i32 b = 234;
+            let b = 234;
             b |= 6 ^ 1;
             return b;
         }
@@ -124,7 +124,7 @@ describe("operator precendence", () => {
 
         const program6 = `
         export fn main(): i32 {
-            i32 c = 2394;
+            let c = 2394;
             c ^= 3 & 5;
             return c;
         }
@@ -134,7 +134,7 @@ describe("operator precendence", () => {
 
         const program7 = `
         export fn main(): i32 {
-            i32 d = 31;
+            let d = 31;
             return d += d &= 7 | 2;
         }
         `;

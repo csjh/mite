@@ -1,6 +1,6 @@
 export fn main(): i32 {
-    f32 a = 2.0;
-    for (i32 i = 0; i < 50; i += 1) {
+    let a = 2.0;
+    for (let i = 0; i < 50; i += 1) {
         a *= 2.0;
     };
     return i32(a);

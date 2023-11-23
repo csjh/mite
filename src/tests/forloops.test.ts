@@ -7,8 +7,8 @@ describe("for loops should work", () => {
     it("should compile and run", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            for (i32 i = 0; i < 10; i = i + 1) {
+            let sum = 0;
+            for (let i = 0; i < 10; i = i + 1) {
                 sum = sum + i;
             };
             return sum;
@@ -23,8 +23,8 @@ describe("for loops should work with expressions", () => {
     it("should allow a variable assignment in the initializer", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            i32 i;
+            let sum = 0;
+            let i: i32;
             for (i = 0; i < 10; i = i + 1) {
                 sum = sum + i;
             };
@@ -38,8 +38,8 @@ describe("for loops should work with expressions", () => {
     it("should allow a block expression in the update", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            for (i32 i = 0; i < 10; { i = i + 1; }) {
+            let sum = 0;
+            for (let i = 0; i < 10; { i = i + 1; }) {
                 sum = sum + i;
             };
             return sum;
@@ -52,8 +52,8 @@ describe("for loops should work with expressions", () => {
     it("should allow a block expression in the body", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            for (i32 i = 0; i < 10; i = i + 1) {
+            let sum = 0;
+            for (let i = 0; i < 10; i = i + 1) {
                 {
                     sum = sum + i;
                 };
@@ -68,7 +68,7 @@ describe("for loops should work with expressions", () => {
     it("should allow an empty everything", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
+            let sum = 0;
             for (;;) {break;};
             return sum;
         }
@@ -78,7 +78,7 @@ describe("for loops should work with expressions", () => {
 
         const program2 = `
         export fn main(): i32 {
-            i32 sum = 0;
+            let sum = 0;
             for (;;) {
                 sum = sum + 1;
                 if (sum == 10) {
@@ -95,8 +95,8 @@ describe("for loops should work with expressions", () => {
     it("should work fine with break", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            for (i32 i = 0; i < 10; i = i + 1) {
+            let sum = 0;
+            for (let i = 0; i < 10; i = i + 1) {
                 sum = sum + i;
                 if (i == 5) {
                     break;
@@ -110,7 +110,7 @@ describe("for loops should work with expressions", () => {
 
         const program2 = `
         export fn main(): i32 {
-            i32 sum = 0;
+            let sum = 0;
             for (;;) {
                 sum = sum + 1;
                 if (sum == 10) {
@@ -125,7 +125,7 @@ describe("for loops should work with expressions", () => {
 
         const program3 = `
         export fn main(): i32 {
-            i32 sum = 0;
+            let sum = 0;
             for (;;) {
                 sum = sum + 1;
                 for (;;) {
@@ -148,8 +148,8 @@ describe("for loops should work with expressions", () => {
     it("should work fine with continue", () => {
         const program = `
         export fn main(): i32 {
-            i32 sum = 0;
-            for (i32 i = 0; i < 10; i = i + 1) {
+            let sum = 0;
+            for (let i = 0; i < 10; i = i + 1) {
                 if (i == 5) {
                     continue;
                 };
@@ -163,8 +163,8 @@ describe("for loops should work with expressions", () => {
 
         const program2 = `
         export fn main(): i32 {
-            i32 sum = 0;
-            for (i32 i = 0; i < 100; i = i + 1) {
+            let sum = 0;
+            for (let i = 0; i < 100; i = i + 1) {
                 if (i % 10) {
                     continue;
                 };
@@ -178,13 +178,13 @@ describe("for loops should work with expressions", () => {
 
         const program3 = `
         export fn main(): i32 {
-            i32 sum = 0;
-            for (i32 i = 0; i < 100; i = i + 1) {
+            let sum = 0;
+            for (let i = 0; i < 100; i = i + 1) {
                 if (i % 10) {
                     continue;
                 };
                 sum = sum + i;
-                for (i32 j = 0; j < 100; j = j + 1) {
+                for (let j = 0; j < 100; j = j + 1) {
                     if (j % 10) {
                         continue;
                     };
