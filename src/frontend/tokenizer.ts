@@ -137,6 +137,9 @@ export function tokenize(input: string): Token[] {
         switch (token.type) {
             case TokenType.IDENTIFIER:
                 switch (token.value) {
+                    case "let":
+                        token = { type: TokenType.LET, value: "let" };
+                        break;
                     case "fn":
                         token = { type: TokenType.FN, value: "fn" };
                         break;

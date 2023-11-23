@@ -214,27 +214,14 @@ export class Parser {
 
         const params: TypedParameter[] = [];
         while (this.token.type !== TokenType.RIGHT_PAREN) {
-            const name = this.token.value;
-            this.expectToken(TokenType.IDENTIFIER);
-            this.idx++;
+            const name = this.getIdentifier();
 
             this.expectToken(TokenType.COLON);
             this.idx++;
 
-            const type = this.token.value;
-            this.idx++;
+            const typeAnnotation = this.parseType();
 
-            params.push({
-                type: "TypedParameter",
-                name: {
-                    type: "Identifier",
-                    name
-                },
-                typeAnnotation: {
-                    type: "Identifier",
-                    name: type
-                }
-            });
+            params.push({ type: "TypedParameter", name, typeAnnotation });
 
             if (this.token.type === TokenType.COMMA) this.idx++;
         }
@@ -298,14 +285,10 @@ export class Parser {
         this.expectToken(TokenType.LEFT_PAREN);
         this.idx++;
 
-        let init,
-            prev_idx = this.idx;
-        try {
-            init = this.parseVariableDeclarationOrAssignment("declaration");
-        } catch {
-            this.idx = prev_idx;
-            init = this.parseExpression();
-        }
+        const init =
+            this.token.type === TokenType.LET
+                ? this.parseVariableDeclaration()
+                : this.parseExpression();
         this.expectToken(TokenType.SEMICOLON);
         this.idx++;
 
@@ -423,15 +406,8 @@ export class Parser {
                 type: "ReturnStatement",
                 argument: expression
             } satisfies ReturnStatement;
-        } else if (
-            // probably a better way to do this lmao
-            this.token.type === TokenType.IDENTIFIER &&
-            this.tokens[this.idx + 1].type === TokenType.IDENTIFIER &&
-            (this.tokens[this.idx + 2].type === TokenType.ASSIGNMENT ||
-                this.tokens[this.idx + 2].type === TokenType.COMMA ||
-                this.tokens[this.idx + 2].type === TokenType.SEMICOLON)
-        ) {
-            statement = this.parseVariableDeclarationOrAssignment("declaration");
+        } else if (this.token.type === TokenType.LET) {
+            statement = this.parseVariableDeclaration();
         } else {
             statement = {
                 type: "ExpressionStatement",
@@ -446,40 +422,27 @@ export class Parser {
         return statement;
     }
 
-    private expectAssignmentOperator(token: string): asserts token is AssignmentOperator {
-        if (!ASSIGNMENT_OPERATORS.has(token as AssignmentOperator)) {
-            throw new Error(
-                `Expected assignment operator in (${Array.from(ASSIGNMENT_OPERATORS).join(
-                    ", "
-                )}), got ${token}`
-            );
-        }
-    }
-
-    private parseVariableDeclarationOrAssignment(type: "declaration"): VariableDeclaration;
-    private parseVariableDeclarationOrAssignment(
-        type: "assignment",
-        left: Identifier | MemberExpression
-    ): AssignmentExpression;
-    private parseVariableDeclarationOrAssignment(
-        type: "assignment" | "declaration",
-        left?: Identifier | MemberExpression
-    ): AssignmentExpression | VariableDeclaration {
-        if (type === "declaration") {
+    private parseVariableDeclaration(): VariableDeclaration {
             const variable: VariableDeclaration = {
                 type: "VariableDeclaration",
                 declarations: []
             };
 
-            this.expectToken(TokenType.IDENTIFIER);
-            const typeAnnotation = this.getIdentifier();
+        this.expectToken(TokenType.LET);
+        this.idx++;
+        const id = this.getIdentifier();
             do {
-                const declaration: VariableDeclarator = {
+            const declaration: Partial<VariableDeclarator> = {
                     type: "VariableDeclarator",
-                    id: this.getIdentifier(),
-                    typeAnnotation,
-                    init: null
-                };
+                id
+            };
+
+            if (this.token.type === TokenType.COLON) {
+                this.idx++;
+                const type = this.parseType();
+
+                declaration.typeAnnotation = type;
+            }
 
                 // has initializer
                 if (this.token.type === TokenType.ASSIGNMENT) {
@@ -487,24 +450,14 @@ export class Parser {
                     declaration.init = this.parseExpression();
                 }
 
-                variable.declarations.push(declaration);
+            if (!(declaration.init || declaration.typeAnnotation)) {
+                throw new Error("Variable declaration must have initializer or type annotation");
+            }
+
+            variable.declarations.push(declaration as VariableDeclarator);
             } while (this.token.type === TokenType.COMMA && ++this.idx);
 
             return variable;
-        } else if (type === "assignment") {
-            const operator = this.token.value;
-            this.expectAssignmentOperator(operator);
-            this.idx++;
-
-            return {
-                type: "AssignmentExpression",
-                operator,
-                left: left ?? this.getIdentifier(),
-                right: this.parseExpression()
-            } satisfies AssignmentExpression;
-        } else {
-            throw new Error("Unknown variable operation");
-        }
     }
 
     private isExpression(
@@ -961,5 +914,21 @@ export class Parser {
         this.expectToken(TokenType.BREAK);
         this.idx++;
         return { type: "BreakExpression" };
+    }
+    private parseType(): TypeIdentifier {
+        const token = this.tokens[this.idx++];
+        if (token.type === TokenType.IDENTIFIER) return { type: "Identifier", name: token.value };
+        if (token.type !== TokenType.LEFT_BRACKET)
+            throw new Error(`Expected type, got ${token.type}`);
+
+        const type = this.parseType();
+        this.expectToken(TokenType.SEMICOLON);
+        this.idx++;
+
+        const length = this.getNumberLiteral();
+        this.expectToken(TokenType.RIGHT_BRACKET);
+        this.idx++;
+
+        return { type: "Identifier", name: `[${type.name}; ${length.value}]` };
     }
 }

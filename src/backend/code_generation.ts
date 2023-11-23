@@ -184,13 +184,24 @@ function statementToExpression(ctx: Context, value: Statement): ExpressionInform
     throw new Error(`Unknown statement type: ${value.type}`);
 }
 
-function variableDeclarationToExpression(
-    ctx: Context,
-    value: VariableDeclaration
-): ExpressionInformation {
-    const expressions = [];
+function variableDeclarationToExpression(ctx: Context, value: VariableDeclaration): void {
     for (const { id, typeAnnotation, init } of value.declarations) {
-        const type = ctx.types[typeAnnotation.name];
+        let expr: ExpressionInformation | null = null;
+        let type: TypeInformation;
+        if (typeAnnotation && init) {
+            expr = expressionToExpression(
+                updateExpected(ctx, parseType(ctx, typeAnnotation.name)),
+                init
+            );
+            type = expr.type;
+        } else if (typeAnnotation) {
+            type = parseType(ctx, typeAnnotation.name);
+        } else if (init) {
+            expr = expressionToExpression(ctx, init);
+            type = expr.type;
+        } else {
+            throw new Error("Variable declaration must have type or initializer");
+        }
 
         let variable: MiteType;
 
