@@ -44,7 +44,9 @@ import type {
     LogicalExpression,
     EmptyExpression,
     MemberExpression,
-    Declaration
+    Declaration,
+    ArrayExpression,
+    IndexExpression
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import { AllocationLocation, MiteType, Primitive, Struct } from "./type_classes.js";
@@ -88,8 +90,8 @@ export function programToModule(
             .map(({ id, params, returnType }) => [
                 id.name,
                 {
-                    params: params.map(({ typeAnnotation }) => ctx.types[typeAnnotation.name]),
-                    results: ctx.types[returnType.name]
+                    params: params.map(({ typeAnnotation }) => parseType(ctx, typeAnnotation.name)),
+                    results: parseType(ctx, returnType.name)
                 }
             ])
     );
@@ -146,7 +148,7 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     const params = new Map(
         node.params.map(({ name, typeAnnotation }, index) => [
             name.name,
-            createMiteType(ctx, typeAnnotation.name, index, 0)
+            createMiteType(ctx, parseType(ctx, typeAnnotation.name), index)
         ])
     );
 
@@ -251,7 +253,7 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
     }
 }
 
-function returnStatementToExpression(ctx: Context, value: ReturnStatement): ExpressionInformation {
+function returnStatementToExpression(ctx: Context, value: ReturnStatement): void {
     const expr =
         value.argument &&
         expressionToExpression(updateExpected(ctx, ctx.current_function.results), value.argument);
@@ -306,9 +308,12 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
         return breakExpressionToExpression(ctx, value);
     } else if (value.type === "MemberExpression") {
         return memberExpressionToExpression(ctx, value);
+    } else if (value.type === "ArrayExpression") {
+        return arrayExpressionToExpression(ctx, value);
+    } else if (value.type === "IndexExpression") {
+        return indexExpressionToExpression(ctx, value);
     } else {
         switch (value.type) {
-            case "ArrayExpression":
             case "AwaitExpression":
             case "ChainExpression":
             case "FunctionExpression":
@@ -504,7 +509,7 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): Expressi
         value.init &&
         newBlock(ctx, () =>
             value.init!.type === "VariableDeclaration"
-            ? variableDeclarationToExpression(ctx, value.init)
+                ? variableDeclarationToExpression(ctx, value.init)
                 : expressionToExpression(ctx, value.init!)
         );
 
@@ -681,4 +686,81 @@ function memberExpressionToExpression(
         throw new Error("Cannot access member of non-struct");
     return wrapStruct(ctx, struct).access(value.property.name).get();
 }
+
+function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): ExpressionInformation {
+    if (value.elements.length === 0) {
+        throw new Error("Cannot create empty array");
+    }
+
+    const first_element = expressionToExpression(ctx, value.elements[0]);
+    const element_type = first_element.type;
+
+    const array = createMiteType(
+        ctx,
+        {
+            classification: "array",
+            name: `[${element_type.name}; ${value.elements.length}]`,
+            sizeof: element_type.sizeof * value.elements.length,
+            element_type,
+            length: value.elements.length
+        },
+        {
+            ref: ctx.mod.i32.add(
+                lookForVariable(ctx, "Local Stack Pointer").get().ref,
+                ctx.mod.i32.const(ctx.current_function.stack_frame_size)
+            ),
+            expression: binaryen.ExpressionIds.Binary,
+            type: ctx.types.i32
+        }
+    );
+    ctx.current_function.stack_frame_size += element_type.sizeof * value.elements.length;
+
+    for (let i = 0; i < value.elements.length; i++) {
+        const expr = expressionToExpression(updateExpected(ctx, element_type), value.elements[i]);
+        ctx.current_block.push(array.index(constant(ctx, i)).set(expr));
+    }
+
+    return array.get();
+}
+
+function indexExpressionToExpression(ctx: Context, value: IndexExpression): ExpressionInformation {
+    const array = expressionToExpression(ctx, value.object);
+    if (array.type.classification !== "array") {
+        throw new Error(`Cannot index non-array type ${array.type.name}`);
+    }
+    const index = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.index);
+
+    return wrapArray(ctx, array).index(index).get();
+}
+
+function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): MiteType {
+    if (variable.type === "Identifier") {
+        return lookForVariable(ctx, variable.name);
+    } else if (variable.type === "MemberExpression") {
+        const inner = variable.object;
+        if (
+            inner.type !== "Identifier" &&
+            inner.type !== "MemberExpression" &&
+            inner.type !== "IndexExpression"
+        )
+            throw new Error("Cannot unwrap non-identifier");
+        const mite_type = unwrapVariable(ctx, inner);
+        if (mite_type.type.classification !== "struct") throw new Error("Cannot unwrap non-struct");
+        return mite_type.access(variable.property.name);
+    } else if (variable.type === "IndexExpression") {
+        const inner = variable.object;
+        if (
+            inner.type !== "Identifier" &&
+            inner.type !== "MemberExpression" &&
+            inner.type !== "IndexExpression"
+        )
+            throw new Error("Cannot unwrap non-identifier");
+        const mite_type = unwrapVariable(ctx, inner);
+        if (mite_type.type.classification !== "array") throw new Error("Cannot unwrap non-array");
+        return mite_type.index(
+            expressionToExpression(updateExpected(ctx, ctx.types.i32), variable.index)
+        );
+    } else {
+        throw new Error(`Unknown variable type: ${variable}`);
+    }
 }

@@ -5,8 +5,7 @@ import {
     ExpressionInformation,
     TypeInformation
 } from "../types/code_gen.js";
-import { Identifier, MemberExpression } from "../types/nodes.js";
-import { AllocationLocation, MiteType, Primitive, Struct } from "./type_classes.js";
+import { AllocationLocation, Array, MiteType, Primitive, Struct } from "./type_classes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 
 export const STACK_POINTER = "__stack_pointer";
@@ -103,7 +102,12 @@ export function createMiteType(
         if (typeof value_or_index === "number") {
             throw new Error("Cannot create struct with index");
         }
-        return new Struct(ctx, type, value_or_index, offset);
+        return new Struct(ctx, type, value_or_index);
+    } else if (type.classification === "array") {
+        if (typeof value_or_index === "number") {
+            throw new Error("Cannot create array with index");
+        }
+        return new Array(ctx, type, value_or_index);
     } else {
         throw new Error(`Unknown type: ${type}`);
     }
@@ -203,4 +207,19 @@ export function newBlock(
         expression: binaryen.ExpressionIds.Block
     };
 }
+
+const array_regex = /\[(.*); ([0-9]*)\]/;
+export function parseType(ctx: Context, type: string): TypeInformation {
+    if (type in ctx.types) return ctx.types[type];
+    if (array_regex.test(type)) {
+        const [_, element_type, length] = array_regex.exec(type)!;
+        return (ctx.types[type] = {
+            name: type,
+            classification: "array",
+            element_type: parseType(ctx, element_type),
+            length: Number(length),
+            sizeof: 4
+        });
+    }
+    throw new Error(`Unknown type: ${type}`);
 }

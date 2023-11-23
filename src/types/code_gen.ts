@@ -5,18 +5,29 @@ export type ProgramToModuleOptions = {
     stack_size?: number;
 };
 
+export type ArrayTypeInformation = {
+    name: string;
+    classification: "array";
+    element_type: TypeInformation;
+    length: number;
+    sizeof: number;
+};
 export type StructTypeInformation = {
     name: string;
     classification: "struct";
     fields: Map<string, { type: TypeInformation; offset: number }>;
     sizeof: number;
 };
+export type PrimitiveTypeInformation = {
+    name: string;
+    classification: "primitive";
+    sizeof: number;
+};
+
 export type TypeInformation =
-    | {
-          name: string;
-          classification: "primitive" | "array";
-      }
-    | StructTypeInformation;
+    | PrimitiveTypeInformation
+    | StructTypeInformation
+    | ArrayTypeInformation;
 
 export type ExpressionInformation = {
     type: TypeInformation;
@@ -52,9 +63,12 @@ export type Context = {
         break: string[];
         depth: number;
     };
+    /** The current block */
+    current_block: ExpressionInformation[];
     /** Data about current function */
     current_function: FunctionInformation & {
         stack_frame_size: number;
+        local_count: number;
     };
 };
 

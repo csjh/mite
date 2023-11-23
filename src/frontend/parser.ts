@@ -38,7 +38,10 @@ import type {
     ContinueExpression,
     BreakExpression,
     NumberLiteral,
-    SIMDLiteral
+    SIMDLiteral,
+    ArrayExpression,
+    IndexExpression,
+    TypeIdentifier
 } from "../types/nodes.js";
 
 const precedence = [
@@ -423,17 +426,17 @@ export class Parser {
     }
 
     private parseVariableDeclaration(): VariableDeclaration {
-            const variable: VariableDeclaration = {
-                type: "VariableDeclaration",
-                declarations: []
-            };
+        const variable: VariableDeclaration = {
+            type: "VariableDeclaration",
+            declarations: []
+        };
 
         this.expectToken(TokenType.LET);
         this.idx++;
         const id = this.getIdentifier();
-            do {
+        do {
             const declaration: Partial<VariableDeclarator> = {
-                    type: "VariableDeclarator",
+                type: "VariableDeclarator",
                 id
             };
 
@@ -444,20 +447,20 @@ export class Parser {
                 declaration.typeAnnotation = type;
             }
 
-                // has initializer
-                if (this.token.type === TokenType.ASSIGNMENT) {
-                    this.idx++;
-                    declaration.init = this.parseExpression();
-                }
+            // has initializer
+            if (this.token.type === TokenType.ASSIGNMENT) {
+                this.idx++;
+                declaration.init = this.parseExpression();
+            }
 
             if (!(declaration.init || declaration.typeAnnotation)) {
                 throw new Error("Variable declaration must have initializer or type annotation");
             }
 
             variable.declarations.push(declaration as VariableDeclarator);
-            } while (this.token.type === TokenType.COMMA && ++this.idx);
+        } while (this.token.type === TokenType.COMMA && ++this.idx);
 
-            return variable;
+        return variable;
     }
 
     private isExpression(
@@ -487,6 +490,9 @@ export class Parser {
                 case TokenType.SEMICOLON:
                 case TokenType.RIGHT_PAREN: // these are both for for loops
                     expression_stack.push(this.parseEmptyExpression());
+                    break;
+                case TokenType.LEFT_BRACKET:
+                    expression_stack.push(this.parseArrayExpression());
                     break;
                 case TokenType.IF:
                     expression_stack.push(this.parseIfExpression());
@@ -524,9 +530,6 @@ export class Parser {
                     // @ts-expect-error
                     if (this.token.type === TokenType.LEFT_PAREN) {
                         expression_stack.push(this.parseCallExpression(next));
-                        // @ts-expect-error
-                    } else if (this.token.type === TokenType.PERIOD) {
-                        expression_stack.push(this.parseMemberExpression(next));
                     } else {
                         expression_stack.push(next);
                     }
@@ -535,9 +538,23 @@ export class Parser {
                     break;
             }
 
+            while (
+                this.token.type === TokenType.LEFT_BRACKET ||
+                this.token.type === TokenType.PERIOD
+            ) {
+                const last = expression_stack.pop()!;
+                if (typeof last === "string") throw new Error("Expected expression");
+                if (this.token.type === TokenType.LEFT_BRACKET) {
+                    expression_stack.push(this.parseIndexExpression(last));
+                } else if (this.token.type === TokenType.PERIOD) {
+                    expression_stack.push(this.parseMemberExpression(last));
+                }
+            }
+
             switch (this.token.type) {
                 case TokenType.SEMICOLON:
                 case TokenType.RIGHT_PAREN: // end of a function call
+                case TokenType.RIGHT_BRACKET: // end of an array literal
                 case TokenType.COMMA: // right now commas in function call
                 case TokenType.ELSE: // end of an if statement
                 case TokenType.WHILE: // end of a do/while loop body
@@ -664,7 +681,11 @@ export class Parser {
             case TokenType.ASSIGNMENT_PLUS:
             case TokenType.ASSIGNMENT_SLASH:
             case TokenType.ASSIGNMENT_STAR:
-                if (left.type !== "Identifier" && left.type !== "MemberExpression") {
+                if (
+                    left.type !== "Identifier" &&
+                    left.type !== "MemberExpression" &&
+                    left.type !== "IndexExpression"
+                ) {
                     throw new Error("Expected identifier, got literal");
                 }
                 return {
@@ -900,6 +921,26 @@ export class Parser {
         return object;
     }
 
+    private parseIndexExpression(object: IndexExpression["object"]): IndexExpression {
+        do {
+            this.expectToken(TokenType.LEFT_BRACKET);
+            this.idx++;
+
+            const index = this.parseExpression();
+
+            object = {
+                type: "IndexExpression",
+                object,
+                index
+            };
+
+            this.expectToken(TokenType.RIGHT_BRACKET);
+            this.idx++;
+        } while (this.token.type === TokenType.LEFT_BRACKET);
+
+        return object;
+    }
+
     private parseEmptyExpression(): EmptyExpression {
         return { type: "EmptyExpression" };
     }
@@ -915,6 +956,26 @@ export class Parser {
         this.idx++;
         return { type: "BreakExpression" };
     }
+
+    private parseArrayExpression(): ArrayExpression {
+        this.expectToken(TokenType.LEFT_BRACKET);
+        this.idx++;
+
+        const elements: Expression[] = [];
+        while (this.token.type !== TokenType.RIGHT_BRACKET) {
+            elements.push(this.parseExpression());
+            if (this.token.type === TokenType.COMMA) this.idx++;
+        }
+
+        this.expectToken(TokenType.RIGHT_BRACKET);
+        this.idx++;
+
+        return {
+            type: "ArrayExpression",
+            elements
+        };
+    }
+
     private parseType(): TypeIdentifier {
         const token = this.tokens[this.idx++];
         if (token.type === TokenType.IDENTIFIER) return { type: "Identifier", name: token.value };

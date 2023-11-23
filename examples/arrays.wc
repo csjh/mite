@@ -1,0 +1,40 @@
+struct coord {
+    x: i32,
+    y: i32
+}
+
+export fn main(): i32 {
+    let home = [1, 2, 3, 4, 5];
+    let work = [1, 2, 3, 4, 5];
+
+    let sum = 0;
+    for (let i = 0; i < 5; i += 1) {
+        sum += home[i] + work[i];
+        home[i] += 1;
+        work[i] += i;
+    };
+    log_i32(sum);
+
+    for (let i = 0; i < 5; i += 1) {
+        sum += home[i] + work[i];
+        home[i] += 1;
+        work[i] += i;
+    };
+    log_i32(sum);
+
+    let coordinates: [coord; 3];
+    coordinates[0].x = 1;
+    coordinates[0].y = 2;
+    coordinates[1].x = 3;
+    coordinates[1].y = 4;
+    coordinates[2].x = 5;
+    coordinates[2].y = 6;
+
+    for (let i = 0; i < 3; i += 1) {
+        sum += coordinates[i].x + coordinates[i].y;
+        coordinates[i].x += 1;
+        coordinates[i].y += i;
+    };
+
+    return sum;
+}

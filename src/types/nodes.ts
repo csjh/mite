@@ -215,12 +215,27 @@ export interface VariableDeclaration extends BaseDeclaration {
     declarations: VariableDeclarator[];
 }
 
-export interface VariableDeclarator extends BaseNode {
-    type: "VariableDeclarator";
-    id: Identifier;
-    typeAnnotation: TypeIdentifier;
-    init?: Expression | null | undefined;
-}
+export type VariableDeclarator = BaseNode &
+    (
+        | {
+              type: "VariableDeclarator";
+              id: Identifier;
+              typeAnnotation: TypeIdentifier;
+              init: Expression;
+          }
+        | {
+              type: "VariableDeclarator";
+              id: Identifier;
+              typeAnnotation: TypeIdentifier;
+              init?: Expression;
+          }
+        | {
+              type: "VariableDeclarator";
+              id: Identifier;
+              typeAnnotation: TypeIdentifier;
+              init: Expression;
+          }
+    );
 
 export interface ExpressionMap {
     ArrayExpression: ArrayExpression;
@@ -239,6 +254,7 @@ export interface ExpressionMap {
     Identifier: Identifier;
     IfExpression: IfExpression;
     ImportExpression: ImportExpression;
+    IndexExpression: IndexExpression;
     Literal: Literal;
     LogicalExpression: LogicalExpression;
     MemberExpression: MemberExpression;
@@ -275,7 +291,7 @@ export interface ThisExpression extends BaseExpression {
 
 export interface ArrayExpression extends BaseExpression {
     type: "ArrayExpression";
-    elements: Array<Expression | SpreadElement | null>;
+    elements: Array<Expression>;
 }
 
 export interface ObjectExpression extends BaseExpression {
@@ -334,7 +350,7 @@ export interface BinaryExpression extends BaseExpression {
 export interface AssignmentExpression extends BaseExpression {
     type: "AssignmentExpression";
     operator: AssignmentOperator;
-    left: Identifier | MemberExpression;
+    left: Identifier | MemberExpression | IndexExpression;
     right: Expression;
 }
 
@@ -367,8 +383,14 @@ export interface CallExpression extends BaseExpression {
 
 export interface MemberExpression extends BaseExpression, BasePattern {
     type: "MemberExpression";
-    object: Identifier | MemberExpression;
+    object: Expression;
     property: Identifier;
+}
+
+export interface IndexExpression extends BaseExpression, BasePattern {
+    type: "IndexExpression";
+    object: Expression;
+    index: Expression;
 }
 
 export interface BasePattern extends BaseNode {}
