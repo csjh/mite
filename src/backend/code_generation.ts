@@ -762,6 +762,7 @@ function objectExpressionToExpression(
         ctx.current_block.push(struct.access(property.key.name).set(expr));
     }
 
+    // todo: zero out remaining fields
     if (fields.size !== 0) {
         throw new Error(`Struct ${type.name} has missing fields: ${Array.from(fields.keys())}`);
     }
