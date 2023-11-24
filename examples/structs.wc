@@ -9,15 +9,15 @@ struct locations {
 }
 
 export fn main(): i32 {
-    let home: coord;
-    home.x = 3;
-    home.y = 4;
-    let work: coord;
-    work.x = 5;
-    work.y = 6;
-    let l: locations;
-    l.home = home;
-    l.work = work;
+    let home = coord {
+        x: 3,
+        y: 4
+    };
+    let work = coord {
+        x: 5,
+        y: 6
+    };
+    let l = locations { home, work };
     l.work.y = 8;
     return l.home.x + l.home.y + l.work.x + l.work.y;
 }

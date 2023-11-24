@@ -296,7 +296,8 @@ export interface ArrayExpression extends BaseExpression {
 
 export interface ObjectExpression extends BaseExpression {
     type: "ObjectExpression";
-    properties: Array<Property | SpreadElement>;
+    typeAnnotation: TypeIdentifier;
+    properties: Array<Property>;
 }
 
 export interface PrivateIdentifier extends BaseNode {
@@ -306,12 +307,10 @@ export interface PrivateIdentifier extends BaseNode {
 
 export interface Property extends BaseNode {
     type: "Property";
-    key: Expression | PrivateIdentifier;
-    value: Expression | Identifier; // Could be an AssignmentProperty
-    kind: "init" | "get" | "set";
+    key: Identifier;
+    value: Expression;
     method: boolean;
     shorthand: boolean;
-    computed: boolean;
 }
 
 export interface PropertyDefinition extends BaseNode {
@@ -412,9 +411,7 @@ export interface Identifier extends BaseNode, BaseExpression, BasePattern {
     name: string;
 }
 
-export interface TypeIdentifier extends Identifier {
-    name: string;
-}
+export interface TypeIdentifier extends Identifier {}
 
 export interface Literal extends BaseNode, BaseExpression {
     type: "Literal";

@@ -41,7 +41,8 @@ import type {
     SIMDLiteral,
     ArrayExpression,
     IndexExpression,
-    TypeIdentifier
+    TypeIdentifier,
+    ObjectExpression
 } from "../types/nodes.js";
 
 const precedence = [
@@ -529,6 +530,9 @@ export class Parser {
                     // @ts-expect-error
                     if (this.token.type === TokenType.LEFT_PAREN) {
                         expression_stack.push(this.parseCallExpression(next));
+                        // @ts-expect-error
+                    } else if (this.token.type === TokenType.LEFT_BRACE) {
+                        expression_stack.push(this.parseStructLiteral(next));
                     } else {
                         expression_stack.push(next);
                     }
@@ -554,6 +558,7 @@ export class Parser {
                 case TokenType.SEMICOLON:
                 case TokenType.RIGHT_PAREN: // end of a function call
                 case TokenType.RIGHT_BRACKET: // end of an array literal
+                case TokenType.RIGHT_BRACE: // end of a struct literal
                 case TokenType.COMMA: // right now commas in function call
                 case TokenType.ELSE: // end of an if statement
                 case TokenType.WHILE: // end of a do/while loop body
@@ -990,5 +995,38 @@ export class Parser {
         this.idx++;
 
         return { type: "Identifier", name: `[${type.name}; ${length.value}]` };
+    }
+
+    private parseStructLiteral(typeAnnotation: Identifier): ObjectExpression {
+        const object: ObjectExpression = {
+            type: "ObjectExpression",
+            typeAnnotation,
+            properties: []
+        };
+
+        this.expectToken(TokenType.LEFT_BRACE);
+        this.idx++;
+
+        while (this.token.type !== TokenType.RIGHT_BRACE) {
+            const key = this.getIdentifier();
+
+            object.properties.push({
+                type: "Property",
+                key,
+                shorthand: this.token.type === TokenType.COMMA,
+                value:
+                    this.token.type === TokenType.COLON
+                        ? (this.idx++, this.parseExpression())
+                        : key,
+                method: false
+            });
+
+            if (this.token.type === TokenType.COMMA) this.idx++;
+        }
+
+        this.expectToken(TokenType.RIGHT_BRACE);
+        this.idx++;
+
+        return object;
     }
 }

@@ -46,7 +46,8 @@ import type {
     MemberExpression,
     Declaration,
     ArrayExpression,
-    IndexExpression
+    IndexExpression,
+    ObjectExpression
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import { AllocationLocation, MiteType, Primitive, Struct } from "./type_classes.js";
@@ -312,6 +313,8 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
         return arrayExpressionToExpression(ctx, value);
     } else if (value.type === "IndexExpression") {
         return indexExpressionToExpression(ctx, value);
+    } else if (value.type === "ObjectExpression") {
+        return objectExpressionToExpression(ctx, value);
     } else {
         switch (value.type) {
             case "AwaitExpression":
@@ -319,7 +322,6 @@ function expressionToExpression(ctx: Context, value: Expression): ExpressionInfo
             case "FunctionExpression":
             case "ImportExpression":
             case "MetaProperty":
-            case "ObjectExpression":
             case "SequenceExpression":
             case "TaggedTemplateExpression":
             case "TemplateLiteral":
@@ -731,6 +733,40 @@ function indexExpressionToExpression(ctx: Context, value: IndexExpression): Expr
     const index = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.index);
 
     return wrapArray(ctx, array).index(index).get();
+}
+
+function objectExpressionToExpression(
+    ctx: Context,
+    value: ObjectExpression
+): ExpressionInformation {
+    const type = parseType(ctx, value.typeAnnotation.name);
+    if (type.classification !== "struct") throw new Error("Cannot create non-struct object");
+
+    const struct = createMiteType(ctx, type, {
+        ref: ctx.mod.i32.add(
+            lookForVariable(ctx, "Local Stack Pointer").get().ref,
+            ctx.mod.i32.const(ctx.current_function.stack_frame_size)
+        ),
+        expression: binaryen.ExpressionIds.Binary,
+        type: ctx.types.i32
+    });
+    ctx.current_function.stack_frame_size += type.sizeof;
+
+    const fields = new Map(type.fields);
+    for (const property of value.properties) {
+        const field = fields.get(property.key.name);
+        if (!field) throw new Error(`Struct ${type.name} has no field ${property.key.name}`);
+        fields.delete(property.key.name);
+
+        const expr = expressionToExpression(updateExpected(ctx, field.type), property.value);
+        ctx.current_block.push(struct.access(property.key.name).set(expr));
+    }
+
+    if (fields.size !== 0) {
+        throw new Error(`Struct ${type.name} has missing fields: ${Array.from(fields.keys())}`);
+    }
+
+    return struct.get();
 }
 
 function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): MiteType {

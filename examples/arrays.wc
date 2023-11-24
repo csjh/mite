@@ -22,13 +22,11 @@ export fn main(): i32 {
     };
     log_i32(sum);
 
-    let coordinates: [coord; 3];
-    coordinates[0].x = 1;
-    coordinates[0].y = 2;
-    coordinates[1].x = 3;
-    coordinates[1].y = 4;
-    coordinates[2].x = 5;
-    coordinates[2].y = 6;
+    let coordinates = [
+        coord { x: 1, y: 2 },
+        coord { x: 3, y: 4 },
+        coord { x: 5, y: 6 }
+    ];
 
     for (let i = 0; i < 3; i += 1) {
         sum += coordinates[i].x + coordinates[i].y;

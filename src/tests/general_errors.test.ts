@@ -15,7 +15,7 @@ describe("general errors", () => {
         
         struct y {
             uses: x
-        }        
+        }
         `;
 
         assert.throws(() => compile(program));
@@ -104,8 +104,7 @@ describe("general errors", () => {
         export fn main(): i32 {
             let x: struct_12;
             x.x.x.x.x.x.x.x.x.x.x.x.x.x = 5;
-            let breaking_point: struct_0;
-            breaking_point.x = 6;
+            let breaking_point = { x: 6, y: 6 };
         
             return 0;
         }
