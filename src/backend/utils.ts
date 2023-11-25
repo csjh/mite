@@ -311,22 +311,16 @@ export function callFunction(
             expression: binaryen.ExpressionIds.Call
         };
     } else {
-        return newBlock(
-            ctx,
-            () => {
-                const variable = createStackVariable(ctx, results);
-                ctx.current_block.push({
-                    ref: ctx.mod.call(
-                        function_name,
-                        [variable.get().ref, ...args.map((arg) => arg.ref)],
-                        binaryen.none
-                    ),
-                    type: Primitive.primitives.get("void")!,
-                    expression: binaryen.ExpressionIds.Call
-                });
-                return variable.get();
-            },
-            { type: binaryen.i32 }
-        );
+        const variable = createStackVariable(ctx, results);
+        ctx.current_block.push({
+            ref: ctx.mod.call(
+                function_name,
+                [variable.get().ref, ...args.map((arg) => arg.ref)],
+                binaryen.none
+            ),
+            type: Primitive.primitives.get("void")!,
+            expression: binaryen.ExpressionIds.Call
+        });
+        return variable.get();
     }
 }

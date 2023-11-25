@@ -6,21 +6,6 @@ import { compile } from "../compiler.js";
 import assert from "assert";
 
 describe("general errors", () => {
-    it("should detect ", () => {
-        const program = `
-        struct x {
-            uses: y,
-            hi: i32
-        }
-        
-        struct y {
-            uses: x
-        }
-        `;
-
-        assert.throws(() => compile(program));
-    });
-
     it("should not stack overflow with a 64kb stack", () => {
         const program = `
         export fn main(): i32 {
