@@ -235,9 +235,7 @@ export class Parser {
         this.expectToken(TokenType.COLON);
         this.idx++;
 
-        this.expectToken(TokenType.IDENTIFIER);
-        const return_type = this.token.value;
-        this.idx++;
+        const returnType = this.parseType();
 
         const body = this.parseBlock();
 
@@ -248,10 +246,7 @@ export class Parser {
                 name
             },
             params,
-            returnType: {
-                type: "Identifier",
-                name: return_type
-            },
+            returnType,
             body
         };
     }

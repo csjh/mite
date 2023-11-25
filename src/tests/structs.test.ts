@@ -165,8 +165,6 @@ describe("struct functions", () => {
             let a = coord { x: 5, y: 6 };
             let b = coord { x: 3, y: 2 };
             let c = add(a, b);
-            log_i32(c.x);
-            log_i32(c.y);
             return c.x + c.y;
         }
         `;

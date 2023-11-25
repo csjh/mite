@@ -678,7 +678,7 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Expr
         throw new Error("Cannot create empty array");
     }
 
-    const first_element = expressionToExpression(ctx, value.elements[0]);
+    const first_element = expressionToExpression(updateExpected(ctx, undefined), value.elements[0]);
     const element_type = first_element.type;
 
     const array = createMiteType(

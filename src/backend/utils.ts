@@ -111,7 +111,11 @@ export function createMiteType(
         return new Struct(ctx, type, value_or_index);
     } else if (type.classification === "array") {
         if (typeof value_or_index === "number") {
-            throw new Error("Cannot create array with index");
+            value_or_index = {
+                ref: ctx.mod.local.get(value_or_index, binaryen.i32),
+                type,
+                expression: binaryen.ExpressionIds.LocalGet
+            };
         }
         return new Array(ctx, type, value_or_index);
     } else {
