@@ -180,9 +180,12 @@ export function wrapArray(ctx: Context, array: ExpressionInformation): Array {
     return new Array(ctx, array.type, array);
 }
 
-export function wrapStruct(ctx: Context, struct: ExpressionInformation): Struct {
-    if (struct.type.classification !== "struct") throw new Error("Cannot wrap non-struct");
-    return new Struct(ctx, struct.type, struct);
+export function rvalue(ctx: Context, array: ExpressionInformation): Array;
+export function rvalue(ctx: Context, struct: ExpressionInformation): Struct;
+export function rvalue(ctx: Context, expression: ExpressionInformation): Struct | Array {
+    if (expression.type.classification === "array") return new Array(ctx, expression.type, expression);
+    if (expression.type.classification === "struct") return new Struct(ctx, expression.type, expression);
+    throw new Error(`Cannot rvalue ${expression.type.classification}`);
 }
 
 export function newBlock(

@@ -9,8 +9,7 @@ import {
     typeInformationToBinaryen,
     getBinaryOperator,
     constant,
-    wrapArray,
-    wrapStruct,
+    rvalue,
     newBlock,
     parseType
 } from "./utils.js";
@@ -686,7 +685,7 @@ function memberExpressionToExpression(
     const struct = expressionToExpression(ctx, value.object);
     if (struct.type.classification !== "struct")
         throw new Error("Cannot access member of non-struct");
-    return wrapStruct(ctx, struct).access(value.property.name).get();
+    return rvalue(ctx, struct).access(value.property.name).get();
 }
 
 function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): ExpressionInformation {
@@ -732,7 +731,7 @@ function indexExpressionToExpression(ctx: Context, value: IndexExpression): Expr
     }
     const index = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.index);
 
-    return wrapArray(ctx, array).index(index).get();
+    return rvalue(ctx, array).index(index).get();
 }
 
 function objectExpressionToExpression(
