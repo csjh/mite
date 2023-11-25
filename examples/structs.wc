@@ -8,6 +8,10 @@ struct locations {
     work: coord
 }
 
+fn add(a: coord, b: coord): coord {
+    return coord { x: a.x + b.x, y: a.y + b.y };
+}
+
 export fn main(): i32 {
     let home = coord {
         x: 3,
@@ -19,5 +23,5 @@ export fn main(): i32 {
     };
     let l = locations { home, work };
     l.work.y = 8;
-    return l.home.x + l.home.y + l.work.x + l.work.y;
+    return add(l.home, l.work).y;
 }

@@ -6,12 +6,13 @@ import {
     miteSignatureToBinaryenSignature,
     updateExpected,
     STACK_POINTER,
-    typeInformationToBinaryen,
     getBinaryOperator,
     constant,
     rvalue,
     newBlock,
-    parseType
+    parseType,
+    callFunction,
+    createStackVariable
 } from "./utils.js";
 import {
     Context,
@@ -145,31 +146,46 @@ function handleDeclaration(ctx: Context, node: Declaration): void {
 }
 
 function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void {
+    const has_output_parameter =
+        parseType(ctx, node.returnType.name).classification !== "primitive";
+
+    let local_count = 0;
+    ctx.variables = new Map();
+    if (has_output_parameter) {
+        ctx.variables.set(
+            "Return Value",
+            createMiteType(
+                ctx,
+                parseType(ctx, node.returnType.name),
+                // output parameter variable #
+                local_count++
+            )
+        );
+    }
     const params = new Map(
-        node.params.map(({ name, typeAnnotation }, index) => [
+        node.params.map(({ name, typeAnnotation }) => [
             name.name,
-            createMiteType(ctx, parseType(ctx, typeAnnotation.name), index)
+            createMiteType(ctx, parseType(ctx, typeAnnotation.name), local_count++)
         ])
     );
+    Array.from(params.entries()).forEach(([key, val]) => ctx.variables.set(key, val));
 
-    ctx.variables = new Map(params);
     ctx.variables.set(
         "Local Stack Pointer", // put spaces in so it doesn't conflict with user-defined variables
-        new Primitive(ctx, ctx.types.i32, AllocationLocation.Local, node.params.length)
+        new Primitive(ctx, ctx.types.i32, AllocationLocation.Local, local_count++)
     );
 
     const current_function = {
         ...ctx.functions.get(node.id.name)!,
         stack_frame_size: 0,
-        // params + local stack pointer
-        local_count: params.size + 1
+        local_count
     };
 
-    const function_body = newBlock(ctx, () =>
+    const function_body = newBlock(ctx, () => {
         node.body.body.forEach((statement) =>
             statementToExpression({ ...ctx, current_function }, statement)
-        )
-    );
+        );
+    });
 
     const function_variables = Array.from(ctx.variables.entries())
         .filter(([name]) => !params.has(name))
@@ -199,7 +215,7 @@ function statementToExpression(ctx: Context, value: Statement): void {
 
 function variableDeclarationToExpression(ctx: Context, value: VariableDeclaration): void {
     for (const { id, typeAnnotation, init } of value.declarations) {
-        let expr: ExpressionInformation | null = null;
+        let expr: ExpressionInformation | undefined = undefined;
         let type: TypeInformation;
         if (typeAnnotation && init) {
             expr = expressionToExpression(
@@ -216,38 +232,7 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
             throw new Error("Variable declaration must have type or initializer");
         }
 
-        let variable: MiteType;
-
-        if (type.classification === "struct") {
-            variable = createMiteType(ctx, type, {
-                ref:
-                    expr?.ref ??
-                    ctx.mod.i32.add(
-                        lookForVariable(ctx, "Local Stack Pointer").get().ref,
-                        ctx.mod.i32.const(ctx.current_function.stack_frame_size)
-                    ),
-                expression: binaryen.ExpressionIds.Binary,
-                type: ctx.types.i32
-            });
-            if (!expr) ctx.current_function.stack_frame_size += type.sizeof;
-        } else if (type.classification === "array") {
-            variable = createMiteType(ctx, type, {
-                ref:
-                    expr?.ref ??
-                    ctx.mod.i32.add(
-                        lookForVariable(ctx, "Local Stack Pointer").get().ref,
-                        ctx.mod.i32.const(ctx.current_function.stack_frame_size)
-                    ),
-                expression: binaryen.ExpressionIds.Binary,
-                type: ctx.types.i32
-            });
-            if (!expr) ctx.current_function.stack_frame_size += type.sizeof;
-        } else {
-            variable = createMiteType(ctx, type, ctx.current_function.local_count++);
-            if (expr) {
-                ctx.current_block.push(variable.set(expr));
-            }
-        }
+        const variable = createStackVariable(ctx, type, expr);
 
         ctx.variables.set(id.name, variable);
     }
@@ -270,11 +255,20 @@ function returnStatementToExpression(ctx: Context, value: ReturnStatement): void
         type: ctx.types.void
     });
 
-    ctx.current_block.push({
-        ref: ctx.mod.return(expr?.ref),
-        type: ctx.types.void,
-        expression: binaryen.ExpressionIds.Return
-    });
+    if (ctx.current_function.results.classification === "primitive") {
+        ctx.current_block.push({
+            ref: ctx.mod.return(expr?.ref),
+            type: ctx.types.void,
+            expression: binaryen.ExpressionIds.Return
+        });
+    } else {
+        ctx.current_block.push(ctx.variables.get("Return Value")!.set(expr!));
+        ctx.current_block.push({
+            ref: ctx.mod.return(),
+            type: ctx.types.void,
+            expression: binaryen.ExpressionIds.Return
+        });
+    }
 }
 
 function expressionToExpression(ctx: Context, value: Expression): ExpressionInformation {
@@ -470,15 +464,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): Expres
         return ctx.conversions[primary_argument][function_name](args[0]);
     } else if (!fn) throw new Error(`Unknown function: ${function_name}`);
 
-    return {
-        ref: ctx.mod.call(
-            function_name,
-            args.map((arg) => arg.ref),
-            typeInformationToBinaryen(fn.results)
-        ),
-        type: fn.results,
-        expression: binaryen.ExpressionIds.Call
-    };
+    return callFunction(ctx, function_name, fn, args);
 }
 
 function ifExpressionToExpression(ctx: Context, value: IfExpression): ExpressionInformation {

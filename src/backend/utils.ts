@@ -3,10 +3,12 @@ import {
     BinaryOperator as BinaryenBinaryOperator,
     Context,
     ExpressionInformation,
+    FunctionInformation,
     TypeInformation
 } from "../types/code_gen.js";
 import { AllocationLocation, Array, MiteType, Primitive, Struct } from "./type_classes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
+import { TypeIdentifier } from "../types/nodes.js";
 
 export const STACK_POINTER = "__stack_pointer";
 
@@ -100,7 +102,11 @@ export function createMiteType(
         }
     } else if (type.classification === "struct") {
         if (typeof value_or_index === "number") {
-            throw new Error("Cannot create struct with index");
+            value_or_index = {
+                ref: ctx.mod.local.get(value_or_index, binaryen.i32),
+                type,
+                expression: binaryen.ExpressionIds.LocalGet
+            };
         }
         return new Struct(ctx, type, value_or_index);
     } else if (type.classification === "array") {
@@ -128,9 +134,17 @@ export function miteSignatureToBinaryenSignature(
     body: binaryen.ExpressionRef
 ): binaryen.ExpressionRef {
     const { params, results, stack_frame_size } = ctx.current_function;
+    const has_output_parameter = results.classification !== "primitive";
 
-    const binaryen_parameters = binaryen.createType(params.map(typeInformationToBinaryen));
-    const binaryen_return_type = typeInformationToBinaryen(results);
+    const binaryen_parameters_untyped = params.map(typeInformationToBinaryen);
+    const binaryen_parameters = binaryen.createType(
+        has_output_parameter
+            ? [binaryen.i32, ...binaryen_parameters_untyped]
+            : binaryen_parameters_untyped
+    );
+    const binaryen_return_type = has_output_parameter
+        ? binaryen.none
+        : typeInformationToBinaryen(results);
     const binaryen_variables = variables.map(typeInformationToBinaryen);
 
     const block = ctx.mod.block(null, [
@@ -141,7 +155,11 @@ export function miteSignatureToBinaryenSignature(
                 ctx.mod.i32.const(stack_frame_size)
             )
         ),
-        ctx.mod.local.set(params.length, ctx.mod.global.get(STACK_POINTER, binaryen.i32)),
+        ctx.variables.get("Local Stack Pointer")!.set({
+            ref: ctx.mod.global.get(STACK_POINTER, binaryen.i32),
+            expression: binaryen.ExpressionIds.GlobalGet,
+            type: ctx.types.i32
+        }).ref,
         body,
         ctx.mod.global.set(
             STACK_POINTER,
@@ -183,8 +201,10 @@ export function wrapArray(ctx: Context, array: ExpressionInformation): Array {
 export function rvalue(ctx: Context, array: ExpressionInformation): Array;
 export function rvalue(ctx: Context, struct: ExpressionInformation): Struct;
 export function rvalue(ctx: Context, expression: ExpressionInformation): Struct | Array {
-    if (expression.type.classification === "array") return new Array(ctx, expression.type, expression);
-    if (expression.type.classification === "struct") return new Struct(ctx, expression.type, expression);
+    if (expression.type.classification === "array")
+        return new Array(ctx, expression.type, expression);
+    if (expression.type.classification === "struct")
+        return new Struct(ctx, expression.type, expression);
     throw new Error(`Cannot rvalue ${expression.type.classification}`);
 }
 
@@ -216,17 +236,97 @@ export function newBlock(
 }
 
 const array_regex = /\[(.*); ([0-9]*)\]/;
-export function parseType(ctx: Context, type: string): TypeInformation {
+export function parseType(ctx: Context, type: TypeIdentifier): TypeInformation;
+export function parseType(ctx: Context, type: string): TypeInformation;
+export function parseType(ctx: Context, type: string | TypeIdentifier): TypeInformation {
+    if (typeof type === "object") return parseType(ctx, type.name);
     if (type in ctx.types) return ctx.types[type];
     if (array_regex.test(type)) {
-        const [_, element_type, length] = array_regex.exec(type)!;
+        const [_, element_type, str_length] = array_regex.exec(type)!;
+        const length = Number(str_length);
+
         return (ctx.types[type] = {
             name: type,
             classification: "array",
             element_type: parseType(ctx, element_type),
-            length: Number(length),
-            sizeof: 4
+            length,
+            sizeof: ctx.types[element_type].sizeof * length
         });
     }
     throw new Error(`Unknown type: ${type}`);
+}
+
+export function createStackVariable(
+    ctx: Context,
+    type: TypeInformation,
+    initializer?: ExpressionInformation
+): MiteType {
+    if (type.classification === "struct") {
+        const variable = createMiteType(ctx, type, {
+            ref:
+                initializer?.ref ??
+                ctx.mod.i32.add(
+                    lookForVariable(ctx, "Local Stack Pointer").get().ref,
+                    ctx.mod.i32.const(ctx.current_function.stack_frame_size)
+                ),
+            expression: binaryen.ExpressionIds.Binary,
+            type: ctx.types.i32
+        });
+        if (!initializer) ctx.current_function.stack_frame_size += type.sizeof;
+        return variable;
+    } else if (type.classification === "array") {
+        const variable = createMiteType(ctx, type, {
+            ref:
+                initializer?.ref ??
+                ctx.mod.i32.add(
+                    lookForVariable(ctx, "Local Stack Pointer").get().ref,
+                    ctx.mod.i32.const(ctx.current_function.stack_frame_size)
+                ),
+            expression: binaryen.ExpressionIds.Binary,
+            type: ctx.types.i32
+        });
+        if (!initializer) ctx.current_function.stack_frame_size += type.sizeof;
+        return variable;
+    } else {
+        const variable = createMiteType(ctx, type, ctx.current_function.local_count++);
+        if (initializer) ctx.current_block.push(variable.set(initializer));
+        return variable;
+    }
+}
+
+export function callFunction(
+    ctx: Context,
+    function_name: string,
+    { params, results }: FunctionInformation,
+    args: ExpressionInformation[]
+): ExpressionInformation {
+    if (results.classification === "primitive") {
+        return {
+            ref: ctx.mod.call(
+                function_name,
+                args.map((arg) => arg.ref),
+                typeInformationToBinaryen(results)
+            ),
+            type: results,
+            expression: binaryen.ExpressionIds.Call
+        };
+    } else {
+        return newBlock(
+            ctx,
+            () => {
+                const variable = createStackVariable(ctx, results);
+                ctx.current_block.push({
+                    ref: ctx.mod.call(
+                        function_name,
+                        [variable.get().ref, ...args.map((arg) => arg.ref)],
+                        binaryen.none
+                    ),
+                    type: Primitive.primitives.get("void")!,
+                    expression: binaryen.ExpressionIds.Call
+                });
+                return variable.get();
+            },
+            { type: binaryen.i32 }
+        );
+    }
 }
