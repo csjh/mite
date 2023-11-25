@@ -91,8 +91,8 @@ export function programToModule(
             .map(({ id, params, returnType }) => [
                 id.name,
                 {
-                    params: params.map(({ typeAnnotation }) => parseType(ctx, typeAnnotation.name)),
-                    results: parseType(ctx, returnType.name)
+                    params: params.map(({ typeAnnotation }) => parseType(ctx, typeAnnotation)),
+                    results: parseType(ctx, returnType)
                 }
             ])
     );
@@ -146,8 +146,7 @@ function handleDeclaration(ctx: Context, node: Declaration): void {
 }
 
 function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void {
-    const has_output_parameter =
-        parseType(ctx, node.returnType.name).classification !== "primitive";
+    const has_output_parameter = parseType(ctx, node.returnType).classification !== "primitive";
 
     let local_count = 0;
     ctx.variables = new Map();
@@ -156,7 +155,7 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
             "Return Value",
             createMiteType(
                 ctx,
-                parseType(ctx, node.returnType.name),
+                parseType(ctx, node.returnType),
                 // output parameter variable #
                 local_count++
             )
@@ -165,7 +164,7 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     const params = new Map(
         node.params.map(({ name, typeAnnotation }) => [
             name.name,
-            createMiteType(ctx, parseType(ctx, typeAnnotation.name), local_count++)
+            createMiteType(ctx, parseType(ctx, typeAnnotation), local_count++)
         ])
     );
     Array.from(params.entries()).forEach(([key, val]) => ctx.variables.set(key, val));
@@ -219,12 +218,12 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
         let type: TypeInformation;
         if (typeAnnotation && init) {
             expr = expressionToExpression(
-                updateExpected(ctx, parseType(ctx, typeAnnotation.name)),
+                updateExpected(ctx, parseType(ctx, typeAnnotation)),
                 init
             );
             type = expr.type;
         } else if (typeAnnotation) {
-            type = parseType(ctx, typeAnnotation.name);
+            type = parseType(ctx, typeAnnotation);
         } else if (init) {
             expr = expressionToExpression(ctx, init);
             type = expr.type;
@@ -724,7 +723,7 @@ function objectExpressionToExpression(
     ctx: Context,
     value: ObjectExpression
 ): ExpressionInformation {
-    const type = parseType(ctx, value.typeAnnotation.name);
+    const type = parseType(ctx, value.typeAnnotation);
     if (type.classification !== "struct") throw new Error("Cannot create non-struct object");
 
     const struct = createMiteType(ctx, type, {
