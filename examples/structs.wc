@@ -23,5 +23,5 @@ export fn main(): i32 {
     };
     let l = locations { home, work };
     l.work.y = 8;
-    return add(l.home, l.work).y;
+    return add(add(l.work, l.work), add(l.home, l.home)).x;
 }
