@@ -17,6 +17,7 @@ import {
     StructTypeInformation,
     TypeInformation
 } from "../types/code_gen.js";
+import { createMiteType } from "./utils.js";
 
 export enum AllocationLocation {
     Local,
@@ -251,28 +252,15 @@ export class Struct implements MiteType {
     }
 
     access(accessor: string): MiteType {
-        const struct_type = this.type;
-        if (struct_type.classification !== "struct") throw new Error("unreachable");
+        if (!this.type.fields.has(accessor))
+            throw new Error(`Struct ${this.type.name} does not have field ${accessor}`);
+        const field = this.type.fields.get(accessor)!;
 
-        if (!struct_type.fields.has(accessor))
-            throw new Error(`Struct ${struct_type.name} does not have field ${accessor}`);
-        const field = struct_type.fields.get(accessor)!;
-
-        if (field.type.classification === "primitive") {
-            return new Primitive(this.ctx, field.type, AllocationLocation.LinearMemory, {
-                ref: this.ctx.mod.i32.add(this.pointer.ref, this.ctx.mod.i32.const(field.offset)),
-                expression: binaryen.ExpressionIds.Binary,
-                type: field.type
-            });
-        } else if (field.type.classification === "struct") {
-            return new Struct(this.ctx, field.type, {
-                ref: this.ctx.mod.i32.add(this.pointer.ref, this.ctx.mod.i32.const(field.offset)),
-                expression: binaryen.ExpressionIds.Binary,
-                type: field.type
-            });
-        } else {
-            throw new Error("unreachable");
-        }
+        return createMiteType(this.ctx, field.type, {
+            ref: this.ctx.mod.i32.add(this.pointer.ref, this.ctx.mod.i32.const(field.offset)),
+            expression: binaryen.ExpressionIds.Binary,
+            type: field.type
+        });
     }
 
     index(index: ExpressionInformation): MiteType {
@@ -319,38 +307,17 @@ export class Array implements MiteType {
         if (index.type.name !== "i32")
             throw new Error(`Array index must be an i32, not ${index.type.name}`);
 
-        if (this.type.element_type.classification === "primitive") {
-            return new Primitive(
-                this.ctx,
-                this.type.element_type,
-                AllocationLocation.LinearMemory,
-                {
-                    ref: this.ctx.mod.i32.add(
-                        this.pointer.ref,
-                        this.ctx.mod.i32.mul(
-                            index.ref,
-                            this.ctx.mod.i32.const(this.type.element_type.sizeof)
-                        )
-                    ),
-                    expression: binaryen.ExpressionIds.Binary,
-                    type: this.type.element_type
-                }
-            );
-        } else if (this.type.element_type.classification === "struct") {
-            return new Struct(this.ctx, this.type.element_type, {
-                ref: this.ctx.mod.i32.add(
-                    this.pointer.ref,
-                    this.ctx.mod.i32.mul(
-                        index.ref,
-                        this.ctx.mod.i32.const(this.type.element_type.sizeof)
-                    )
-                ),
-                expression: binaryen.ExpressionIds.Binary,
-                type: this.type.element_type
-            });
-        } else {
-            throw new Error("unreachable");
-        }
+        return createMiteType(this.ctx, this.type.element_type, {
+            ref: this.ctx.mod.i32.add(
+                this.pointer.ref,
+                this.ctx.mod.i32.mul(
+                    index.ref,
+                    this.ctx.mod.i32.const(this.type.element_type.sizeof)
+                )
+            ),
+            expression: binaryen.ExpressionIds.Binary,
+            type: this.type.element_type
+        });
     }
 
     sizeof(): number {
