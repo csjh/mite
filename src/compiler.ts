@@ -17,10 +17,17 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     const program = Parser.parse(tokens);
     const mod = programToModule(program);
 
-    mod.setFeatures(binaryen.Features.All);
+    mod.setFeatures(
+        binaryen.Features.BulkMemory |
+            binaryen.Features.MutableGlobals |
+            binaryen.Features.NontrappingFPToInt |
+            binaryen.Features.SIMD128 |
+            binaryen.Features.ReferenceTypes
+    );
     // this might be icky
     mod.autoDrop();
 
+    // the mite standard library
     for (const type of ["i32", "i64", "f32", "f64"]) {
         // @ts-ignore
         mod.addFunctionImport(`log_${type}`, "console", "log", binaryen[type], binaryen.none);
