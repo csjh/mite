@@ -11,8 +11,12 @@ import {
     rvalue,
     newBlock,
     parseType,
+    createVariable,
     callFunction,
-    createStackVariable
+    allocate,
+    ARENA_HEAP_OFFSET,
+    ARENA_HEAP_POINTER,
+    JS_HEAP_POINTER
 } from "./utils.js";
 import {
     Context,
@@ -50,13 +54,14 @@ import type {
     ObjectExpression
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
-import { AllocationLocation, MiteType, Primitive, Struct } from "./type_classes.js";
+import { AllocationLocation, LinearMemoryLocation, MiteType, Primitive } from "./type_classes.js";
 import {
     createIntrinsics,
     identifyStructs,
     createTypeOperations,
     createConversions
 } from "./context_initialization.js";
+import { addBuiltins } from "./builtin_functions.js";
 
 export function programToModule(
     program: Program,
@@ -80,9 +85,20 @@ export function programToModule(
         // @ts-expect-error initially we're not in a function
         current_function: null
     };
+    addBuiltins(ctx);
 
-    ctx.mod.setMemory(256, 256, "memory");
+    const js_heap_size = 65536;
+
+    ctx.mod.setMemory(256, 256, "memory", [], false, false, "main_memory");
     ctx.mod.addGlobal(STACK_POINTER, binaryen.i32, true, ctx.mod.i32.const(stack_size));
+    ctx.mod.addGlobal(JS_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(stack_size + 4));
+    ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
+    ctx.mod.addGlobal(
+        ARENA_HEAP_POINTER,
+        binaryen.i32,
+        false,
+        ctx.mod.i32.const(stack_size + 4 + js_heap_size)
+    );
 
     ctx.functions = new Map(
         program.body
@@ -231,7 +247,12 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
             throw new Error("Variable declaration must have type or initializer");
         }
 
-        const variable = createStackVariable(ctx, type, expr);
+        const variable = createVariable(
+            ctx,
+            type,
+            typeAnnotation?.location ?? LinearMemoryLocation.Stack,
+            expr
+        );
 
         ctx.variables.set(id.name, variable);
     }
@@ -247,6 +268,7 @@ function returnStatementToExpression(ctx: Context, value: ReturnStatement): void
             STACK_POINTER,
             ctx.mod.i32.add(
                 ctx.mod.global.get(STACK_POINTER, binaryen.i32),
+                // this won't work with early returns
                 ctx.mod.i32.const(ctx.current_function.stack_frame_size)
             )
         ),
@@ -463,7 +485,12 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): Expres
         return ctx.conversions[primary_argument][function_name](args[0]);
     } else if (!fn) throw new Error(`Unknown function: ${function_name}`);
 
-    return callFunction(ctx, function_name, fn, args);
+    return callFunction(
+        ctx,
+        function_name,
+        fn,
+        args[0]?.expression === binaryen.ExpressionIds.Nop ? [] : args
+    );
 }
 
 function ifExpressionToExpression(ctx: Context, value: IfExpression): ExpressionInformation {
@@ -676,30 +703,27 @@ function memberExpressionToExpression(
 function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): ExpressionInformation {
     if (value.elements.length === 0) {
         throw new Error("Cannot create empty array");
+    } else if (ctx.expected && ctx.expected.classification !== "array") {
+        throw new Error(`Expected array type, got ${ctx.expected.classification}`);
     }
 
     const first_element = expressionToExpression(updateExpected(ctx, undefined), value.elements[0]);
     const element_type = first_element.type;
+    const sizeof = element_type.sizeof * value.elements.length;
+
+    const location = value.location ?? ctx.expected?.location ?? LinearMemoryLocation.Stack;
 
     const array = createMiteType(
         ctx,
         {
             classification: "array",
             name: `[${element_type.name}; ${value.elements.length}]`,
-            sizeof: element_type.sizeof * value.elements.length,
+            sizeof,
             element_type,
             length: value.elements.length
         },
-        {
-            ref: ctx.mod.i32.add(
-                lookForVariable(ctx, "Local Stack Pointer").get().ref,
-                ctx.mod.i32.const(ctx.current_function.stack_frame_size)
-            ),
-            expression: binaryen.ExpressionIds.Binary,
-            type: ctx.types.i32
-        }
+        allocate(ctx, sizeof, location)
     );
-    ctx.current_function.stack_frame_size += element_type.sizeof * value.elements.length;
 
     for (let i = 0; i < value.elements.length; i++) {
         const expr = expressionToExpression(updateExpected(ctx, element_type), value.elements[i]);
@@ -726,15 +750,10 @@ function objectExpressionToExpression(
     const type = parseType(ctx, value.typeAnnotation);
     if (type.classification !== "struct") throw new Error("Cannot create non-struct object");
 
-    const struct = createMiteType(ctx, type, {
-        ref: ctx.mod.i32.add(
-            lookForVariable(ctx, "Local Stack Pointer").get().ref,
-            ctx.mod.i32.const(ctx.current_function.stack_frame_size)
-        ),
-        expression: binaryen.ExpressionIds.Binary,
-        type: ctx.types.i32
-    });
-    ctx.current_function.stack_frame_size += type.sizeof;
+    const location =
+        value.typeAnnotation.location ?? ctx.expected?.location ?? LinearMemoryLocation.Stack;
+
+    const struct = createMiteType(ctx, type, allocate(ctx, type.sizeof, location));
 
     const fields = new Map(type.fields);
     for (const property of value.properties) {

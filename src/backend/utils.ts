@@ -6,11 +6,21 @@ import {
     FunctionInformation,
     TypeInformation
 } from "../types/code_gen.js";
-import { AllocationLocation, Array, MiteType, Primitive, Struct } from "./type_classes.js";
+import {
+    AllocationLocation,
+    Array,
+    LinearMemoryLocation,
+    MiteType,
+    Primitive,
+    Struct
+} from "./type_classes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import { TypeIdentifier } from "../types/nodes.js";
 
 export const STACK_POINTER = "__stack_pointer";
+export const ARENA_HEAP_POINTER = "__arena_heap_pointer";
+export const ARENA_HEAP_OFFSET = "__arena_heap_pointer_offset";
+export const JS_HEAP_POINTER = "__js_heap_pointer";
 
 export function updateExpected(ctx: Context, expected: Context["expected"]) {
     return { ...ctx, expected };
@@ -260,37 +270,18 @@ export function parseType(ctx: Context, type: string | TypeIdentifier): TypeInfo
     throw new Error(`Unknown type: ${type}`);
 }
 
-export function createStackVariable(
+export function createVariable(
     ctx: Context,
     type: TypeInformation,
+    location: LinearMemoryLocation = LinearMemoryLocation.Stack,
     initializer?: ExpressionInformation
 ): MiteType {
     if (type.classification === "struct") {
-        const variable = createMiteType(ctx, type, {
-            ref:
-                initializer?.ref ??
-                ctx.mod.i32.add(
-                    lookForVariable(ctx, "Local Stack Pointer").get().ref,
-                    ctx.mod.i32.const(ctx.current_function.stack_frame_size)
-                ),
-            expression: binaryen.ExpressionIds.Binary,
-            type: ctx.types.i32
-        });
-        if (!initializer) ctx.current_function.stack_frame_size += type.sizeof;
-        return variable;
+        initializer ??= allocate(ctx, type.sizeof, location);
+        return createMiteType(ctx, type, initializer);
     } else if (type.classification === "array") {
-        const variable = createMiteType(ctx, type, {
-            ref:
-                initializer?.ref ??
-                ctx.mod.i32.add(
-                    lookForVariable(ctx, "Local Stack Pointer").get().ref,
-                    ctx.mod.i32.const(ctx.current_function.stack_frame_size)
-                ),
-            expression: binaryen.ExpressionIds.Binary,
-            type: ctx.types.i32
-        });
-        if (!initializer) ctx.current_function.stack_frame_size += type.sizeof;
-        return variable;
+        initializer ??= allocate(ctx, type.sizeof, location);
+        return createMiteType(ctx, type, initializer);
     } else {
         const variable = createMiteType(ctx, type, ctx.current_function.local_count++);
         if (initializer) ctx.current_block.push(variable.set(initializer));
@@ -315,7 +306,7 @@ export function callFunction(
             expression: binaryen.ExpressionIds.Call
         };
     } else {
-        const variable = createStackVariable(ctx, results);
+        const variable = createVariable(ctx, results);
         ctx.current_block.push({
             ref: ctx.mod.call(
                 function_name,
@@ -326,5 +317,43 @@ export function callFunction(
             expression: binaryen.ExpressionIds.Call
         });
         return variable.get();
+    }
+}
+
+function stackAllocation(ctx: Context, size: number): ExpressionInformation {
+    const ref = ctx.mod.i32.add(
+        lookForVariable(ctx, "Local Stack Pointer").get().ref,
+        ctx.mod.i32.const(ctx.current_function.stack_frame_size)
+    );
+    ctx.current_function.stack_frame_size += size;
+
+    return { ref, expression: binaryen.ExpressionIds.Binary, type: ctx.types.i32 };
+}
+
+function heapAllocation(ctx: Context, size: number): ExpressionInformation {
+    const ref = ctx.mod.call("arena_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32);
+    const allocation = createVariable(ctx, ctx.types.i32, LinearMemoryLocation.Stack, {
+        ref,
+        expression: binaryen.ExpressionIds.Call,
+        type: ctx.types.i32
+    });
+    ctx.variables.set(`Heap Allocation ${ctx.variables.size}`, allocation);
+
+    return allocation.get();
+}
+
+function jsAllocation(ctx: Context, size: number): ExpressionInformation {
+    const ref = ctx.mod.call("js_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32);
+    return { ref, expression: binaryen.ExpressionIds.Call, type: ctx.types.i32 };
+}
+
+export function allocate(ctx: Context, size: number, location: LinearMemoryLocation) {
+    switch (location) {
+        case LinearMemoryLocation.Heap:
+            return heapAllocation(ctx, size);
+        case LinearMemoryLocation.Stack:
+            return stackAllocation(ctx, size);
+        case LinearMemoryLocation.JS:
+            return jsAllocation(ctx, size);
     }
 }

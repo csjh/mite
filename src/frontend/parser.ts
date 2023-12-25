@@ -44,6 +44,7 @@ import type {
     TypeIdentifier,
     ObjectExpression
 } from "../types/nodes.js";
+import { LinearMemoryLocation } from "../backend/type_classes.js";
 
 const precedence = [
     new Set([TokenType.STAR, TokenType.SLASH, TokenType.MODULUS]),
@@ -532,6 +533,19 @@ export class Parser {
                         expression_stack.push(next);
                     }
                     break;
+                case TokenType.HEAP:
+                case TokenType.STACK:
+                case TokenType.JS:
+                    if (this.tokens[this.idx + 1].type === TokenType.LEFT_BRACKET) {
+                        expression_stack.push(
+                            this.parseArrayExpression(
+                                this.tokens[this.idx++].value as LinearMemoryLocation
+                            )
+                        );
+                    } else {
+                        const type = this.parseType();
+                        expression_stack.push(this.parseStructLiteral(type));
+                    }
                 default:
                     break;
             }
@@ -956,7 +970,7 @@ export class Parser {
         return { type: "BreakExpression" };
     }
 
-    private parseArrayExpression(): ArrayExpression {
+    private parseArrayExpression(location?: LinearMemoryLocation): ArrayExpression {
         this.expectToken(TokenType.LEFT_BRACKET);
         this.idx++;
 
@@ -971,13 +985,27 @@ export class Parser {
 
         return {
             type: "ArrayExpression",
-            elements
+            elements,
+            location
         };
     }
 
     private parseType(): TypeIdentifier {
+        let location: LinearMemoryLocation | undefined = undefined;
+        if (this.token.type === TokenType.HEAP) {
+            location = LinearMemoryLocation.Heap;
+            this.idx++;
+        } else if (this.token.type === TokenType.STACK) {
+            location = LinearMemoryLocation.Stack;
+            this.idx++;
+        } else if (this.token.type === TokenType.JS) {
+            location = LinearMemoryLocation.JS;
+            this.idx++;
+        }
+
         const token = this.tokens[this.idx++];
-        if (token.type === TokenType.IDENTIFIER) return { type: "Identifier", name: token.value };
+        if (token.type === TokenType.IDENTIFIER)
+            return { type: "Identifier", name: token.value, location };
         if (token.type !== TokenType.LEFT_BRACKET)
             throw new Error(`Expected type, got ${token.type}`);
 
@@ -989,10 +1017,10 @@ export class Parser {
         this.expectToken(TokenType.RIGHT_BRACKET);
         this.idx++;
 
-        return { type: "Identifier", name: `[${type.name}; ${length.value}]` };
+        return { type: "Identifier", name: `[${type.name}; ${length.value}]`, location };
     }
 
-    private parseStructLiteral(typeAnnotation: Identifier): ObjectExpression {
+    private parseStructLiteral(typeAnnotation: TypeIdentifier): ObjectExpression {
         const object: ObjectExpression = {
             type: "ObjectExpression",
             typeAnnotation,

@@ -137,6 +137,15 @@ export function tokenize(input: string): Token[] {
         switch (token.type) {
             case TokenType.IDENTIFIER:
                 switch (token.value) {
+                    case "heap":
+                        token = { type: TokenType.HEAP, value: "heap" };
+                        break;
+                    case "stack":
+                        token = { type: TokenType.STACK, value: "stack" };
+                        break;
+                    case "js":
+                        token = { type: TokenType.JS, value: "js" };
+                        break;
                     case "let":
                         token = { type: TokenType.LET, value: "let" };
                         break;

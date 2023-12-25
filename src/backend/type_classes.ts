@@ -25,6 +25,12 @@ export enum AllocationLocation {
     Table
 }
 
+export enum LinearMemoryLocation {
+    Stack = "stack",
+    Heap = "heap",
+    JS = "js"
+}
+
 export abstract class MiteType {
     // get the value
     abstract get(): ExpressionInformation;
@@ -148,15 +154,15 @@ export class Primitive implements MiteType {
         } else {
             let ref;
             if (this.binaryenType === binaryen.i32) {
-                ref = this.ctx.mod.i32.load(0, 0, this.pointer.ref);
+                ref = this.ctx.mod.i32.load(0, 0, this.pointer.ref, "main_memory");
             } else if (this.binaryenType === binaryen.i64) {
-                ref = this.ctx.mod.i64.load(0, 0, this.pointer.ref);
+                ref = this.ctx.mod.i64.load(0, 0, this.pointer.ref, "main_memory");
             } else if (this.binaryenType === binaryen.f32) {
-                ref = this.ctx.mod.f32.load(0, 0, this.pointer.ref);
+                ref = this.ctx.mod.f32.load(0, 0, this.pointer.ref, "main_memory");
             } else if (this.binaryenType === binaryen.f64) {
-                ref = this.ctx.mod.f64.load(0, 0, this.pointer.ref);
+                ref = this.ctx.mod.f64.load(0, 0, this.pointer.ref, "main_memory");
             } else if (this.binaryenType === binaryen.v128) {
-                ref = this.ctx.mod.v128.load(0, 0, this.pointer.ref);
+                ref = this.ctx.mod.v128.load(0, 0, this.pointer.ref, "main_memory");
             } else {
                 throw new Error("unreachable");
             }
@@ -181,28 +187,28 @@ export class Primitive implements MiteType {
             // TODO: ensure binaryen optimizes out the extra load
             if (this.binaryenType === binaryen.i32) {
                 ref = this.ctx.mod.block(null, [
-                    this.ctx.mod.i32.store(0, 0, this.pointer.ref, value.ref),
-                    this.ctx.mod.i32.load(0, 0, this.pointer.ref)
+                    this.ctx.mod.i32.store(0, 0, this.pointer.ref, value.ref, "main_memory"),
+                    this.ctx.mod.i32.load(0, 0, this.pointer.ref, "main_memory")
                 ]);
             } else if (this.binaryenType === binaryen.i64) {
                 ref = this.ctx.mod.block(null, [
-                    this.ctx.mod.i64.store(0, 0, this.pointer.ref, value.ref),
-                    this.ctx.mod.i64.load(0, 0, this.pointer.ref)
+                    this.ctx.mod.i64.store(0, 0, this.pointer.ref, value.ref, "main_memory"),
+                    this.ctx.mod.i64.load(0, 0, this.pointer.ref, "main_memory")
                 ]);
             } else if (this.binaryenType === binaryen.f32) {
                 ref = this.ctx.mod.block(null, [
-                    this.ctx.mod.f32.store(0, 0, this.pointer.ref, value.ref),
-                    this.ctx.mod.f32.load(0, 0, this.pointer.ref)
+                    this.ctx.mod.f32.store(0, 0, this.pointer.ref, value.ref, "main_memory"),
+                    this.ctx.mod.f32.load(0, 0, this.pointer.ref, "main_memory")
                 ]);
             } else if (this.binaryenType === binaryen.f64) {
                 ref = this.ctx.mod.block(null, [
-                    this.ctx.mod.f64.store(0, 0, this.pointer.ref, value.ref),
-                    this.ctx.mod.f64.load(0, 0, this.pointer.ref)
+                    this.ctx.mod.f64.store(0, 0, this.pointer.ref, value.ref, "main_memory"),
+                    this.ctx.mod.f64.load(0, 0, this.pointer.ref, "main_memory")
                 ]);
             } else if (this.binaryenType === binaryen.v128) {
                 ref = this.ctx.mod.block(null, [
-                    this.ctx.mod.v128.store(0, 0, this.pointer.ref, value.ref),
-                    this.ctx.mod.v128.load(0, 0, this.pointer.ref)
+                    this.ctx.mod.v128.store(0, 0, this.pointer.ref, value.ref, "main_memory"),
+                    this.ctx.mod.v128.load(0, 0, this.pointer.ref, "main_memory")
                 ]);
             } else {
                 throw new Error("unreachable");
@@ -243,7 +249,14 @@ export class Struct implements MiteType {
         if (value.type.name !== this.type.name)
             throw new Error(`Unable to assign ${value.type.name} to ${this.type.name}`);
 
-        const assignment = this.ctx.mod.memory.copy(this.get().ref, value.ref, this.sizeof());
+        const assignment = this.ctx.mod.memory.copy(
+            this.get().ref,
+            value.ref,
+            this.sizeof(),
+            "main_memory",
+            "main_memory"
+        );
+
         return {
             expression: binaryen.ExpressionIds.MemoryCopy,
             ref: assignment,
@@ -291,7 +304,14 @@ export class Array implements MiteType {
         if (value.type.name !== this.type.name)
             throw new Error(`Unable to assign ${value.type.name} to ${this.type.name}`);
 
-        const assignment = this.ctx.mod.memory.copy(this.get().ref, value.ref, this.sizeof());
+        const assignment = this.ctx.mod.memory.copy(
+            this.get().ref,
+            value.ref,
+            this.sizeof(),
+            "main_memory",
+            "main_memory"
+        );
+
         return {
             expression: binaryen.ExpressionIds.MemoryCopy,
             ref: assignment,

@@ -1,27 +1,27 @@
 import binaryen from "binaryen";
-import { MiteType } from "../backend/type_classes.js";
+import { LinearMemoryLocation, MiteType } from "../backend/type_classes.js";
 
 export type ProgramToModuleOptions = {
     stack_size?: number;
 };
 
-export type ArrayTypeInformation = {
+type SharedTypeInformation = {
+    classification: string;
     name: string;
+    sizeof: number;
+};
+
+export type ArrayTypeInformation = SharedTypeInformation & {
     classification: "array";
     element_type: TypeInformation;
     length: number;
-    sizeof: number;
 };
-export type StructTypeInformation = {
-    name: string;
+export type StructTypeInformation = SharedTypeInformation & {
     classification: "struct";
     fields: Map<string, { type: TypeInformation; offset: number }>;
-    sizeof: number;
 };
-export type PrimitiveTypeInformation = {
-    name: string;
+export type PrimitiveTypeInformation = SharedTypeInformation & {
     classification: "primitive";
-    sizeof: number;
 };
 
 export type TypeInformation =
@@ -48,7 +48,7 @@ export type Context = {
     /** Functions defined in this scope */
     functions: Map<string, FunctionInformation>;
     /** The return type expected from the current expression. Used for literal coercion. */
-    expected?: TypeInformation;
+    expected?: TypeInformation & { location?: LinearMemoryLocation };
     /** Types and their operators */
     operators: Record<string, OperatorHandlers>;
     /** Types and their intrinsics */

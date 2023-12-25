@@ -1,6 +1,7 @@
 // adapter from estree
 // shoutout estree
 
+import { LinearMemoryLocation } from "../backend/type_classes.js";
 import { BinaryOperator } from "./tokens.js";
 
 export interface BaseNodeWithoutComments {
@@ -292,6 +293,7 @@ export interface ThisExpression extends BaseExpression {
 export interface ArrayExpression extends BaseExpression {
     type: "ArrayExpression";
     elements: Array<Expression>;
+    location?: LinearMemoryLocation;
 }
 
 export interface ObjectExpression extends BaseExpression {
@@ -411,7 +413,9 @@ export interface Identifier extends BaseNode, BaseExpression, BasePattern {
     name: string;
 }
 
-export interface TypeIdentifier extends Identifier {}
+export interface TypeIdentifier extends Identifier {
+    location?: LinearMemoryLocation;
+}
 
 export interface Literal extends BaseNode, BaseExpression {
     type: "Literal";
