@@ -534,7 +534,7 @@ export class Parser {
                     }
                     break;
                 case TokenType.HEAP:
-                case TokenType.STACK:
+                // case TokenType.STACK:
                 case TokenType.JS:
                     if (this.tokens[this.idx + 1].type === TokenType.LEFT_BRACKET) {
                         expression_stack.push(
@@ -995,9 +995,9 @@ export class Parser {
         if (this.token.type === TokenType.HEAP) {
             location = LinearMemoryLocation.Heap;
             this.idx++;
-        } else if (this.token.type === TokenType.STACK) {
-            location = LinearMemoryLocation.Stack;
-            this.idx++;
+        // } else if (this.token.type === TokenType.STACK) {
+        //     location = LinearMemoryLocation.Stack;
+        //     this.idx++;
         } else if (this.token.type === TokenType.JS) {
             location = LinearMemoryLocation.JS;
             this.idx++;

@@ -273,7 +273,7 @@ export function parseType(ctx: Context, type: string | TypeIdentifier): TypeInfo
 export function createVariable(
     ctx: Context,
     type: TypeInformation,
-    location: LinearMemoryLocation = LinearMemoryLocation.Stack,
+    location: LinearMemoryLocation = LinearMemoryLocation.Heap,
     initializer?: ExpressionInformation
 ): MiteType {
     if (type.classification === "struct") {
@@ -352,6 +352,7 @@ export function allocate(ctx: Context, size: number, location: LinearMemoryLocat
         case LinearMemoryLocation.Heap:
             return heapAllocation(ctx, size);
         case LinearMemoryLocation.Stack:
+            throw new Error("Cannot allocate structs on stack");
             return stackAllocation(ctx, size);
         case LinearMemoryLocation.JS:
             return jsAllocation(ctx, size);

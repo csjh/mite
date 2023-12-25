@@ -4,31 +4,31 @@ import { describe, it } from "bun:test";
 import { compileAndRun } from "./utils.js";
 import assert from "assert";
 
-describe("array declarations", () => {
-    it("should trigger stack overflow", () => {
-        const program = `
-        export fn main(): i32 {
-            let x: [i32; 16384];
-            x[0] = 5;
-            x[16383] = 5;
-            return 0;
-        }
-        `;
+// describe("array declarations", () => {
+//     it("should trigger stack overflow", () => {
+//         const program = `
+//         export fn main(): i32 {
+//             let x: [i32; 16384];
+//             x[0] = 5;
+//             x[16383] = 5;
+//             return 0;
+//         }
+//         `;
 
-        compileAndRun(program, 0);
+//         compileAndRun(program, 0);
 
-        const program2 = `
-        export fn main(): i32 {
-            let x: [i32; 16385];
-            x[0] = 5;
-            x[16384] = 5;
-            return 0;
-        }
-        `;
+//         const program2 = `
+//         export fn main(): i32 {
+//             let x: [i32; 16385];
+//             x[0] = 5;
+//             x[16384] = 5;
+//             return 0;
+//         }
+//         `;
 
-        assert.throws(() => compileAndRun(program2, 0));
-    });
-});
+//         assert.throws(() => compileAndRun(program2, 0));
+//     });
+// });
 
 describe("array functions", () => {
     it("should work with return values", () => {

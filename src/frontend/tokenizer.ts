@@ -140,9 +140,9 @@ export function tokenize(input: string): Token[] {
                     case "heap":
                         token = { type: TokenType.HEAP, value: "heap" };
                         break;
-                    case "stack":
-                        token = { type: TokenType.STACK, value: "stack" };
-                        break;
+                    // case "stack":
+                    //     token = { type: TokenType.STACK, value: "stack" };
+                    //     break;
                     case "js":
                         token = { type: TokenType.JS, value: "js" };
                         break;
