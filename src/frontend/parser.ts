@@ -533,7 +533,7 @@ export class Parser {
                         expression_stack.push(next);
                     }
                     break;
-                case TokenType.HEAP:
+                case TokenType.ARENA:
                 // case TokenType.STACK:
                 case TokenType.JS:
                     if (this.tokens[this.idx + 1].type === TokenType.LEFT_BRACKET) {
@@ -992,12 +992,12 @@ export class Parser {
 
     private parseType(): TypeIdentifier {
         let location: LinearMemoryLocation | undefined = undefined;
-        if (this.token.type === TokenType.HEAP) {
-            location = LinearMemoryLocation.Heap;
+        if (this.token.type === TokenType.ARENA) {
+            location = LinearMemoryLocation.Arena;
             this.idx++;
-        // } else if (this.token.type === TokenType.STACK) {
-        //     location = LinearMemoryLocation.Stack;
-        //     this.idx++;
+            // } else if (this.token.type === TokenType.STACK) {
+            //     location = LinearMemoryLocation.Stack;
+            //     this.idx++;
         } else if (this.token.type === TokenType.JS) {
             location = LinearMemoryLocation.JS;
             this.idx++;

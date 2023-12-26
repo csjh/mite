@@ -27,7 +27,7 @@ export enum AllocationLocation {
 
 export enum LinearMemoryLocation {
     Stack = "stack",
-    Heap = "heap",
+    Arena = "arena",
     JS = "js"
 }
 

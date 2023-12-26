@@ -17,7 +17,7 @@ fn big_stack(): void {
 }
 
 export fn main(): void {
-    let array = heap [Coord { x: 1, y: 2 }, Coord { x: 3, y: 4 }];
+    let array = [Coord { x: 1, y: 2 }, Coord { x: 3, y: 4 }];
     let array2 = [Coord { x: 1, y: 2 }, Coord { x: 3, y: 4 }];
 
     log_i32(array);

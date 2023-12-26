@@ -47,7 +47,7 @@ export enum TokenType {
     ASSIGNMENT_BITWISE_XOR = "^=",
     ASSIGNMENT_BITWISE_AND = "&=",
 
-    HEAP = "heap",
+    ARENA = "arena",
     // STACK = "stack",
     JS = "js",
     LET = "let",
