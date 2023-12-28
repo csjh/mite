@@ -20,16 +20,14 @@ import {
 import { createMiteType } from "./utils.js";
 
 export enum AllocationLocation {
-    Local,
-    LinearMemory,
-    Table
+    Local = "local",
+    Arena = "arena",
+    Stack = "stack",
+    JS = "js",
+    Table = "table"
 }
 
-export enum LinearMemoryLocation {
-    Stack = "stack",
-    Arena = "arena",
-    JS = "js"
-}
+export type LinearMemoryLocation = AllocationLocation.Arena | AllocationLocation.JS;
 
 export abstract class MiteType {
     // get the value
@@ -129,7 +127,8 @@ export class Primitive implements MiteType {
         ) {
             throw new Error("Local allocation must have a local index");
         } else if (
-            allocation_location === AllocationLocation.LinearMemory &&
+            (allocation_location === AllocationLocation.Arena ||
+                allocation_location === AllocationLocation.JS) &&
             typeof local_index_or_pointer === "number"
         ) {
             throw new Error("Linear memory allocation must have a pointer");

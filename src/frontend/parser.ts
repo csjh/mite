@@ -44,7 +44,7 @@ import type {
     TypeIdentifier,
     ObjectExpression
 } from "../types/nodes.js";
-import { LinearMemoryLocation } from "../backend/type_classes.js";
+import { AllocationLocation, LinearMemoryLocation } from "../backend/type_classes.js";
 
 const precedence = [
     new Set([TokenType.STAR, TokenType.SLASH, TokenType.MODULUS]),
@@ -996,13 +996,13 @@ export class Parser {
 
         let location: LinearMemoryLocation | undefined = undefined;
         if (this.token.type === TokenType.ARENA) {
-            location = LinearMemoryLocation.Arena;
+            location = AllocationLocation.Arena;
             this.idx++;
             // } else if (this.token.type === TokenType.STACK) {
-            //     location = LinearMemoryLocation.Stack;
+            //     location = AllocationLocation.Stack;
             //     this.idx++;
         } else if (this.token.type === TokenType.JS) {
-            location = LinearMemoryLocation.JS;
+            location = AllocationLocation.JS;
             this.idx++;
         }
 

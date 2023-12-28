@@ -250,7 +250,7 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
         const variable = createVariable(
             ctx,
             type,
-            typeAnnotation?.location ?? LinearMemoryLocation.Arena,
+            typeAnnotation?.location ?? AllocationLocation.Arena,
             expr
         );
 
@@ -711,7 +711,7 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Expr
     const element_type = first_element.type;
     const sizeof = element_type.sizeof * value.elements.length;
 
-    const location = value.location ?? ctx.expected?.location ?? LinearMemoryLocation.Arena;
+    const location = value.location ?? ctx.expected?.location ?? AllocationLocation.Arena;
 
     const array = createMiteType(
         ctx,
@@ -751,7 +751,7 @@ function objectExpressionToExpression(
     if (type.classification !== "struct") throw new Error("Cannot create non-struct object");
 
     const location =
-        value.typeAnnotation.location ?? ctx.expected?.location ?? LinearMemoryLocation.Arena;
+        value.typeAnnotation.location ?? ctx.expected?.location ?? AllocationLocation.Arena;
 
     const struct = createMiteType(ctx, type, allocate(ctx, type.sizeof, location));
 

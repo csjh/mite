@@ -1,5 +1,5 @@
 import binaryen from "binaryen";
-import { LinearMemoryLocation, MiteType } from "../backend/type_classes.js";
+import { AllocationLocation, LinearMemoryLocation, MiteType } from "../backend/type_classes.js";
 
 export type ProgramToModuleOptions = {
     stack_size?: number;
@@ -9,19 +9,25 @@ type SharedTypeInformation = {
     classification: string;
     name: string;
     sizeof: number;
+    location: AllocationLocation;
 };
 
 export type ArrayTypeInformation = SharedTypeInformation & {
     classification: "array";
+    is_ref: boolean;
     element_type: TypeInformation;
     length: number;
+    location: LinearMemoryLocation;
 };
 export type StructTypeInformation = SharedTypeInformation & {
     classification: "struct";
+    is_ref: boolean;
     fields: Map<string, { type: TypeInformation; offset: number }>;
+    location: LinearMemoryLocation;
 };
 export type PrimitiveTypeInformation = SharedTypeInformation & {
     classification: "primitive";
+    location: AllocationLocation.Local;
 };
 
 export type TypeInformation =

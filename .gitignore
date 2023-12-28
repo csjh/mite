@@ -2,3 +2,4 @@ c/
 node_modules/
 build/
 _throwaway/
+out.wasm
