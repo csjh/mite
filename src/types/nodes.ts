@@ -415,6 +415,7 @@ export interface Identifier extends BaseNode, BaseExpression, BasePattern {
 
 export interface TypeIdentifier extends Identifier {
     location?: LinearMemoryLocation;
+    isRef?: boolean;
 }
 
 export interface Literal extends BaseNode, BaseExpression {

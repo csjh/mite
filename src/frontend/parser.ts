@@ -991,6 +991,9 @@ export class Parser {
     }
 
     private parseType(): TypeIdentifier {
+        const is_ref = this.tokens[this.idx].type === TokenType.REF;
+        if (is_ref) this.idx++;
+
         let location: LinearMemoryLocation | undefined = undefined;
         if (this.token.type === TokenType.ARENA) {
             location = LinearMemoryLocation.Arena;
@@ -1017,7 +1020,7 @@ export class Parser {
         this.expectToken(TokenType.RIGHT_BRACKET);
         this.idx++;
 
-        return { type: "Identifier", name: `[${type.name}; ${length.value}]`, location };
+        return { type: "Identifier", name: `[${type.name}; ${length.value}]`, location, isRef: is_ref };
     }
 
     private parseStructLiteral(typeAnnotation: TypeIdentifier): ObjectExpression {

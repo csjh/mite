@@ -137,6 +137,9 @@ export function tokenize(input: string): Token[] {
         switch (token.type) {
             case TokenType.IDENTIFIER:
                 switch (token.value) {
+                    case "ref":
+                        token = { type: TokenType.REF, value: "ref" };
+                        break;
                     case "arena":
                         token = { type: TokenType.ARENA, value: "arena" };
                         break;
