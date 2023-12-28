@@ -2772,7 +2772,7 @@ export function identifyStructs(program: Program): TypeInformation[] {
 
 function detectCycles(adj_list: Map<string, Set<string>>): Error | null {
     const seen = new Set();
-    for (const [struct] of adj_list) {
+    for (const struct of adj_list.keys()) {
         if (seen.has(struct)) continue;
         const stack = [struct];
         const visited = new Set();
