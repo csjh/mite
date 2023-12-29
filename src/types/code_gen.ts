@@ -9,41 +9,52 @@ type SharedTypeInformation = {
     classification: string;
     name: string;
     sizeof: number;
-    location: AllocationLocation;
 };
 
 export type ArrayTypeInformation = SharedTypeInformation & {
     classification: "array";
-    is_ref: boolean;
-    element_type: TypeInformation;
+    element_type: InstanceTypeInformation;
     length: number;
-    location: LinearMemoryLocation;
 };
 export type StructTypeInformation = SharedTypeInformation & {
     classification: "struct";
-    is_ref: boolean;
-    fields: Map<string, { type: TypeInformation; offset: number }>;
-    location: LinearMemoryLocation;
+    fields: Map<string, { type: TypeInformation; offset: number; is_ref: boolean }>;
 };
 export type PrimitiveTypeInformation = SharedTypeInformation & {
     classification: "primitive";
-    location: AllocationLocation.Local;
 };
-
 export type TypeInformation =
     | PrimitiveTypeInformation
     | StructTypeInformation
     | ArrayTypeInformation;
 
+type SharedInstanceTypeInformation<Location extends AllocationLocation> = {
+    location: Location;
+    is_ref: boolean;
+    immutable: boolean;
+};
+
+export type InstanceArrayTypeInformation = ArrayTypeInformation &
+    SharedInstanceTypeInformation<LinearMemoryLocation>;
+export type InstanceStructTypeInformation = StructTypeInformation &
+    SharedInstanceTypeInformation<LinearMemoryLocation>;
+export type InstancePrimitiveTypeInformation = PrimitiveTypeInformation &
+    Partial<SharedInstanceTypeInformation<AllocationLocation>>;
+
+export type InstanceTypeInformation =
+    | InstancePrimitiveTypeInformation
+    | InstanceStructTypeInformation
+    | InstanceArrayTypeInformation;
+
 export type ExpressionInformation = {
-    type: TypeInformation;
+    type: InstanceTypeInformation;
     expression: binaryen.ExpressionIds;
     ref: binaryen.ExpressionRef;
 };
 
 export type FunctionInformation = {
-    params: TypeInformation[];
-    results: TypeInformation;
+    params: InstanceTypeInformation[];
+    results: InstanceTypeInformation;
 };
 
 export type Context = {
@@ -54,21 +65,39 @@ export type Context = {
     /** Functions defined in this scope */
     functions: Map<string, FunctionInformation>;
     /** The return type expected from the current expression. Used for literal coercion. */
-    expected?: TypeInformation & { location?: LinearMemoryLocation };
-    /** Types and their operators */
-    operators: Record<string, OperatorHandlers>;
+    expected?: InstanceTypeInformation;
     /** Types and their intrinsics */
     intrinsics: Record<string, IntrinsicHandlers>;
     /** Type conversions */
     conversions: Record<string, ConversionHandlers>;
     /** Types and their information */
-    types: Record<string, TypeInformation>;
+    types: {
+        void: InstancePrimitiveTypeInformation;
+        i32: InstancePrimitiveTypeInformation;
+        i64: InstancePrimitiveTypeInformation;
+        u32: InstancePrimitiveTypeInformation;
+        u64: InstancePrimitiveTypeInformation;
+        f32: InstancePrimitiveTypeInformation;
+        f64: InstancePrimitiveTypeInformation;
+        i8x16: InstancePrimitiveTypeInformation;
+        u8x16: InstancePrimitiveTypeInformation;
+        i16x8: InstancePrimitiveTypeInformation;
+        u16x8: InstancePrimitiveTypeInformation;
+        i32x4: InstancePrimitiveTypeInformation;
+        u32x4: InstancePrimitiveTypeInformation;
+        f32x4: InstancePrimitiveTypeInformation;
+        i64x2: InstancePrimitiveTypeInformation;
+        u64x2: InstancePrimitiveTypeInformation;
+        f64x2: InstancePrimitiveTypeInformation;
+    } & Record<string, TypeInformation>;
     /** Depth stacks for use in nested blocks and such */
     stacks: {
         continue: string[];
         break: string[];
         depth: number;
     };
+    /** All declared structs in the program */
+    structs: Record<string, Omit<StructTypeInformation, "instance">>;
     /** The current block */
     current_block: ExpressionInformation[];
     /** Data about current function */
@@ -83,10 +112,7 @@ export type TernaryOperator = (
     middle: ExpressionInformation,
     right: ExpressionInformation
 ) => ExpressionInformation;
-export type BinaryOperator = (
-    left: ExpressionInformation,
-    right: ExpressionInformation
-) => ExpressionInformation;
+export type BinaryOperator = (left: MiteType, right: MiteType) => MiteType;
 export type UnaryOperator = (expr: ExpressionInformation) => ExpressionInformation;
 
 export type ConversionHandlers = Record<string, UnaryOperator>;

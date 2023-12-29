@@ -6,7 +6,6 @@ import {
     miteSignatureToBinaryenSignature,
     updateExpected,
     STACK_POINTER,
-    getBinaryOperator,
     constant,
     rvalue,
     newBlock,
@@ -21,9 +20,10 @@ import {
 import {
     Context,
     ExpressionInformation,
+    InstancePrimitiveTypeInformation,
+    InstanceTypeInformation,
     IntrinsicHandlers,
     ProgramToModuleOptions,
-    TypeInformation,
     intrinsic_names
 } from "../types/code_gen.js";
 import type {
@@ -54,13 +54,8 @@ import type {
     ObjectExpression
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
-import { AllocationLocation, LinearMemoryLocation, MiteType, Primitive } from "./type_classes.js";
-import {
-    createIntrinsics,
-    identifyStructs,
-    createTypeOperations,
-    createConversions
-} from "./context_initialization.js";
+import { AllocationLocation, MiteType, Primitive } from "./type_classes.js";
+import { createIntrinsics, identifyStructs, createConversions } from "./context_initialization.js";
 import { addBuiltins } from "./builtin_functions.js";
 
 export function programToModule(
@@ -75,11 +70,10 @@ export function programToModule(
         mod,
         variables: new Map(),
         functions: new Map(),
-        operators: createTypeOperations(mod),
         intrinsics: createIntrinsics(mod),
         conversions: createConversions(mod),
         stacks: { continue: [], break: [], depth: 0 },
-        types: { ...primitives, ...structs },
+        types: { ...primitives, ...structs } as Context["types"],
         current_block: [],
         local_count: 0,
         // @ts-expect-error initially we're not in a function
@@ -113,7 +107,7 @@ export function programToModule(
             ])
     );
 
-    for (const type of ["i32", "i64", "f32", "f64"]) {
+    for (const type of ["i32", "i64", "f32", "f64"] as const) {
         ctx.functions.set(`log_${type}`, {
             params: [ctx.types[type]],
             results: ctx.types.void
@@ -162,21 +156,9 @@ function handleDeclaration(ctx: Context, node: Declaration): void {
 }
 
 function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void {
-    const has_output_parameter = parseType(ctx, node.returnType).classification !== "primitive";
-
     let local_count = 0;
     ctx.variables = new Map();
-    if (has_output_parameter) {
-        ctx.variables.set(
-            "Return Value",
-            createMiteType(
-                ctx,
-                parseType(ctx, node.returnType),
-                // output parameter variable #
-                local_count++
-            )
-        );
-    }
+
     const params = new Map(
         node.params.map(({ name, typeAnnotation }) => [
             name.name,
@@ -231,7 +213,7 @@ function statementToExpression(ctx: Context, value: Statement): void {
 function variableDeclarationToExpression(ctx: Context, value: VariableDeclaration): void {
     for (const { id, typeAnnotation, init } of value.declarations) {
         let expr: ExpressionInformation | undefined = undefined;
-        let type: TypeInformation;
+        let type: InstanceTypeInformation;
         if (typeAnnotation && init) {
             expr = expressionToExpression(
                 updateExpected(ctx, parseType(ctx, typeAnnotation)),
@@ -246,6 +228,7 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
         } else {
             throw new Error("Variable declaration must have type or initializer");
         }
+        type.immutable = value.kind === "const";
 
         const variable = createVariable(
             ctx,
@@ -355,7 +338,7 @@ function literalToExpression(ctx: Context, value: Literal): ExpressionInformatio
     if (ctx.expected?.classification && ctx.expected.classification !== "primitive")
         throw new Error(`Expected primitive type, got ${ctx.expected?.classification}`);
 
-    const type = ctx.expected ?? ctx.types[value.literalType];
+    const type = ctx.expected ?? (ctx.types[value.literalType] as InstancePrimitiveTypeInformation);
     let ref;
     switch (type.name) {
         case "i32":
@@ -489,7 +472,9 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): Expres
         ctx,
         function_name,
         fn,
-        args[0]?.expression === binaryen.ExpressionIds.Nop ? [] : args
+        args.length !== 0 && binaryen.getExpressionId(args[0].ref) === binaryen.ExpressionIds.Nop
+            ? []
+            : args
     );
 }
 
@@ -720,7 +705,10 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Expr
             name: `[${element_type.name}; ${value.elements.length}]`,
             sizeof,
             element_type,
-            length: value.elements.length
+            length: value.elements.length,
+            location,
+            is_ref: true,
+            immutable: false
         },
         allocate(ctx, sizeof, location)
     );
@@ -753,6 +741,10 @@ function objectExpressionToExpression(
     const location =
         value.typeAnnotation.location ?? ctx.expected?.location ?? AllocationLocation.Arena;
 
+    if (location !== AllocationLocation.Arena && location !== AllocationLocation.JS) {
+        throw new Error("Cannot create non-linear memory struct");
+    }
+
     const struct = createMiteType(ctx, type, allocate(ctx, type.sizeof, location));
 
     const fields = new Map(type.fields);
@@ -761,7 +753,11 @@ function objectExpressionToExpression(
         if (!field) throw new Error(`Struct ${type.name} has no field ${property.key.name}`);
         fields.delete(property.key.name);
 
-        const expr = expressionToExpression(updateExpected(ctx, field.type), property.value);
+        const expr = expressionToExpression(
+            // @ts-expect-error extra is_ref but doesn't really matter
+            updateExpected(ctx, { ...field.type, location, is_ref: false }),
+            property.value
+        );
         ctx.current_block.push(struct.access(property.key.name).set(expr));
     }
 
