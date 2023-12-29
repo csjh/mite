@@ -52,6 +52,7 @@ export enum TokenType {
     // STACK = "stack",
     JS = "js",
     LET = "let",
+    CONST = "const",
     FN = "fn",
     EXPORT = "export",
     STRUCT = "struct",

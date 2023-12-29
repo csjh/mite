@@ -149,6 +149,9 @@ export function tokenize(input: string): Token[] {
                     case "js":
                         token = { type: TokenType.JS, value: "js" };
                         break;
+                    case "const":
+                        token = { type: TokenType.CONST, value: "const" };
+                        break;
                     case "let":
                         token = { type: TokenType.LET, value: "let" };
                         break;

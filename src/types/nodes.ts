@@ -214,6 +214,7 @@ export interface StructDeclaration extends BaseDeclaration {
 export interface VariableDeclaration extends BaseDeclaration {
     type: "VariableDeclaration";
     declarations: VariableDeclarator[];
+    kind: "let" | "const";
 }
 
 export type VariableDeclarator = BaseNode &

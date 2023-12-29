@@ -286,7 +286,7 @@ export class Parser {
         this.idx++;
 
         const init =
-            this.token.type === TokenType.LET
+            this.token.type === TokenType.LET || this.token.type === TokenType.CONST
                 ? this.parseVariableDeclaration()
                 : this.parseExpression();
         this.expectToken(TokenType.SEMICOLON);
@@ -406,7 +406,7 @@ export class Parser {
                 type: "ReturnStatement",
                 argument: expression
             } satisfies ReturnStatement;
-        } else if (this.token.type === TokenType.LET) {
+        } else if (this.token.type === TokenType.LET || this.token.type === TokenType.CONST) {
             statement = this.parseVariableDeclaration();
         } else {
             statement = {
@@ -425,11 +425,12 @@ export class Parser {
     private parseVariableDeclaration(): VariableDeclaration {
         const variable: VariableDeclaration = {
             type: "VariableDeclaration",
-            declarations: []
+            declarations: [],
+            kind: this.token.type === TokenType.LET ? "let" : "const"
         };
 
-        this.expectToken(TokenType.LET);
         this.idx++;
+
         do {
             const declaration: Partial<VariableDeclarator> = {
                 type: "VariableDeclarator",
@@ -1020,7 +1021,12 @@ export class Parser {
         this.expectToken(TokenType.RIGHT_BRACKET);
         this.idx++;
 
-        return { type: "Identifier", name: `[${type.name}; ${length.value}]`, location, isRef: is_ref };
+        return {
+            type: "Identifier",
+            name: `[${type.name}; ${length.value}]`,
+            location,
+            isRef: is_ref
+        };
     }
 
     private parseStructLiteral(typeAnnotation: TypeIdentifier): ObjectExpression {
