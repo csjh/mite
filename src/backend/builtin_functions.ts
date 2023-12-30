@@ -86,47 +86,69 @@ export function addBuiltins(ctx: Context) {
     );
 
     const CURRENT_CHUNK_PTR = enhanced_local(ctx, 1);
-    const CURRENT_CHUNK = enhanced_local(ctx, 2);
+    const RETURN_POINTER = enhanced_local(ctx, 2);
     const CHUNK_LENGTH = enhanced_local(ctx, 3);
-    const RETURN_POINTER = enhanced_local(ctx, 4);
-    const SIZE_DELTA = enhanced_local(ctx, 5);
+    const CURRENT_CHUNK = enhanced_local(ctx, 4);
     // prettier-ignore
     const js_heap_malloc = ctx.mod.block(null, [
         // start at the beginning of the js heap
         CURRENT_CHUNK_PTR.set(JS_HEAP_POINTER.get()),
+        RETURN_POINTER.set(i32.const(-1)),
 
-        ctx.mod.loop("find_first_free", ctx.mod.block(null, [
-            // increment the current chunk pointer by the length of the current chunk + 4 bytes for the metadata
-            CURRENT_CHUNK_PTR.set(i32.add(
-                CURRENT_CHUNK_PTR.get(),
-                i32.add(CHUNK_LENGTH.get(), i32.const(4)))),
-            // if we've reached the end of the js heap, return -1
-            ctx.mod.if(
-                i32.gt_u(CURRENT_CHUNK_PTR.get(), ARENA_HEAP_POINTER.get()),
-                ctx.mod.return(i32.const(-1))),
-            // get the metadata of current chunk
-            CURRENT_CHUNK.set(CURRENT_CHUNK_PTR.deref.get()),
-            // store the length of the current chunk
-            CHUNK_LENGTH.set(i32.and(CURRENT_CHUNK.get(), i32.const(0x7fffffff))),
-            // continue in the loop if the current chunk is not free
-            ctx.mod.br_if("find_first_free", i32.eqz(i32.and(CURRENT_CHUNK.get(), i32.const(0x80000000)))),
-            // continue in the loop if the current chunk is too small
-            ctx.mod.br_if("find_first_free", i32.gt_u(DESIRED_SIZE.get(), CHUNK_LENGTH.get()))
-        ])),
+        ctx.mod.block("return", [
+            ctx.mod.loop("find_first_free", ctx.mod.block(null, [
+                // if we've reached the end of the js heap, return -1
+                ctx.mod.br_if(
+                    "return",
+                    i32.gt_u(
+                        CURRENT_CHUNK_PTR.tee(
+                            i32.add(
+                                // skip the size of the last chunk
+                                i32.add(
+                                    CURRENT_CHUNK_PTR.get(),
+                                    CHUNK_LENGTH.get()),
+                                // 4 bytes for the metadata
+                                i32.const(4))),
+                        ARENA_HEAP_POINTER.get())),
 
-        // store the new size of the chunk
-        CURRENT_CHUNK_PTR.deref.set(DESIRED_SIZE.get()),
+                ctx.mod.br_if(
+                    "find_first_free", 
+                    i32.or(
+                        // if the chunk isn't big enough
+                        i32.lt_u(
+                            CHUNK_LENGTH.tee(
+                                i32.and(
+                                    CURRENT_CHUNK.tee(CURRENT_CHUNK_PTR.deref.get()),
+                                    i32.const(0x7FFFFFFF))),
+                            DESIRED_SIZE.get()),
+                        i32.ge_s(
+                            // if sign bit is set, then the number is below 0 in its signed form
+                            // set sign bit means it's free, so if it's nonnegative, skip
+                            CURRENT_CHUNK.get(),
+                            i32.const(0))
+                    ))
+            ])),
 
-        // return the current chunk pointer, plus 4 bytes for the metadata
-        RETURN_POINTER.set(i32.add(CURRENT_CHUNK_PTR.get(), i32.const(4))),
+            // store the new size of the chunk
+            CURRENT_CHUNK_PTR.deref.set(DESIRED_SIZE.get()),
 
-        // increment the current chunk pointer by the size of the chunk
-        CURRENT_CHUNK_PTR.set(i32.add(RETURN_POINTER.get(), DESIRED_SIZE.get())),
+            // return the current chunk pointer, plus 4 bytes for the metadata
+            RETURN_POINTER.set(i32.add(CURRENT_CHUNK_PTR.get(), i32.const(4))),
 
-        // if there's still some memory leftover in the chunk being claimed
-        ctx.mod.if(
-            SIZE_DELTA.tee(i32.sub(CHUNK_LENGTH.get(), DESIRED_SIZE.get())),
-            CURRENT_CHUNK_PTR.deref.set(i32.or(SIZE_DELTA.get(), i32.const(0x80000000)))),
+            // return if it's a perfect match
+            ctx.mod.br_if(
+                "return", 
+                i32.eq(DESIRED_SIZE.get(), CHUNK_LENGTH.get())),
+
+            i32.store(0, 0,
+                // store in the metadata of next chunk
+                i32.add(
+                    DESIRED_SIZE.get(),
+                    RETURN_POINTER.get()),
+                // set the memory to the remaining size of the chunk (no bitmask needed since current_chunk already has the sign bit set)
+                i32.sub(CURRENT_CHUNK.get(), DESIRED_SIZE.get()),
+                "main_memory")
+        ]),
 
         RETURN_POINTER.get()
     ]);
