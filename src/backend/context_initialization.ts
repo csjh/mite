@@ -1,10 +1,10 @@
 // don't be offput by the fact this is 3000 lines, it's almost all boilerplate
 
-import binaryen from "binaryen";
-import { StructTypeInformation, TypeInformation, Context } from "../types/code_gen.js";
+import { StructTypeInformation, TypeInformation } from "../types/code_gen.js";
 import { Program, StructDeclaration } from "../types/nodes.js";
 import { Primitive } from "./type_classes.js";
 
+/*
 export function createConversions(mod: binaryen.Module): Context["conversions"] {
     // convert from type1 to type2 is obj[type1][type2]
     return {
@@ -424,7 +424,8 @@ export function createConversions(mod: binaryen.Module): Context["conversions"] 
         }
     };
 }
-
+*/
+/*
 export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
     return {
         void: {},
@@ -1629,6 +1630,7 @@ export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
         }
     };
 }
+*/
 
 /*
 this is going to have to be:

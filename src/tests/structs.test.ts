@@ -89,7 +89,7 @@ describe("struct declarations", () => {
     });
 });
 
-describe("struct functions", () => {
+describe("arena struct functions", () => {
     it("should work with return values", () => {
         const program = `
         struct coord {
@@ -218,6 +218,142 @@ describe("struct functions", () => {
         export fn main(): i32 {
             return add(coord { x: 5, y: 6 }, coord { x: 3, y: 2 }).x + 
                    add(coord { x: 5, y: 6 }, coord { x: 3, y: 2 }).y;
+        }
+        `;
+
+        compileAndRun(program4, 19);
+    });
+});
+
+describe("js struct functions", () => {
+    it("should work with return values", () => {
+        const program = `
+        struct coord {
+            x: i32,
+            y: i32
+        }
+
+        fn add(a: js coord, b: js coord): js coord {
+            return js coord {
+                x: a.x + b.x,
+                y: a.y + b.y
+            };
+        }
+
+        export fn main(): i32 {
+            let a = js coord { x: 5, y: 6 };
+            let b = js coord { x: 3, y: 2 };
+            let c = add(a, b);
+            return c.x + c.y;
+        }
+        `;
+
+        compileAndRun(program, 16);
+    });
+
+    it("should work with nested function calls", () => {
+        const program = `
+        struct coord {
+            x: i32,
+            y: i32
+        }
+
+        fn add(a: js coord, b: js coord): js coord {
+            return js coord {
+                x: a.x + b.x,
+                y: a.y + b.y
+            };
+        }
+
+        fn add2(a: js coord, b: js coord): js coord {
+            return add(a, b);
+        }
+
+        export fn main(): i32 {
+            let a = js coord { x: 5, y: 6 };
+            let b = js coord { x: 3, y: 2 };
+            let c = add2(a, b);
+            return c.x + c.y;
+        }
+        `;
+
+        compileAndRun(program, 16);
+
+        const program2 = `
+        struct coord {
+            x: i32,
+            y: i32
+        }
+
+        fn add_3(a: js coord, b: js coord, c: js coord): js coord {
+            return js coord {
+                x: a.x + b.x + c.x,
+                y: a.y + b.y + c.y
+            };
+        }
+
+        fn add(a: js coord, b: js coord): js coord {
+            let z = js coord { x: 1, y: 2 };
+            return add_3(a, b, z);
+        }
+
+        export fn main(): i32 {
+            let a = js coord { x: 5, y: 6 };
+            let b = js coord { x: 3, y: 2 };
+            let c = add(a, b);
+            return c.x + c.y;
+        }
+        `;
+
+        compileAndRun(program2, 19);
+
+        const program3 = `
+        struct coord {
+            x: i32,
+            y: i32
+        }
+
+        fn add_3(a: js coord, b: js coord, c: js coord): js coord {
+            return js coord {
+                x: a.x + b.x + c.x,
+                y: a.y + b.y + c.y
+            };
+        }
+
+        fn add(a: js coord, b: js coord): js coord {
+            let z = js coord { x: 1, y: 2 };
+            return add_3(a, b, z);
+        }
+
+        export fn main(): i32 {
+            let a = js coord { x: 5, y: 6 };
+            let b = js coord { x: 3, y: 2 };
+            return add(a, b).x + add(a, b).y;
+        }
+        `;
+
+        compileAndRun(program3, 19);
+
+        const program4 = `
+        struct coord {
+            x: i32,
+            y: i32
+        }
+
+        fn add_3(a: js coord, b: js coord, c: js coord): js coord {
+            return js coord {
+                x: a.x + b.x + c.x,
+                y: a.y + b.y + c.y
+            };
+        }
+
+        fn add(a: js coord, b: js coord): js coord {
+            return add_3(a, b, js coord { x: 1, y: 2 });
+        }
+
+        export fn main(): i32 {
+            return add(js coord { x: 5, y: 6 }, js coord { x: 3, y: 2 }).x + 
+                   add(js coord { x: 5, y: 6 }, js coord { x: 3, y: 2 }).y;
         }
         `;
 

@@ -39,18 +39,12 @@ export type InstanceArrayTypeInformation = ArrayTypeInformation &
 export type InstanceStructTypeInformation = StructTypeInformation &
     SharedInstanceTypeInformation<LinearMemoryLocation>;
 export type InstancePrimitiveTypeInformation = PrimitiveTypeInformation &
-    Partial<SharedInstanceTypeInformation<AllocationLocation>>;
+    SharedInstanceTypeInformation<AllocationLocation>;
 
 export type InstanceTypeInformation =
     | InstancePrimitiveTypeInformation
     | InstanceStructTypeInformation
     | InstanceArrayTypeInformation;
-
-export type ExpressionInformation = {
-    type: InstanceTypeInformation;
-    expression: binaryen.ExpressionIds;
-    ref: binaryen.ExpressionRef;
-};
 
 export type FunctionInformation = {
     params: InstanceTypeInformation[];
@@ -72,23 +66,23 @@ export type Context = {
     conversions: Record<string, ConversionHandlers>;
     /** Types and their information */
     types: {
-        void: InstancePrimitiveTypeInformation;
-        i32: InstancePrimitiveTypeInformation;
-        i64: InstancePrimitiveTypeInformation;
-        u32: InstancePrimitiveTypeInformation;
-        u64: InstancePrimitiveTypeInformation;
-        f32: InstancePrimitiveTypeInformation;
-        f64: InstancePrimitiveTypeInformation;
-        i8x16: InstancePrimitiveTypeInformation;
-        u8x16: InstancePrimitiveTypeInformation;
-        i16x8: InstancePrimitiveTypeInformation;
-        u16x8: InstancePrimitiveTypeInformation;
-        i32x4: InstancePrimitiveTypeInformation;
-        u32x4: InstancePrimitiveTypeInformation;
-        f32x4: InstancePrimitiveTypeInformation;
-        i64x2: InstancePrimitiveTypeInformation;
-        u64x2: InstancePrimitiveTypeInformation;
-        f64x2: InstancePrimitiveTypeInformation;
+        void: PrimitiveTypeInformation;
+        i32: PrimitiveTypeInformation;
+        i64: PrimitiveTypeInformation;
+        u32: PrimitiveTypeInformation;
+        u64: PrimitiveTypeInformation;
+        f32: PrimitiveTypeInformation;
+        f64: PrimitiveTypeInformation;
+        i8x16: PrimitiveTypeInformation;
+        u8x16: PrimitiveTypeInformation;
+        i16x8: PrimitiveTypeInformation;
+        u16x8: PrimitiveTypeInformation;
+        i32x4: PrimitiveTypeInformation;
+        u32x4: PrimitiveTypeInformation;
+        f32x4: PrimitiveTypeInformation;
+        i64x2: PrimitiveTypeInformation;
+        u64x2: PrimitiveTypeInformation;
+        f64x2: PrimitiveTypeInformation;
     } & Record<string, TypeInformation>;
     /** Depth stacks for use in nested blocks and such */
     stacks: {
@@ -99,7 +93,7 @@ export type Context = {
     /** All declared structs in the program */
     structs: Record<string, Omit<StructTypeInformation, "instance">>;
     /** The current block */
-    current_block: ExpressionInformation[];
+    current_block: MiteType[];
     /** Data about current function */
     current_function: FunctionInformation & {
         stack_frame_size: number;
@@ -107,13 +101,9 @@ export type Context = {
     };
 };
 
-export type TernaryOperator = (
-    left: ExpressionInformation,
-    middle: ExpressionInformation,
-    right: ExpressionInformation
-) => ExpressionInformation;
+export type TernaryOperator = (left: MiteType, middle: MiteType, right: MiteType) => MiteType;
 export type BinaryOperator = (left: MiteType, right: MiteType) => MiteType;
-export type UnaryOperator = (expr: ExpressionInformation) => ExpressionInformation;
+export type UnaryOperator = (expr: MiteType) => MiteType;
 
 export type ConversionHandlers = Record<string, UnaryOperator>;
 
@@ -224,10 +214,10 @@ export type IntrinsicHandlers = Partial<{
     // i8x16
     // limited by syntax right now
     // shuffle: (
-    //     left: ExpressionInformation,
-    //     right: ExpressionInformation,
+    //     left: MiteType,
+    //     right: MiteType,
     //     mask: number[]
-    // ) => ExpressionInformation;
+    // ) => MiteType;
     swizzle: BinaryOperator;
     avgr: BinaryOperator;
 

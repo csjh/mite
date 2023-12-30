@@ -103,13 +103,13 @@ export function addBuiltins(ctx: Context) {
             // if we've reached the end of the js heap, return -1
             ctx.mod.if(
                 i32.gt_u(CURRENT_CHUNK_PTR.get(), ARENA_HEAP_POINTER.get()),
-                ctx.mod.return(i32.const(0))),
+                ctx.mod.return(i32.const(-1))),
             // get the metadata of current chunk
             CURRENT_CHUNK.set(CURRENT_CHUNK_PTR.deref.get()),
             // store the length of the current chunk
             CHUNK_LENGTH.set(i32.and(CURRENT_CHUNK.get(), i32.const(0x7fffffff))),
             // continue in the loop if the current chunk is not free
-            ctx.mod.br_if("find_first_free", i32.and(CURRENT_CHUNK.get(), i32.const(0x80000000))),
+            ctx.mod.br_if("find_first_free", i32.eqz(i32.and(CURRENT_CHUNK.get(), i32.const(0x80000000)))),
             // continue in the loop if the current chunk is too small
             ctx.mod.br_if("find_first_free", i32.gt_u(DESIRED_SIZE.get(), CHUNK_LENGTH.get()))
         ])),
@@ -121,7 +121,7 @@ export function addBuiltins(ctx: Context) {
         RETURN_POINTER.set(i32.add(CURRENT_CHUNK_PTR.get(), i32.const(4))),
 
         // increment the current chunk pointer by the size of the chunk
-        CURRENT_CHUNK_PTR.set(i32.add(CURRENT_CHUNK_PTR.get(), DESIRED_SIZE.get())),
+        CURRENT_CHUNK_PTR.set(i32.add(RETURN_POINTER.get(), DESIRED_SIZE.get())),
 
         // if there's still some memory leftover in the chunk being claimed
         ctx.mod.if(

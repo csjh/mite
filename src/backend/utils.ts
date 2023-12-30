@@ -1,9 +1,10 @@
 import binaryen from "binaryen";
 import {
     Context,
-    ExpressionInformation,
     FunctionInformation,
+    InstancePrimitiveTypeInformation,
     InstanceTypeInformation,
+    PrimitiveTypeInformation,
     TypeInformation
 } from "../types/code_gen.js";
 import {
@@ -43,17 +44,12 @@ export function createMiteType(
     address_or_local: Primitive | number
 ): MiteType {
     if (type.classification === "primitive") {
-        if (typeof address_or_local !== "number") {
-            return new Primitive(ctx, type, AllocationLocation.Arena, address_or_local.get());
-        } else {
-            return new Primitive(ctx, type, AllocationLocation.Local, address_or_local);
-        }
+        return new Primitive(ctx, type, address_or_local);
     } else if (type.classification === "struct") {
         if (typeof address_or_local === "number") {
             address_or_local = new Primitive(
                 ctx,
-                ctx.types.i32,
-                AllocationLocation.Local,
+                adapt(ctx.types.i32, AllocationLocation.Local),
                 address_or_local
             );
         }
@@ -62,8 +58,7 @@ export function createMiteType(
         if (typeof address_or_local === "number") {
             address_or_local = new Primitive(
                 ctx,
-                ctx.types.i32,
-                AllocationLocation.Local,
+                adapt(ctx.types.i32, AllocationLocation.Local),
                 address_or_local
             );
         }
@@ -87,74 +82,33 @@ export function miteSignatureToBinaryenSignature(
     variables: TypeInformation[],
     body: binaryen.ExpressionRef
 ): binaryen.ExpressionRef {
-    const { params, results, stack_frame_size } = ctx.current_function;
+    const { params, results } = ctx.current_function;
 
     const binaryen_parameters_untyped = params.map(typeInformationToBinaryen);
     const binaryen_parameters = binaryen.createType(binaryen_parameters_untyped);
     const binaryen_return_type = typeInformationToBinaryen(results);
     const binaryen_variables = variables.map(typeInformationToBinaryen);
 
-    const block = ctx.mod.block(null, [
-        ctx.mod.global.set(
-            STACK_POINTER,
-            ctx.mod.i32.sub(
-                ctx.mod.global.get(STACK_POINTER, binaryen.i32),
-                ctx.mod.i32.const(stack_frame_size)
-            )
-        ),
-        ctx.variables.get("Local Stack Pointer")!.set({
-            ref: ctx.mod.global.get(STACK_POINTER, binaryen.i32),
-            expression: binaryen.ExpressionIds.GlobalGet,
-            type: ctx.types.i32
-        }).ref,
-        body,
-        ctx.mod.global.set(
-            STACK_POINTER,
-            ctx.mod.i32.add(
-                ctx.mod.global.get(STACK_POINTER, binaryen.i32),
-                ctx.mod.i32.const(stack_frame_size)
-            )
-        )
-    ]);
-
     return ctx.mod.addFunction(
         name,
         binaryen_parameters,
         binaryen_return_type,
         binaryen_variables,
-        block
+        body
     );
 }
 
-export function constant(
-    ctx: Context,
-    value: number,
-    type: "i32" | "i64" = "i32"
-): ExpressionInformation {
+export function constant(ctx: Context, value: number, type: "i32" | "i64" = "i32"): Primitive {
     const ref =
         type === "i32" ? ctx.mod.i32.const(value) : ctx.mod.i64.const(...bigintToLowAndHigh(value));
-    return {
-        ref,
-        type: ctx.types[type],
-        expression: binaryen.ExpressionIds.Const
-    };
-}
-
-export function rvalue(ctx: Context, array: ExpressionInformation): Array;
-export function rvalue(ctx: Context, struct: ExpressionInformation): Struct;
-export function rvalue(ctx: Context, expression: ExpressionInformation): Struct | Array {
-    if (expression.type.classification === "array")
-        return new Array(ctx, expression.type, expression);
-    if (expression.type.classification === "struct")
-        return new Struct(ctx, expression.type, expression);
-    throw new Error(`Cannot rvalue ${expression.type.classification}`);
+    return transient(ctx, ctx.types[type], ref);
 }
 
 export function newBlock(
     ctx: Context,
-    cb: () => ExpressionInformation | void,
+    cb: () => MiteType | void,
     { name = null, type }: { name?: string | null; type?: number } = {}
-): ExpressionInformation {
+): MiteType {
     const parent_block = ctx.current_block;
     ctx.current_block = [];
     const expr = cb();
@@ -162,37 +116,47 @@ export function newBlock(
     const block = ctx.current_block;
     ctx.current_block = parent_block;
 
-    if (block.length === 1 && !name) {
+    if (block.length === 0) {
+        return transient(ctx, ctx.types.void, ctx.mod.nop());
+    } else if (block.length === 1 && !name) {
         return block[0];
     } else {
-        return {
-            ref: ctx.mod.block(
-                name,
-                block.map((x) => x.ref),
-                type
-            ),
-            type: block.at(-1)?.type ?? ctx.types.void,
-            expression: binaryen.ExpressionIds.Block
-        };
+        const ret = block.at(-1)!.type;
+        const blocked = ctx.mod.block(
+            name,
+            block.map((x) => x.get_expression_ref()),
+            type
+        );
+        return toReturnType(ctx, ret, blocked);
     }
 }
 
 const array_regex = /\[(.*); ([0-9]*)\]/;
 export function parseType(ctx: Context, type: TypeIdentifier): InstanceTypeInformation;
-export function parseType(ctx: Context, type: string): InstanceTypeInformation;
-export function parseType(ctx: Context, type: string | TypeIdentifier): InstanceTypeInformation {
+export function parseType(
+    ctx: Context,
+    type: string,
+    location?: AllocationLocation
+): InstanceTypeInformation;
+export function parseType(
+    ctx: Context,
+    type: string | TypeIdentifier,
+    location?: AllocationLocation
+): InstanceTypeInformation {
     if (typeof type === "object") return parseType(ctx, type.name);
     let is_ref = false;
     if (type.startsWith("ref ")) {
         is_ref = true;
         type = type.slice("ref ".length);
     }
-    let location = undefined;
-    for (const _place in AllocationLocation) {
-        const place = `${_place} `;
-        if (type.startsWith(place)) {
-            location = AllocationLocation[_place as keyof typeof AllocationLocation];
-            type = type.slice(place.length);
+
+    if (!location) {
+        for (const _place in AllocationLocation) {
+            const place = `${_place} `;
+            if (type.startsWith(place)) {
+                location = AllocationLocation[_place as keyof typeof AllocationLocation];
+                type = type.slice(place.length);
+            }
         }
     }
 
@@ -203,7 +167,8 @@ export function parseType(ctx: Context, type: string | TypeIdentifier): Instance
             return {
                 ...base_type,
                 location: location ?? AllocationLocation.Local,
-                immutable: false
+                immutable: false,
+                is_ref: false
             };
         } else {
             return {
@@ -218,53 +183,39 @@ export function parseType(ctx: Context, type: string | TypeIdentifier): Instance
     if (array_regex.test(type)) {
         const [_, element_type, str_length] = array_regex.exec(type)!;
         const length = Number(str_length);
-
+        location ??= AllocationLocation.Arena;
         return {
             classification: "array",
             name: type,
-            element_type: parseType(ctx, element_type),
+            element_type: parseType(ctx, element_type, location),
             length,
             sizeof: ctx.types[element_type].sizeof * length,
             is_ref,
-            location: (location as LinearMemoryLocation) ?? AllocationLocation.Arena,
+            location: location as LinearMemoryLocation,
             immutable: false
         };
     }
     throw new Error(`Unknown type: ${type}`);
 }
 
-// export function createVariable(
-//     ctx: Context,
-//     type: InstancePrimitiveTypeInformation,
-//     location?: LinearMemoryLocation,
-//     initializer?: Primitive
-// ): Primitive;
-// export function createVariable(
-//     ctx: Context,
-//     type: InstanceStructTypeInformation,
-//     location?: LinearMemoryLocation,
-//     initializer?: Primitive
-// ): Struct;
-// export function createVariable(
-//     ctx: Context,
-//     type: InstanceArrayTypeInformation,
-//     location?: LinearMemoryLocation,
-//     initializer?: Primitive
-// ): Array;
 export function createVariable(
     ctx: Context,
     type: InstanceTypeInformation,
-    location: LinearMemoryLocation = AllocationLocation.Arena,
-    initializer?: Primitive
+    initializer?: Primitive,
+    location: LinearMemoryLocation = AllocationLocation.Arena
 ): MiteType {
     if (type.classification === "struct") {
         initializer ??= allocate(ctx, type.sizeof, location);
-        return createMiteType(ctx, type, initializer);
+        return createMiteType(ctx, { ...type, location }, initializer);
     } else if (type.classification === "array") {
         initializer ??= allocate(ctx, type.sizeof, location);
-        return createMiteType(ctx, type, initializer);
+        return createMiteType(ctx, { ...type, location }, initializer);
     } else {
-        const variable = createMiteType(ctx, type, ctx.current_function.local_count++);
+        const variable = createMiteType(
+            ctx,
+            { ...type, location: AllocationLocation.Local },
+            ctx.current_function.local_count++
+        );
         if (initializer) ctx.current_block.push(variable.set(initializer.get()));
         return variable;
     }
@@ -274,50 +225,23 @@ export function callFunction(
     ctx: Context,
     function_name: string,
     { params, results }: FunctionInformation,
-    args: ExpressionInformation[]
-): ExpressionInformation {
-    if (results.classification === "primitive") {
-        return {
-            ref: ctx.mod.call(
-                function_name,
-                args.map((arg) => arg.ref),
-                typeInformationToBinaryen(results)
-            ),
-            type: results,
-            expression: binaryen.ExpressionIds.Call
-        };
-    } else {
-        const variable = createVariable(ctx, results);
-        ctx.current_block.push({
-            ref: ctx.mod.call(
-                function_name,
-                [variable.get().ref, ...args.map((arg) => arg.ref)],
-                binaryen.none
-            ),
-            type: Primitive.primitives.get("void")!,
-            expression: binaryen.ExpressionIds.Call
-        });
-        return variable.get();
-    }
-}
-
-function stackAllocation(ctx: Context, size: number): ExpressionInformation {
-    const ref = ctx.mod.i32.add(
-        lookForVariable(ctx, "Local Stack Pointer").get().ref,
-        ctx.mod.i32.const(ctx.current_function.stack_frame_size)
+    args: MiteType[]
+): MiteType {
+    const results_expr = ctx.mod.call(
+        function_name,
+        args.map((arg) => arg.get_expression_ref()),
+        typeInformationToBinaryen(results)
     );
-    ctx.current_function.stack_frame_size += size;
-
-    return { ref, expression: binaryen.ExpressionIds.Binary, type: ctx.types.i32 };
+    return toReturnType(ctx, results, results_expr);
 }
 
 function heapAllocation(ctx: Context, size: number): Primitive {
     const ref = ctx.mod.call("arena_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32);
-    const allocation = createVariable(ctx, ctx.types.i32, AllocationLocation.Arena, {
-        ref,
-        expression: binaryen.ExpressionIds.Call,
-        type: ctx.types.i32
-    });
+    const allocation = createVariable(
+        ctx,
+        adapt(ctx.types.i32, AllocationLocation.Local),
+        transient(ctx, ctx.types.i32, ref)
+    ) as Primitive;
     ctx.variables.set(`Arena Allocation ${ctx.variables.size}`, allocation);
 
     return allocation;
@@ -325,7 +249,14 @@ function heapAllocation(ctx: Context, size: number): Primitive {
 
 function jsAllocation(ctx: Context, size: number): Primitive {
     const ref = ctx.mod.call("js_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32);
-    return { ref, expression: binaryen.ExpressionIds.Call, type: ctx.types.i32 };
+    const allocation = createVariable(
+        ctx,
+        adapt(ctx.types.i32, AllocationLocation.Local),
+        transient(ctx, ctx.types.i32, ref)
+    ) as Primitive;
+    ctx.variables.set(`JS Allocation ${ctx.variables.size}`, allocation);
+
+    return allocation;
 }
 
 export function allocate(ctx: Context, size: number, location: LinearMemoryLocation): Primitive {
@@ -335,4 +266,35 @@ export function allocate(ctx: Context, size: number, location: LinearMemoryLocat
         case AllocationLocation.JS:
             return jsAllocation(ctx, size);
     }
+}
+
+export function transient(
+    ctx: Context,
+    type: PrimitiveTypeInformation,
+    expression: binaryen.ExpressionRef
+): Primitive {
+    return new Primitive(ctx, adapt(type), expression);
+}
+
+export function adapt(
+    type: PrimitiveTypeInformation,
+    location: AllocationLocation = AllocationLocation.Transient
+): InstancePrimitiveTypeInformation {
+    return {
+        ...type,
+        location,
+        is_ref: false,
+        immutable: false
+    };
+}
+
+export function toReturnType(
+    ctx: Context,
+    result: InstanceTypeInformation,
+    result_expr: binaryen.ExpressionRef
+): MiteType {
+    if (result.classification === "primitive") {
+        return new Primitive(ctx, adapt(result), result_expr);
+    }
+    return createMiteType(ctx, result, new Primitive(ctx, adapt(ctx.types.i32), result_expr));
 }

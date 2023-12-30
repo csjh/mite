@@ -30,7 +30,7 @@ import assert from "assert";
 //     });
 // });
 
-describe("array functions", () => {
+describe("arena array functions", () => {
     it("should work with return values", () => {
         const program = `
         fn add(a: [i32; 2], b: [i32; 2]): [i32; 2] {
@@ -118,6 +118,101 @@ describe("array functions", () => {
 
         export fn main(): i32 {
             return add([5, 6], [3, 2])[0] + add([5, 6], [3, 2])[1];
+        }
+        `;
+
+        compileAndRun(program4, 19);
+    });
+});
+
+describe("js array functions", () => {
+    it("should work with return values", () => {
+        const program = `
+        fn add(a: js [i32; 2], b: js [i32; 2]): js [i32; 2] {
+            return js [a[0] + b[0], a[1] + b[1]];
+        }
+
+        export fn main(): i32 {
+            let a = js [5, 6];
+            let b = js [3, 2];
+            let c = add(a, b);
+            return c[0] + c[1];
+        }
+        `;
+
+        compileAndRun(program, 16);
+    });
+
+    it("should work with nested function calls", () => {
+        const program = `
+        fn add(a: js [i32; 2], b: js [i32; 2]): js [i32; 2] {
+            return js [a[0] + b[0], a[1] + b[1]];
+        }
+
+        fn add2(a: js [i32; 2], b: js [i32; 2]): [i32; 2] {
+            return add(a, b);
+        }
+
+        export fn main(): i32 {
+            let a = js [5, 6];
+            let b = js [3, 2];
+            let c = add2(a, b);
+            return c[0] + c[1];
+        }
+        `;
+
+        compileAndRun(program, 16);
+
+        const program2 = `
+        fn add_3(a: js [i32; 2], b: js [i32; 2], c: js [i32; 2]): js [i32; 2] {
+            return js [a[0] + b[0] + c[0], a[1] + b[1] + c[1]];
+        }
+
+        fn add(a: js [i32; 2], b: js [i32; 2]): js [i32; 2] {
+            let z = js [1, 2];
+            return add_3(a, b, z);
+        }
+
+        export fn main(): i32 {
+            let a = js [5, 6];
+            let b = js [3, 2];
+            let c = add(a, b);
+            return c[0] + c[1];
+        }
+        `;
+
+        compileAndRun(program2, 19);
+
+        const program3 = `
+        fn add_3(a: js [i32; 2], b: js [i32; 2], c: js [i32; 2]): js [i32; 2] {
+            return js [a[0] + b[0] + c[0], a[1] + b[1] + c[1]];
+        }
+
+        fn add(a: js [i32; 2], b: js [i32; 2]): js [i32; 2] {
+            let z = js [1, 2];
+            return add_3(a, b, z);
+        }
+
+        export fn main(): i32 {
+            let a = js [5, 6];
+            let b = js [3, 2];
+            return add(a, b)[0] + add(a, b)[1];
+        }
+        `;
+
+        compileAndRun(program3, 19);
+
+        const program4 = `
+        fn add_3(a: js [i32; 2], b: js [i32; 2], c: js [i32; 2]): js [i32; 2] {
+            return js [a[0] + b[0] + c[0], a[1] + b[1] + c[1]];
+        }
+
+        fn add(a: js [i32; 2], b: js [i32; 2]): js [i32; 2] {
+            return add_3(a, b, js [1, 2]);
+        }
+
+        export fn main(): i32 {
+            return add(js [5, 6], js [3, 2])[0] + add(js [5, 6], js [3, 2])[1];
         }
         `;
 
