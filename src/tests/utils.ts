@@ -5,7 +5,7 @@ import { expect } from "bun:test";
 
 export function compileAndRun(
     program: string,
-    expected_output: string[] | number | "error",
+    expected_output: string[] | number | bigint | "error",
     func: string = "main"
 ) {
     const compiled = compile(program);
@@ -31,7 +31,7 @@ export function compileAndRun(
     // @ts-expect-error
     const number = instance.exports[func]();
 
-    if (typeof expected_output === "number") {
+    if (typeof expected_output === "number" || typeof expected_output === "bigint") {
         assert.strictEqual(number, expected_output);
     } else {
         assert.deepStrictEqual(string_array_output, expected_output);

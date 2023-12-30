@@ -42,7 +42,8 @@ import type {
     ArrayExpression,
     IndexExpression,
     TypeIdentifier,
-    ObjectExpression
+    ObjectExpression,
+    BooleanLiteral
 } from "../types/nodes.js";
 import { AllocationLocation, LinearMemoryLocation } from "../backend/type_classes.js";
 
@@ -522,6 +523,9 @@ export class Parser {
                 case TokenType.NUMBER:
                     expression_stack.push(this.getNumberLiteral());
                     break;
+                // case TokenType.BOOLEAN:
+                //     expression_stack.push(this.getBooleanLiteral());
+                //     break;
                 case TokenType.IDENTIFIER:
                     const next = this.getIdentifier();
                     // @ts-expect-error
@@ -753,6 +757,18 @@ export class Parser {
             name: token.value
         };
     }
+
+    // private getBooleanLiteral(): BooleanLiteral {
+    //     const token = this.tokens[this.idx++];
+    //     if (token.type !== TokenType.BOOLEAN) {
+    //         throw new Error(`Expected boolean, got ${token.type}`);
+    //     }
+    //     return {
+    //         type: "Literal",
+    //         literalType: "bool",
+    //         value: token.value === "true"
+    //     };
+    // }
 
     private getNumberLiteral(): NumberLiteral {
         const raw = this.tokens[this.idx++].value;

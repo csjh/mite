@@ -56,8 +56,13 @@ export abstract class MiteType {
 export class Primitive implements MiteType {
     static primitiveToBinaryen = new Map([
         ["void", binaryen.none],
+        ["bool", binaryen.i32],
+        ["i8", binaryen.i32],
+        ["i16", binaryen.i32],
         ["i32", binaryen.i32],
         ["i64", binaryen.i64],
+        ["u8", binaryen.i32],
+        ["u16", binaryen.i32],
         ["u32", binaryen.i32],
         ["u64", binaryen.i64],
         ["f32", binaryen.f32],
@@ -75,7 +80,7 @@ export class Primitive implements MiteType {
     ]);
     static primitives = new Map<string, PrimitiveTypeInformation>([
         ["void", { classification: "primitive", name: "void", sizeof: 0 }],
-        ["bool", { classification: "primitive", name: "i32", sizeof: 4 }],
+        ["bool", { classification: "primitive", name: "bool", sizeof: 4 }],
         ["i8", { classification: "primitive", name: "i8", sizeof: 1 }],
         ["i16", { classification: "primitive", name: "i16", sizeof: 2 }],
         ["i32", { classification: "primitive", name: "i32", sizeof: 4 }],
@@ -325,6 +330,7 @@ export class Primitive implements MiteType {
 
         switch (this.type.name) {
             case "void":
+            case "bool":
                 throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
             case "f32":
                 switch (operator) {
@@ -376,6 +382,8 @@ export class Primitive implements MiteType {
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
+            case "i8":
+            case "i16":
             case "i32":
                 switch (operator) {
                     case TokenType.PLUS:
@@ -413,6 +421,8 @@ export class Primitive implements MiteType {
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
+            case "u8":
+            case "u16":
             case "u32":
                 switch (operator) {
                     case TokenType.PLUS:

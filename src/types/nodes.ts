@@ -423,12 +423,17 @@ export interface Literal extends BaseNode, BaseExpression {
     type: "Literal";
     raw?: string | undefined;
     literalType: string;
-    value: number | bigint | number[];
+    value: number | boolean | bigint | number[];
 }
 
 export interface NumberLiteral extends Literal {
     literalType: "i32" | "i64" | "u32" | "u64" | "f32" | "f64";
     value: number | bigint;
+}
+
+export interface BooleanLiteral extends Literal {
+    literalType: "bool";
+    value: boolean;
 }
 
 export interface SIMDLiteral extends Literal {

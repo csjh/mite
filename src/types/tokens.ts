@@ -1,6 +1,7 @@
 export enum TokenType {
     IDENTIFIER,
     NUMBER,
+    // BOOLEAN,
     STRING,
 
     LEFT_PAREN = "(",

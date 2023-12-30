@@ -105,20 +105,38 @@ export function tokenize(input: string): Token[] {
             case "7":
             case "8":
             case "9": {
-                let value = "";
-                while (i < input.length && /[0-9]/.test(input[i])) {
-                    value += input[i];
-                    i++;
-                }
-                if (i < input.length && input[i] === ".") {
-                    value += input[i];
-                    i++;
+                if (i + 1 < input.length && input[i] === "0" && input[i + 1] === "x") {
+                    let value = "0x";
+                    i += 2;
+                    while (i < input.length && /[0-9a-fA-F]/.test(input[i])) {
+                        value += input[i];
+                        i++;
+                    }
+                    token = { type: TokenType.NUMBER, value };
+                } else if (i + 1 < input.length && input[i] === "0" && input[i + 1] === "b") {
+                    let value = "0b";
+                    i += 2;
+                    while (i < input.length && /[0-1]/.test(input[i])) {
+                        value += input[i];
+                        i++;
+                    }
+                    token = { type: TokenType.NUMBER, value };
+                } else {
+                    let value = "";
                     while (i < input.length && /[0-9]/.test(input[i])) {
                         value += input[i];
                         i++;
                     }
+                    if (i < input.length && input[i] === ".") {
+                        value += input[i];
+                        i++;
+                        while (i < input.length && /[0-9]/.test(input[i])) {
+                            value += input[i];
+                            i++;
+                        }
+                    }
+                    token = { type: TokenType.NUMBER, value };
                 }
-                token = { type: TokenType.NUMBER, value };
                 break;
             }
             default:
@@ -188,6 +206,12 @@ export function tokenize(input: string): Token[] {
                     case "export":
                         token = { type: TokenType.EXPORT, value: "export" };
                         break;
+                    // case "true":
+                    //     token = { type: TokenType.BOOLEAN, value: "true" };
+                    //     break;
+                    // case "false":
+                    //     token = { type: TokenType.BOOLEAN, value: "false" };
+                    //     break;
                 }
                 break;
             case TokenType.PLUS:

@@ -325,22 +325,31 @@ function literalToExpression(ctx: Context, value: Literal): MiteType {
     const type = ctx.expected ?? (ctx.types[value.literalType] as InstancePrimitiveTypeInformation);
     let ref;
     switch (type.name) {
+        // case "bool":
+        //     if (typeof value.value !== "boolean") throw new Error("Expected boolean literal");
+        //     ref = ctx.mod.i32.const(value.value ? 1 : 0);
+        //     break;
+        case "bool":
+        case "i8":
+        case "u8":
+        case "i16":
+        case "u16":
         case "i32":
         case "u32":
-            if (typeof value.value === "object") throw new Error("Expected numerical literal");
+            if (typeof value.value !== "number" && typeof value.value !== "bigint") throw new Error("Expected numerical literal");
             ref = ctx.mod.i32.const(Number(value.value));
             break;
         case "i64":
         case "u64":
-            if (typeof value.value === "object") throw new Error("Expected numerical literal");
+            if (typeof value.value !== "number" && typeof value.value !== "bigint") throw new Error("Expected numerical literal");
             ref = ctx.mod.i64.const(...bigintToLowAndHigh(value.value));
             break;
         case "f32":
-            if (typeof value.value === "object") throw new Error("Expected numerical literal");
+            if (typeof value.value !== "number" && typeof value.value !== "bigint") throw new Error("Expected numerical literal");
             ref = ctx.mod.f32.const(Number(value.value));
             break;
         case "f64":
-            if (typeof value.value === "object") throw new Error("Expected numerical literal");
+            if (typeof value.value !== "number" && typeof value.value !== "bigint") throw new Error("Expected numerical literal");
             ref = ctx.mod.f64.const(Number(value.value));
             break;
         case "f32x4":
@@ -367,8 +376,8 @@ function identifierToExpression(ctx: Context, { name }: Identifier): MiteType {
 }
 
 function binaryExpressionToExpression(ctx: Context, value: BinaryExpression): MiteType {
-    const left = expressionToExpression(ctx, value.left);
-    const right = expressionToExpression(ctx, value.right);
+    const left = expressionToExpression(updateExpected(ctx, undefined), value.left);
+    const right = expressionToExpression(updateExpected(ctx, left.type), value.right);
 
     const operator = left.operator(value.operator);
     return operator(left, right);
@@ -681,7 +690,7 @@ function indexExpressionToExpression(ctx: Context, value: IndexExpression): Mite
     if (array.type.classification !== "array") {
         throw new Error(`Cannot index non-array type ${array.type.name}`);
     }
-    const index = expressionToExpression(updateExpected(ctx, adapt(ctx.types.bool)), value.index);
+    const index = expressionToExpression(updateExpected(ctx, adapt(ctx.types.i32)), value.index);
 
     return array.index(index);
 }
