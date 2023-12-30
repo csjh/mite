@@ -75,8 +75,13 @@ export class Primitive implements MiteType {
     ]);
     static primitives = new Map<string, PrimitiveTypeInformation>([
         ["void", { classification: "primitive", name: "void", sizeof: 0 }],
+        ["bool", { classification: "primitive", name: "i32", sizeof: 4 }],
+        ["i8", { classification: "primitive", name: "i8", sizeof: 1 }],
+        ["i16", { classification: "primitive", name: "i16", sizeof: 2 }],
         ["i32", { classification: "primitive", name: "i32", sizeof: 4 }],
         ["i64", { classification: "primitive", name: "i64", sizeof: 8 }],
+        ["u8", { classification: "primitive", name: "u8", sizeof: 1 }],
+        ["u16", { classification: "primitive", name: "u16", sizeof: 2 }],
         ["u32", { classification: "primitive", name: "u32", sizeof: 4 }],
         ["u64", { classification: "primitive", name: "u64", sizeof: 8 }],
         ["f32", { classification: "primitive", name: "f32", sizeof: 4 }],
@@ -146,11 +151,37 @@ export class Primitive implements MiteType {
         let expr: binaryen.ExpressionRef;
         if (this.type.location === AllocationLocation.Local) {
             expr = this.ctx.mod.local.get(this.local_index, this.binaryenType);
+            if (this.type.name == "bool") {
+                expr = this.ctx.mod.i32.gt_u(expr, this.ctx.mod.i32.const(0));
+            } else if (this.type.name === "i8") {
+                expr = this.ctx.mod.i32.extend8_s(expr);
+            } else if (this.type.name === "u8") {
+                expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xff));
+            } else if (this.type.name === "i16") {
+                expr = this.ctx.mod.i32.extend16_s(expr);
+            } else if (this.type.name === "u16") {
+                expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xffff));
+            }
         } else if (this.type.location === AllocationLocation.Transient) {
             expr = this.expression;
         } else {
             if (this.binaryenType === binaryen.i32) {
-                expr = this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory");
+                if (this.type.name == "bool") {
+                    expr = this.ctx.mod.i32.gt_u(
+                        this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory"),
+                        this.ctx.mod.i32.const(0)
+                    );
+                } else if (this.type.name === "i8") {
+                    expr = this.ctx.mod.i32.load8_s(0, 0, this.pointer, "main_memory");
+                } else if (this.type.name === "u8") {
+                    expr = this.ctx.mod.i32.load8_u(0, 0, this.pointer, "main_memory");
+                } else if (this.type.name === "i16") {
+                    expr = this.ctx.mod.i32.load16_s(0, 0, this.pointer, "main_memory");
+                } else if (this.type.name === "u16") {
+                    expr = this.ctx.mod.i32.load16_u(0, 0, this.pointer, "main_memory");
+                } else {
+                    expr = this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory");
+                }
             } else if (this.binaryenType === binaryen.i64) {
                 expr = this.ctx.mod.i64.load(0, 0, this.pointer, "main_memory");
             } else if (this.binaryenType === binaryen.f32) {
@@ -176,11 +207,19 @@ export class Primitive implements MiteType {
         }
         let expr;
         if (this.type.location === AllocationLocation.Local) {
-            expr = this.ctx.mod.local.tee(
-                this.local_index,
-                value.get_expression_ref(),
-                this.binaryenType
-            );
+            const val = value.get_expression_ref();
+            if (this.type.name == "bool") {
+                expr = this.ctx.mod.i32.gt_u(val, this.ctx.mod.i32.const(0));
+            } else if (this.type.name === "i8") {
+                expr = this.ctx.mod.i32.extend8_s(val);
+            } else if (this.type.name === "u8") {
+                expr = this.ctx.mod.i32.and(val, this.ctx.mod.i32.const(0xff));
+            } else if (this.type.name === "i16") {
+                expr = this.ctx.mod.i32.extend16_s(val);
+            } else if (this.type.name === "u16") {
+                expr = this.ctx.mod.i32.and(val, this.ctx.mod.i32.const(0xffff));
+            }
+            expr = this.ctx.mod.local.tee(this.local_index, val, this.binaryenType);
         } else if (this.type.location === AllocationLocation.Transient) {
             throw new Error("Cannot set transient value");
         } else {
@@ -188,10 +227,46 @@ export class Primitive implements MiteType {
             // replicate tee behavior
             // TODO: ensure binaryen optimizes out the extra load
             if (this.binaryenType === binaryen.i32) {
-                expr = this.ctx.mod.block(null, [
-                    this.ctx.mod.i32.store(...params),
-                    this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory")
-                ]);
+                if (this.type.name == "bool") {
+                    expr = this.ctx.mod.block(null, [
+                        this.ctx.mod.i32.store(
+                            0,
+                            0,
+                            this.pointer,
+                            this.ctx.mod.i32.gt_u(
+                                value.get_expression_ref(),
+                                this.ctx.mod.i32.const(0)
+                            ),
+                            "main_memory"
+                        ),
+                        this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory")
+                    ]);
+                } else if (this.type.name === "i8") {
+                    expr = this.ctx.mod.block(null, [
+                        this.ctx.mod.i32.store8(...params),
+                        this.ctx.mod.i32.load8_s(0, 0, this.pointer, "main_memory")
+                    ]);
+                } else if (this.type.name === "u8") {
+                    expr = this.ctx.mod.block(null, [
+                        this.ctx.mod.i32.store8(...params),
+                        this.ctx.mod.i32.load8_u(0, 0, this.pointer, "main_memory")
+                    ]);
+                } else if (this.type.name === "i16") {
+                    expr = this.ctx.mod.block(null, [
+                        this.ctx.mod.i32.store16(...params),
+                        this.ctx.mod.i32.load16_s(0, 0, this.pointer, "main_memory")
+                    ]);
+                } else if (this.type.name === "u16") {
+                    expr = this.ctx.mod.block(null, [
+                        this.ctx.mod.i32.store16(...params),
+                        this.ctx.mod.i32.load16_u(0, 0, this.pointer, "main_memory")
+                    ]);
+                } else {
+                    expr = this.ctx.mod.block(null, [
+                        this.ctx.mod.i32.store(...params),
+                        this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory")
+                    ]);
+                }
             } else if (this.binaryenType === binaryen.i64) {
                 expr = this.ctx.mod.block(null, [
                     this.ctx.mod.i64.store(...params),
@@ -262,17 +337,17 @@ export class Primitive implements MiteType {
                     case TokenType.SLASH:
                         return bin_op(mod.f32.div);
                     case TokenType.EQUALS:
-                        return bin_op(mod.f32.eq, this.ctx.types.i32);
+                        return bin_op(mod.f32.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.f32.ne, this.ctx.types.i32);
+                        return bin_op(mod.f32.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.f32.lt, this.ctx.types.i32);
+                        return bin_op(mod.f32.lt, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.f32.le, this.ctx.types.i32);
+                        return bin_op(mod.f32.le, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.f32.gt, this.ctx.types.i32);
+                        return bin_op(mod.f32.gt, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.f32.ge, this.ctx.types.i32);
+                        return bin_op(mod.f32.ge, this.ctx.types.bool);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -287,17 +362,17 @@ export class Primitive implements MiteType {
                     case TokenType.SLASH:
                         return bin_op(mod.f64.div);
                     case TokenType.EQUALS:
-                        return bin_op(mod.f64.eq, this.ctx.types.i32);
+                        return bin_op(mod.f64.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.f64.ne, this.ctx.types.i32);
+                        return bin_op(mod.f64.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.f64.lt, this.ctx.types.i32);
+                        return bin_op(mod.f64.lt, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.f64.le, this.ctx.types.i32);
+                        return bin_op(mod.f64.le, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.f64.gt, this.ctx.types.i32);
+                        return bin_op(mod.f64.gt, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.f64.ge, this.ctx.types.i32);
+                        return bin_op(mod.f64.ge, this.ctx.types.bool);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -312,17 +387,17 @@ export class Primitive implements MiteType {
                     case TokenType.SLASH:
                         return bin_op(mod.i32.div_s);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i32.eq, this.ctx.types.i32);
+                        return bin_op(mod.i32.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i32.ne, this.ctx.types.i32);
+                        return bin_op(mod.i32.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i32.lt_s, this.ctx.types.i32);
+                        return bin_op(mod.i32.lt_s, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i32.le_s, this.ctx.types.i32);
+                        return bin_op(mod.i32.le_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i32.gt_s, this.ctx.types.i32);
+                        return bin_op(mod.i32.gt_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i32.ge_s, this.ctx.types.i32);
+                        return bin_op(mod.i32.ge_s, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i32.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -349,17 +424,17 @@ export class Primitive implements MiteType {
                     case TokenType.SLASH:
                         return bin_op(mod.i32.div_u);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i32.eq, this.ctx.types.i32);
+                        return bin_op(mod.i32.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i32.ne, this.ctx.types.i32);
+                        return bin_op(mod.i32.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i32.lt_u, this.ctx.types.i32);
+                        return bin_op(mod.i32.lt_u, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i32.le_u, this.ctx.types.i32);
+                        return bin_op(mod.i32.le_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i32.gt_u, this.ctx.types.i32);
+                        return bin_op(mod.i32.gt_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i32.ge_u, this.ctx.types.i32);
+                        return bin_op(mod.i32.ge_u, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i32.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -386,17 +461,17 @@ export class Primitive implements MiteType {
                     case TokenType.SLASH:
                         return bin_op(mod.i64.div_s);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i64.eq, this.ctx.types.i32);
+                        return bin_op(mod.i64.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i64.ne, this.ctx.types.i32);
+                        return bin_op(mod.i64.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i64.lt_s, this.ctx.types.i32);
+                        return bin_op(mod.i64.lt_s, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i64.le_s, this.ctx.types.i32);
+                        return bin_op(mod.i64.le_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i64.gt_s, this.ctx.types.i32);
+                        return bin_op(mod.i64.gt_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i64.ge_s, this.ctx.types.i32);
+                        return bin_op(mod.i64.ge_s, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i64.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -423,17 +498,17 @@ export class Primitive implements MiteType {
                     case TokenType.SLASH:
                         return bin_op(mod.i64.div_u);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i64.eq, this.ctx.types.i32);
+                        return bin_op(mod.i64.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i64.ne, this.ctx.types.i32);
+                        return bin_op(mod.i64.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i64.lt_u, this.ctx.types.i32);
+                        return bin_op(mod.i64.lt_u, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i64.le_u, this.ctx.types.i32);
+                        return bin_op(mod.i64.le_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i64.gt_u, this.ctx.types.i32);
+                        return bin_op(mod.i64.gt_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i64.ge_u, this.ctx.types.i32);
+                        return bin_op(mod.i64.ge_u, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i64.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -458,17 +533,17 @@ export class Primitive implements MiteType {
                     case TokenType.STAR:
                         return bin_op(mod.i8x16.mul);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i8x16.eq, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i8x16.ne, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i8x16.lt_s, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.lt_s, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i8x16.le_s, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.le_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i8x16.gt_s, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.gt_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i8x16.ge_s, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.ge_s, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i8x16.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -491,17 +566,17 @@ export class Primitive implements MiteType {
                     case TokenType.STAR:
                         return bin_op(mod.i8x16.mul);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i8x16.eq, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i8x16.ne, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i8x16.lt_u, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.lt_u, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i8x16.le_u, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.le_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i8x16.gt_u, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.gt_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i8x16.ge_u, this.ctx.types.i32);
+                        return bin_op(mod.i8x16.ge_u, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i8x16.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -524,17 +599,17 @@ export class Primitive implements MiteType {
                     case TokenType.STAR:
                         return bin_op(mod.i16x8.mul);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i16x8.eq, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i16x8.ne, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i16x8.lt_s, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.lt_s, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i16x8.le_s, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.le_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i16x8.gt_s, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.gt_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i16x8.ge_s, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.ge_s, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i16x8.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -557,17 +632,17 @@ export class Primitive implements MiteType {
                     case TokenType.STAR:
                         return bin_op(mod.i16x8.mul);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i16x8.eq, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i16x8.ne, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i16x8.lt_u, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.lt_u, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i16x8.le_u, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.le_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i16x8.gt_u, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.gt_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i16x8.ge_u, this.ctx.types.i32);
+                        return bin_op(mod.i16x8.ge_u, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i16x8.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -590,17 +665,17 @@ export class Primitive implements MiteType {
                     case TokenType.STAR:
                         return bin_op(mod.i32x4.mul);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i32x4.eq, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i32x4.ne, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i32x4.lt_s, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.lt_s, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i32x4.le_s, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.le_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i32x4.gt_s, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.gt_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i32x4.ge_s, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.ge_s, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i32x4.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -623,17 +698,17 @@ export class Primitive implements MiteType {
                     case TokenType.STAR:
                         return bin_op(mod.i32x4.mul);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i32x4.eq, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i32x4.ne, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i32x4.lt_u, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.lt_u, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i32x4.le_u, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.le_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i32x4.gt_u, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.gt_u, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i32x4.ge_u, this.ctx.types.i32);
+                        return bin_op(mod.i32x4.ge_u, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i32x4.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -656,17 +731,17 @@ export class Primitive implements MiteType {
                     case TokenType.STAR:
                         return bin_op(mod.i64x2.mul);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i64x2.eq, this.ctx.types.i32);
+                        return bin_op(mod.i64x2.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i64x2.ne, this.ctx.types.i32);
+                        return bin_op(mod.i64x2.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.i64x2.lt_s, this.ctx.types.i32);
+                        return bin_op(mod.i64x2.lt_s, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.i64x2.le_s, this.ctx.types.i32);
+                        return bin_op(mod.i64x2.le_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.i64x2.gt_s, this.ctx.types.i32);
+                        return bin_op(mod.i64x2.gt_s, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.i64x2.ge_s, this.ctx.types.i32);
+                        return bin_op(mod.i64x2.ge_s, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i64x2.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -689,9 +764,9 @@ export class Primitive implements MiteType {
                     case TokenType.STAR:
                         return bin_op(mod.i64x2.mul);
                     case TokenType.EQUALS:
-                        return bin_op(mod.i64x2.eq, this.ctx.types.i32);
+                        return bin_op(mod.i64x2.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.i64x2.ne, this.ctx.types.i32);
+                        return bin_op(mod.i64x2.ne, this.ctx.types.bool);
                     case TokenType.BITSHIFT_LEFT:
                         return bin_op(mod.i64x2.shl);
                     case TokenType.BITSHIFT_RIGHT:
@@ -716,17 +791,17 @@ export class Primitive implements MiteType {
                     case TokenType.SLASH:
                         return bin_op(mod.f32x4.div);
                     case TokenType.EQUALS:
-                        return bin_op(mod.f32x4.eq, this.ctx.types.i32);
+                        return bin_op(mod.f32x4.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.f32x4.ne, this.ctx.types.i32);
+                        return bin_op(mod.f32x4.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.f32x4.lt, this.ctx.types.i32);
+                        return bin_op(mod.f32x4.lt, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.f32x4.le, this.ctx.types.i32);
+                        return bin_op(mod.f32x4.le, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.f32x4.gt, this.ctx.types.i32);
+                        return bin_op(mod.f32x4.gt, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.f32x4.ge, this.ctx.types.i32);
+                        return bin_op(mod.f32x4.ge, this.ctx.types.bool);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -741,17 +816,17 @@ export class Primitive implements MiteType {
                     case TokenType.SLASH:
                         return bin_op(mod.f64x2.div);
                     case TokenType.EQUALS:
-                        return bin_op(mod.f64x2.eq, this.ctx.types.i32);
+                        return bin_op(mod.f64x2.eq, this.ctx.types.bool);
                     case TokenType.NOT_EQUALS:
-                        return bin_op(mod.f64x2.ne, this.ctx.types.i32);
+                        return bin_op(mod.f64x2.ne, this.ctx.types.bool);
                     case TokenType.LESS_THAN:
-                        return bin_op(mod.f64x2.lt, this.ctx.types.i32);
+                        return bin_op(mod.f64x2.lt, this.ctx.types.bool);
                     case TokenType.LESS_THAN_EQUALS:
-                        return bin_op(mod.f64x2.le, this.ctx.types.i32);
+                        return bin_op(mod.f64x2.le, this.ctx.types.bool);
                     case TokenType.GREATER_THAN:
-                        return bin_op(mod.f64x2.gt, this.ctx.types.i32);
+                        return bin_op(mod.f64x2.gt, this.ctx.types.bool);
                     case TokenType.GREATER_THAN_EQUALS:
-                        return bin_op(mod.f64x2.ge, this.ctx.types.i32);
+                        return bin_op(mod.f64x2.ge, this.ctx.types.bool);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -787,19 +862,24 @@ export class Struct implements MiteType {
             throw new Error(`Unable to assign to immutable array ${this.type.name}`);
         }
 
-        let expr;
         if ((!this.address.type.immutable && value_type.is_ref) || this.type.is_ref) {
-            expr = this.address!.set(value).get_expression_ref();
+            return this.address.set(value);
         } else {
-            expr = this.ctx.mod.memory.copy(
-                this.get_expression_ref(),
-                value.get_expression_ref(),
-                this.sizeof(),
-                "main_memory",
-                "main_memory"
+            this.ctx.current_block.push(
+                transient(
+                    this.ctx,
+                    this.ctx.types.void,
+                    this.ctx.mod.memory.copy(
+                        this.get_expression_ref(),
+                        value.get_expression_ref(),
+                        this.sizeof(),
+                        "main_memory",
+                        "main_memory"
+                    )
+                )
             );
+            return this.address;
         }
-        return transient(this.ctx, this.ctx.types.void, expr);
     }
 
     access(accessor: string): MiteType {
@@ -815,7 +895,7 @@ export class Struct implements MiteType {
 
         const addr = transient(
             this.ctx,
-            this.ctx.types.i32,
+            this.ctx.types.u32,
             this.ctx.mod.i32.add(this.get_expression_ref(), this.ctx.mod.i32.const(field.offset))
         );
 
@@ -823,7 +903,7 @@ export class Struct implements MiteType {
             return createMiteType(
                 this.ctx,
                 type,
-                new Primitive(this.ctx, adapt(this.ctx.types.i32, this.type.location), addr)
+                new Primitive(this.ctx, adapt(this.ctx.types.u32, this.type.location), addr)
             );
         } else {
             return createMiteType(this.ctx, type, addr);
@@ -867,19 +947,24 @@ export class Array implements MiteType {
             throw new Error(`Unable to assign to immutable array ${this.type.name}`);
         }
 
-        let expr;
         if ((!this.address.type.immutable && value_type.is_ref) || this.type.is_ref) {
-            expr = this.address!.set(value).get_expression_ref();
+            return this.address.set(value);
         } else {
-            expr = this.ctx.mod.memory.copy(
-                this.get_expression_ref(),
-                value.get_expression_ref(),
-                this.sizeof(),
-                "main_memory",
-                "main_memory"
+            this.ctx.current_block.push(
+                transient(
+                    this.ctx,
+                    this.ctx.types.void,
+                    this.ctx.mod.memory.copy(
+                        this.get_expression_ref(),
+                        value.get_expression_ref(),
+                        this.sizeof(),
+                        "main_memory",
+                        "main_memory"
+                    )
+                )
             );
+            return this.address;
         }
-        return transient(this.ctx, this.ctx.types.void, expr);
     }
 
     access(accessor: string): MiteType {
@@ -892,7 +977,7 @@ export class Array implements MiteType {
 
         const addr = transient(
             this.ctx,
-            this.ctx.types.i32,
+            this.ctx.types.u32,
             this.ctx.mod.i32.add(
                 this.get_expression_ref(),
                 this.ctx.mod.i32.mul(
@@ -908,7 +993,7 @@ export class Array implements MiteType {
                 this.type.element_type,
                 new Primitive(
                     this.ctx,
-                    adapt(this.ctx.types.i32, this.type.element_type.location),
+                    adapt(this.ctx.types.u32, this.type.element_type.location),
                     addr
                 )
             );

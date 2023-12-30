@@ -375,14 +375,14 @@ function binaryExpressionToExpression(ctx: Context, value: BinaryExpression): Mi
 }
 
 function logicalExpressionToExpression(ctx: Context, value: LogicalExpression): MiteType {
-    const left = expressionToExpression(updateExpected(ctx, adapt(ctx.types.i32)), value.left),
-        right = expressionToExpression(updateExpected(ctx, adapt(ctx.types.i32)), value.right);
+    const left = expressionToExpression(updateExpected(ctx, adapt(ctx.types.bool)), value.left),
+        right = expressionToExpression(updateExpected(ctx, adapt(ctx.types.bool)), value.right);
 
     switch (value.operator) {
         case TokenType.LOGICAL_OR:
             return transient(
                 ctx,
-                ctx.types.i32,
+                ctx.types.bool,
                 ctx.mod.if(
                     left.get_expression_ref(),
                     ctx.mod.i32.const(1),
@@ -392,7 +392,7 @@ function logicalExpressionToExpression(ctx: Context, value: LogicalExpression): 
         case TokenType.LOGICAL_AND:
             return transient(
                 ctx,
-                ctx.types.i32,
+                ctx.types.bool,
                 ctx.mod.if(
                     ctx.mod.i32.eqz(left.get_expression_ref()),
                     ctx.mod.i32.const(0),
@@ -450,7 +450,10 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
 }
 
 function ifExpressionToExpression(ctx: Context, value: IfExpression): MiteType {
-    const condition = expressionToExpression(updateExpected(ctx, adapt(ctx.types.i32)), value.test);
+    const condition = expressionToExpression(
+        updateExpected(ctx, adapt(ctx.types.bool)),
+        value.test
+    );
     const true_branch = expressionToExpression(ctx, value.consequent);
     const false_branch = value.alternate && expressionToExpression(ctx, value.alternate);
 
@@ -500,7 +503,7 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): MiteType
                   ctx,
                   () =>
                       expressionToExpression(
-                          updateExpected(ctx, adapt(ctx.types.i32)),
+                          updateExpected(ctx, adapt(ctx.types.bool)),
                           value.test!
                       ),
                   { type: binaryen.i32 }
@@ -549,7 +552,7 @@ function doWhileExpressionToExpression(ctx: Context, value: DoWhileExpression): 
     const test = value.test
         ? newBlock(
               ctx,
-              () => expressionToExpression(updateExpected(ctx, adapt(ctx.types.i32)), value.test),
+              () => expressionToExpression(updateExpected(ctx, adapt(ctx.types.bool)), value.test),
               { type: binaryen.i32 }
           )
         : constant(ctx, 0);
@@ -577,7 +580,7 @@ function whileExpressionToExpression(ctx: Context, value: WhileExpression): Mite
 
     const test = newBlock(
         ctx,
-        () => expressionToExpression(updateExpected(ctx, adapt(ctx.types.i32)), value.test),
+        () => expressionToExpression(updateExpected(ctx, adapt(ctx.types.bool)), value.test),
         { type: binaryen.i32 }
     );
     const body = newBlock(ctx, () => expressionToExpression(ctx, value.body));
@@ -678,7 +681,7 @@ function indexExpressionToExpression(ctx: Context, value: IndexExpression): Mite
     if (array.type.classification !== "array") {
         throw new Error(`Cannot index non-array type ${array.type.name}`);
     }
-    const index = expressionToExpression(updateExpected(ctx, adapt(ctx.types.i32)), value.index);
+    const index = expressionToExpression(updateExpected(ctx, adapt(ctx.types.bool)), value.index);
 
     return array.index(index);
 }
@@ -743,7 +746,7 @@ function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): M
         const mite_type = unwrapVariable(ctx, inner);
         if (mite_type.type.classification !== "array") throw new Error("Cannot unwrap non-array");
         return mite_type.index(
-            expressionToExpression(updateExpected(ctx, adapt(ctx.types.i32)), variable.index)
+            expressionToExpression(updateExpected(ctx, adapt(ctx.types.bool)), variable.index)
         );
     } else {
         throw new Error(`Unknown variable type: ${variable}`);

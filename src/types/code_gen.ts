@@ -67,8 +67,13 @@ export type Context = {
     /** Types and their information */
     types: {
         void: PrimitiveTypeInformation;
+        bool: PrimitiveTypeInformation;
+        i8: PrimitiveTypeInformation;
+        i16: PrimitiveTypeInformation;
         i32: PrimitiveTypeInformation;
         i64: PrimitiveTypeInformation;
+        u8: PrimitiveTypeInformation;
+        u16: PrimitiveTypeInformation;
         u32: PrimitiveTypeInformation;
         u64: PrimitiveTypeInformation;
         f32: PrimitiveTypeInformation;

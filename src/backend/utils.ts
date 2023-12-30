@@ -49,7 +49,7 @@ export function createMiteType(
         if (typeof address_or_local === "number") {
             address_or_local = new Primitive(
                 ctx,
-                adapt(ctx.types.i32, AllocationLocation.Local),
+                adapt(ctx.types.u32, AllocationLocation.Local),
                 address_or_local
             );
         }
@@ -58,7 +58,7 @@ export function createMiteType(
         if (typeof address_or_local === "number") {
             address_or_local = new Primitive(
                 ctx,
-                adapt(ctx.types.i32, AllocationLocation.Local),
+                adapt(ctx.types.u32, AllocationLocation.Local),
                 address_or_local
             );
         }
@@ -239,8 +239,8 @@ function heapAllocation(ctx: Context, size: number): Primitive {
     const ref = ctx.mod.call("arena_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32);
     const allocation = createVariable(
         ctx,
-        adapt(ctx.types.i32, AllocationLocation.Local),
-        transient(ctx, ctx.types.i32, ref)
+        adapt(ctx.types.u32, AllocationLocation.Local),
+        transient(ctx, ctx.types.u32, ref)
     ) as Primitive;
     ctx.variables.set(`Arena Allocation ${ctx.variables.size}`, allocation);
 
@@ -251,8 +251,8 @@ function jsAllocation(ctx: Context, size: number): Primitive {
     const ref = ctx.mod.call("js_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32);
     const allocation = createVariable(
         ctx,
-        adapt(ctx.types.i32, AllocationLocation.Local),
-        transient(ctx, ctx.types.i32, ref)
+        adapt(ctx.types.u32, AllocationLocation.Local),
+        transient(ctx, ctx.types.u32, ref)
     ) as Primitive;
     ctx.variables.set(`JS Allocation ${ctx.variables.size}`, allocation);
 
@@ -296,5 +296,5 @@ export function toReturnType(
     if (result.classification === "primitive") {
         return new Primitive(ctx, adapt(result), result_expr);
     }
-    return createMiteType(ctx, result, new Primitive(ctx, adapt(ctx.types.i32), result_expr));
+    return createMiteType(ctx, result, new Primitive(ctx, adapt(ctx.types.u32), result_expr));
 }
