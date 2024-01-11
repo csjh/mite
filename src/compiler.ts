@@ -2,12 +2,19 @@ import { tokenize } from "./frontend/tokenizer.js";
 import { Parser } from "./frontend/parser.js";
 import { programToModule } from "./backend/code_generation.js";
 import binaryen from "binaryen";
+import { programToBoilerplate } from "./backend/boilerplate_generation.js";
 
-type CompileOptions = {
-    as?: "wat" | "wasm";
-    optimize?: boolean;
-};
+type CompileOptions =
+    | {
+          as?: "wasm" | "wat";
+          optimize?: boolean;
+      }
+    | {
+          as: "boilerplate";
+          filename: string;
+      };
 
+export function compile(source: string, options: { as: "boilerplate"; filename: string }): string;
 export function compile(source: string, options: CompileOptions & { as: "wat" }): string;
 export function compile(source: string, options?: CompileOptions): Uint8Array;
 export function compile(source: string, options: CompileOptions = {}): string | Uint8Array {
@@ -15,6 +22,11 @@ export function compile(source: string, options: CompileOptions = {}): string | 
 
     const tokens = tokenize(source);
     const program = Parser.parse(tokens);
+
+    if (options.as === "boilerplate") {
+        return programToBoilerplate(program, options.filename);
+    }
+
     const mod = programToModule(program);
 
     mod.setFeatures(

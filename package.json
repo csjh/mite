@@ -11,6 +11,16 @@
         "format": "prettier --write .",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
+    "exports": {
+        ".": {
+            "types": "./build/index.d.ts",
+            "default": "./build/index.js"
+        },
+        "./vite": {
+            "types": "./build/plugins/vite.d.ts",
+            "default": "./build/plugins/vite.js"
+        }
+    },
     "author": "csjh",
     "license": "MIT",
     "dependencies": {
