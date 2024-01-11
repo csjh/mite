@@ -55,7 +55,7 @@ import type {
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import { AllocationLocation, MiteType, Primitive } from "./type_classes.js";
-import { createIntrinsics, identifyStructs } from "./context_initialization.js";
+import { createConversions, createIntrinsics, identifyStructs } from "./context_initialization.js";
 import { addBuiltins } from "./builtin_functions.js";
 
 export function programToModule(
@@ -78,6 +78,7 @@ export function programToModule(
         current_function: null
     };
     ctx.intrinsics = createIntrinsics(ctx);
+    ctx.conversions = createConversions(ctx);
     addBuiltins(ctx);
 
     const js_heap_size = 65536;

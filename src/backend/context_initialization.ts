@@ -11,427 +11,150 @@ import { MiteType, Primitive } from "./type_classes.js";
 import binaryen from "binaryen";
 import { transient } from "./utils.js";
 
-/*
-export function createConversions(mod: binaryen.Module): Context["conversions"] {
+export function createConversions(ctx: Context): Context["conversions"] {
+    const unary_op =
+        (
+            operation: (expr: binaryen.ExpressionRef) => binaryen.ExpressionRef,
+            result?: PrimitiveTypeInformation
+        ) =>
+        (expr: MiteType): MiteType => {
+            return transient(
+                ctx,
+                result ?? (expr as Primitive).type,
+                operation(expr.get_expression_ref())
+            );
+        };
+
     // convert from type1 to type2 is obj[type1][type2]
     return {
         i32: {
             i32: (value) => value,
-            u32: (value) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i64: (value) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.extend_s(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            u32: (value) => transient(ctx, ctx.types.u32, value.get_expression_ref()),
             // TODO: make sure extend_s is proper, should be though
-            u64: (value) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: mod.i64.extend_s(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f32: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.convert_s.i32(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f64: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.convert_s.i32(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i32x4: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            i64: unary_op(ctx.mod.i64.extend_s, Primitive.primitives.get("i64")!),
+            u64: unary_op(ctx.mod.i64.extend_u, Primitive.primitives.get("u64")!),
+            f32: unary_op(ctx.mod.f32.convert_s.i32, Primitive.primitives.get("f32")!),
+            f64: unary_op(ctx.mod.f64.convert_s.i32, Primitive.primitives.get("f64")!),
+            i32x4: unary_op(ctx.mod.i32x4.splat, Primitive.primitives.get("i32x4")!),
             // TODO: remove these when i8, i16 are implemented
-            i16x8: (value) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i8x16: (value) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            i16x8: unary_op(ctx.mod.i16x8.splat, Primitive.primitives.get("i16x8")!),
+            i8x16: unary_op(ctx.mod.i8x16.splat, Primitive.primitives.get("i8x16")!)
         },
         u32: {
-            i32: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            i32: (value) => transient(ctx, ctx.types.i32, value.get_expression_ref()),
             u32: (value) => value,
-            i64: (value) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.extend_u(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u64: (value) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: mod.i64.extend_u(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f32: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.convert_u.i32(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f64: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.convert_u.i32(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u32x4: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            i64: unary_op(ctx.mod.i64.extend_s, Primitive.primitives.get("i64")!),
+            u64: unary_op(ctx.mod.i64.extend_u, Primitive.primitives.get("u64")!),
+            f32: unary_op(ctx.mod.f32.convert_u.i32, Primitive.primitives.get("f32")!),
+            f64: unary_op(ctx.mod.f64.convert_u.i32, Primitive.primitives.get("f64")!),
+            u32x4: unary_op(ctx.mod.i32x4.splat, Primitive.primitives.get("u32x4")!),
             // TODO: remove these when u8, u16 are implemented
-            u16x8: (value) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u8x16: (value) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.i8x16.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            u16x8: unary_op(ctx.mod.i16x8.splat, Primitive.primitives.get("u16x8")!),
+            u8x16: unary_op(ctx.mod.i8x16.splat, Primitive.primitives.get("u8x16")!)
         },
         i64: {
-            i32: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.wrap(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u32: (value) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: mod.i32.wrap(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            i32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("i32")!),
+            u32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("u32")!),
             i64: (value) => value,
-            u64: (value) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f32: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.convert_s.i64(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f64: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.convert_s.i64(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i64x2: (value) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: mod.i64x2.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            u64: (value) => transient(ctx, ctx.types.u64, value.get_expression_ref()),
+            f32: unary_op(ctx.mod.f32.convert_s.i64, Primitive.primitives.get("f32")!),
+            f64: unary_op(ctx.mod.f64.convert_s.i64, Primitive.primitives.get("f64")!),
+            i64x2: unary_op(ctx.mod.i64x2.splat, Primitive.primitives.get("i64x2")!)
         },
         u64: {
-            i32: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.wrap(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u32: (value) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: mod.i32.wrap(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i64: (value) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.extend_u(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            i32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("i32")!),
+            u32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("u32")!),
+            i64: (value) => transient(ctx, ctx.types.i64, value.get_expression_ref()),
             u64: (value) => value,
-            f32: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.convert_u.i64(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f64: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.convert_u.i64(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u64x2: (value) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: mod.i64x2.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            f32: unary_op(ctx.mod.f32.convert_u.i64, Primitive.primitives.get("f32")!),
+            f64: unary_op(ctx.mod.f64.convert_u.i64, Primitive.primitives.get("f64")!),
+            u64x2: unary_op(ctx.mod.i64x2.splat, Primitive.primitives.get("u64x2")!)
         },
         f32: {
-            i32: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.trunc_s_sat.f32(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u32: (value) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: mod.i32.trunc_u_sat.f32(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i64: (value) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.trunc_s_sat.f32(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u64: (value) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: mod.i64.trunc_u_sat.f32(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            i32: unary_op(ctx.mod.i32.trunc_s_sat.f32, Primitive.primitives.get("i32")!),
+            u32: unary_op(ctx.mod.i32.trunc_u_sat.f32, Primitive.primitives.get("u32")!),
+            i64: unary_op(ctx.mod.i64.trunc_s_sat.f32, Primitive.primitives.get("i64")!),
+            u64: unary_op(ctx.mod.i64.trunc_u_sat.f32, Primitive.primitives.get("u64")!),
             f32: (value) => value,
-            f64: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.promote(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f32x4: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            f64: unary_op(ctx.mod.f64.promote, Primitive.primitives.get("f64")!),
+            f32x4: unary_op(ctx.mod.f32x4.splat, Primitive.primitives.get("f32x4")!)
         },
         f64: {
-            i32: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.trunc_s_sat.f64(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u32: (value) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: mod.i32.trunc_u_sat.f64(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i64: (value) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.trunc_s_sat.f64(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u64: (value) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: mod.i64.trunc_u_sat.f64(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f32: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.demote(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            i32: unary_op(ctx.mod.i32.trunc_s_sat.f64, Primitive.primitives.get("i32")!),
+            u32: unary_op(ctx.mod.i32.trunc_u_sat.f64, Primitive.primitives.get("u32")!),
+            i64: unary_op(ctx.mod.i64.trunc_s_sat.f64, Primitive.primitives.get("i64")!),
+            u64: unary_op(ctx.mod.i64.trunc_u_sat.f64, Primitive.primitives.get("u64")!),
+            f32: unary_op(ctx.mod.f32.demote, Primitive.primitives.get("f32")!),
             f64: (value) => value,
-            f64x2: (value) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.splat(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            f64x2: unary_op(ctx.mod.f64x2.splat, Primitive.primitives.get("f64x2")!)
         },
         v128: {
             v128: (value) => value,
-            i8x16: (value) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u8x16: (value) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i16x8: (value) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u16x8: (value) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i32x4: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u32x4: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f32x4: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i64x2: (value) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u64x2: (value) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f64x2: (value) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            })
+            i8x16: (value) => transient(ctx, ctx.types.i8x16, value.get_expression_ref()),
+            u8x16: (value) => transient(ctx, ctx.types.u8x16, value.get_expression_ref()),
+            i16x8: (value) => transient(ctx, ctx.types.i16x8, value.get_expression_ref()),
+            u16x8: (value) => transient(ctx, ctx.types.u16x8, value.get_expression_ref()),
+            i32x4: (value) => transient(ctx, ctx.types.i32x4, value.get_expression_ref()),
+            u32x4: (value) => transient(ctx, ctx.types.u32x4, value.get_expression_ref()),
+            i64x2: (value) => transient(ctx, ctx.types.i64x2, value.get_expression_ref()),
+            u64x2: (value) => transient(ctx, ctx.types.u64x2, value.get_expression_ref()),
+            f32x4: (value) => transient(ctx, ctx.types.f32x4, value.get_expression_ref()),
+            f64x2: (value) => transient(ctx, ctx.types.f64x2, value.get_expression_ref())
         },
         i8x16: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
             i8x16: (value) => value,
-            u8x16: (value) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            })
+            u8x16: (value) => transient(ctx, ctx.types.u8x16, value.get_expression_ref())
         },
         u8x16: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i8x16: (value) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            i8x16: (value) => transient(ctx, ctx.types.i8x16, value.get_expression_ref()),
             u8x16: (value) => value
         },
         i16x8: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
             i16x8: (value) => value,
-            u16x8: (value) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            })
+            u16x8: (value) => transient(ctx, ctx.types.u16x8, value.get_expression_ref())
         },
         u16x8: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i16x8: (value) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            i16x8: (value) => transient(ctx, ctx.types.i16x8, value.get_expression_ref()),
             u16x8: (value) => value
         },
         i32x4: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
             i32x4: (value) => value,
-            u32x4: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            f32x4: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.convert_i32x4_s(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            u32x4: (value) => transient(ctx, ctx.types.u32x4, value.get_expression_ref()),
+            f32x4: unary_op(ctx.mod.f32x4.convert_i32x4_s, ctx.types.f32x4)
         },
         u32x4: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i32x4: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            i32x4: (value) => transient(ctx, ctx.types.i32x4, value.get_expression_ref()),
             u32x4: (value) => value,
-            f32x4: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.convert_i32x4_u(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            f32x4: unary_op(ctx.mod.f32x4.convert_i32x4_u, ctx.types.f32x4)
         },
         f32x4: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i32x4: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.trunc_sat_f32x4_s(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            u32x4: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.trunc_sat_f32x4_u(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            i32x4: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_s, ctx.types.i32x4),
+            u32x4: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_u, ctx.types.i32x4),
             f32x4: (value) => value
         },
         i64x2: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
             i64x2: (value) => value,
-            u64x2: (value) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            })
+            u64x2: (value) => transient(ctx, ctx.types.u64x2, value.get_expression_ref())
         },
         u64x2: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            i64x2: (value) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            i64x2: (value) => transient(ctx, ctx.types.i64x2, value.get_expression_ref()),
             u64x2: (value) => value
         },
         f64x2: {
-            v128: (value) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: value.ref,
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
             f64x2: (value) => value
         }
     };
 }
-*/
 
 export function createIntrinsics(ctx: Context): Context["intrinsics"] {
     const unary_op =
