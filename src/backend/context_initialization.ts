@@ -1,8 +1,15 @@
 // don't be offput by the fact this is 3000 lines, it's almost all boilerplate
 
-import { StructTypeInformation, TypeInformation } from "../types/code_gen.js";
+import {
+    Context,
+    PrimitiveTypeInformation,
+    StructTypeInformation,
+    TypeInformation
+} from "../types/code_gen.js";
 import { Program, StructDeclaration } from "../types/nodes.js";
-import { Primitive } from "./type_classes.js";
+import { MiteType, Primitive } from "./type_classes.js";
+import binaryen from "binaryen";
+import { transient } from "./utils.js";
 
 /*
 export function createConversions(mod: binaryen.Module): Context["conversions"] {
@@ -425,1212 +432,615 @@ export function createConversions(mod: binaryen.Module): Context["conversions"] 
     };
 }
 */
-/*
-export function createIntrinsics(mod: binaryen.Module): Context["intrinsics"] {
+
+export function createIntrinsics(ctx: Context): Context["intrinsics"] {
+    const unary_op =
+        (
+            operation: (expr: binaryen.ExpressionRef) => binaryen.ExpressionRef,
+            result?: PrimitiveTypeInformation
+        ) =>
+        (expr: MiteType): MiteType => {
+            return transient(
+                ctx,
+                result ?? (expr as Primitive).type,
+                operation(expr.get_expression_ref())
+            );
+        };
+    const bin_op =
+        (
+            operation: (
+                left: binaryen.ExpressionRef,
+                right: binaryen.ExpressionRef
+            ) => binaryen.ExpressionRef,
+            result?: PrimitiveTypeInformation
+        ) =>
+        (left: MiteType, right: MiteType): MiteType => {
+            return transient(
+                ctx,
+                result ?? (left as Primitive).type,
+                operation(left.get_expression_ref(), right.get_expression_ref())
+            );
+        };
+    const ternary_op =
+        (
+            operation: (
+                first: binaryen.ExpressionRef,
+                second: binaryen.ExpressionRef,
+                third: binaryen.ExpressionRef
+            ) => binaryen.ExpressionRef,
+            result?: PrimitiveTypeInformation
+        ) =>
+        (first: MiteType, second: MiteType, third: MiteType): MiteType => {
+            return transient(
+                ctx,
+                result ?? (first as Primitive).type,
+                operation(
+                    first.get_expression_ref(),
+                    second.get_expression_ref(),
+                    third.get_expression_ref()
+                )
+            );
+        };
+
     return {
         void: {},
         f32: {
-            sqrt: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.sqrt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            ceil: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.ceil(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            floor: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.floor(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            trunc: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.trunc(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            nearest: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.nearest(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            abs: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.abs(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            copysign: (left, right) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.copysign(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.min(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.max(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            reinterpret: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.reinterpret(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            sqrt: unary_op(ctx.mod.f32.sqrt),
+            ceil: unary_op(ctx.mod.f32.ceil),
+            floor: unary_op(ctx.mod.f32.floor),
+            trunc: unary_op(ctx.mod.f32.trunc),
+            nearest: unary_op(ctx.mod.f32.nearest),
+            abs: unary_op(ctx.mod.f32.abs),
+            copysign: bin_op(ctx.mod.f32.copysign),
+            min: bin_op(ctx.mod.f32.min),
+            max: bin_op(ctx.mod.f32.max),
+            reinterpret: unary_op(ctx.mod.f32.reinterpret, Primitive.primitives.get("i32")!)
         },
         f64: {
-            sqrt: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.sqrt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            ceil: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.ceil(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            floor: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.floor(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            trunc: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.trunc(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            nearest: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.nearest(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            abs: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.abs(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            copysign: (left, right) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.copysign(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.min(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.max(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            reinterpret: (value) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.reinterpret(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            sqrt: unary_op(ctx.mod.f64.sqrt),
+            ceil: unary_op(ctx.mod.f64.ceil),
+            floor: unary_op(ctx.mod.f64.floor),
+            trunc: unary_op(ctx.mod.f64.trunc),
+            nearest: unary_op(ctx.mod.f64.nearest),
+            abs: unary_op(ctx.mod.f64.abs),
+            copysign: bin_op(ctx.mod.f64.copysign),
+            min: bin_op(ctx.mod.f64.min),
+            max: bin_op(ctx.mod.f64.max),
+            reinterpret: unary_op(ctx.mod.f64.reinterpret, Primitive.primitives.get("i64")!)
         },
         i32: {
-            clz: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.clz(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            ctz: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.ctz(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            popcnt: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.popcnt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            rotl: (left, right) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.rotl(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            rotr: (left, right) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32.rotr(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            reinterpret: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.reinterpret(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            clz: unary_op(ctx.mod.i32.clz),
+            ctz: unary_op(ctx.mod.i32.ctz),
+            popcnt: unary_op(ctx.mod.i32.popcnt),
+            rotl: bin_op(ctx.mod.i32.rotl),
+            rotr: bin_op(ctx.mod.i32.rotr),
+            reinterpret: unary_op(ctx.mod.i32.reinterpret, Primitive.primitives.get("f32")!)
         },
         u32: {
-            clz: (value) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: mod.i32.clz(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            ctz: (value) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: mod.i32.ctz(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            popcnt: (value) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: mod.i32.popcnt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            rotl: (left, right) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: mod.i32.rotl(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            rotr: (left, right) => ({
-                type: Primitive.primitives.get("u32")!,
-                ref: mod.i32.rotr(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            reinterpret: (value) => ({
-                type: Primitive.primitives.get("f32")!,
-                ref: mod.f32.reinterpret(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            clz: unary_op(ctx.mod.i32.clz),
+            ctz: unary_op(ctx.mod.i32.ctz),
+            popcnt: unary_op(ctx.mod.i32.popcnt),
+            rotl: bin_op(ctx.mod.i32.rotl),
+            rotr: bin_op(ctx.mod.i32.rotr),
+            reinterpret: unary_op(ctx.mod.i32.reinterpret, Primitive.primitives.get("f32")!)
         },
         i64: {
-            clz: (value) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.clz(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            ctz: (value) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.ctz(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            popcnt: (value) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.popcnt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            rotl: (left, right) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.rotl(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            rotr: (left, right) => ({
-                type: Primitive.primitives.get("i64")!,
-                ref: mod.i64.rotr(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            reinterpret: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.reinterpret(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            clz: unary_op(ctx.mod.i64.clz),
+            ctz: unary_op(ctx.mod.i64.ctz),
+            popcnt: unary_op(ctx.mod.i64.popcnt),
+            rotl: bin_op(ctx.mod.i64.rotl),
+            rotr: bin_op(ctx.mod.i64.rotr),
+            reinterpret: unary_op(ctx.mod.i64.reinterpret, Primitive.primitives.get("f64")!)
         },
         u64: {
-            clz: (value) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: mod.i64.clz(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            ctz: (value) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: mod.i64.ctz(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            popcnt: (value) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: mod.i64.popcnt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            rotl: (left, right) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: mod.i64.rotl(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            rotr: (left, right) => ({
-                type: Primitive.primitives.get("u64")!,
-                ref: mod.i64.rotr(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            reinterpret: (value) => ({
-                type: Primitive.primitives.get("f64")!,
-                ref: mod.f64.reinterpret(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            clz: unary_op(ctx.mod.i64.clz),
+            ctz: unary_op(ctx.mod.i64.ctz),
+            popcnt: unary_op(ctx.mod.i64.popcnt),
+            rotl: bin_op(ctx.mod.i64.rotl),
+            rotr: bin_op(ctx.mod.i64.rotr),
+            reinterpret: unary_op(ctx.mod.i64.reinterpret, Primitive.primitives.get("f64")!)
         },
         v128: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("v128")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            })
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!)
         },
         i8x16: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            swizzle: (left, right) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.swizzle(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            all_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i8x16.all_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            bitmask: (value) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.bitmask(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            popcnt: (value) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.popcnt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            add_sat: (left, right) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.add_saturate_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            sub_sat: (left, right) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.sub_saturate_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.min_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.max_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            dot: (left, right) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.dot_i16x8_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_low: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.extmul_low_i8x16_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_high: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.extmul_high_i8x16_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extadd_pairwise: (value) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.extadd_pairwise_i8x16_s(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_low: (value) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.extend_low_i8x16_s(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_high: (value) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.extend_high_i8x16_s(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            swizzle: bin_op(ctx.mod.i8x16.swizzle),
+            all_true: unary_op(ctx.mod.i8x16.all_true, Primitive.primitives.get("i32")!),
+            bitmask: unary_op(ctx.mod.i8x16.bitmask),
+            popcnt: unary_op(ctx.mod.i8x16.popcnt),
+            add_sat: bin_op(ctx.mod.i8x16.add_saturate_s),
+            sub_sat: bin_op(ctx.mod.i8x16.sub_saturate_s),
+            min: bin_op(ctx.mod.i8x16.min_s),
+            max: bin_op(ctx.mod.i8x16.max_s),
+            dot: bin_op(ctx.mod.i32x4.dot_i16x8_s),
+            extmul_low: bin_op(ctx.mod.i16x8.extmul_low_i8x16_s),
+            extmul_high: bin_op(ctx.mod.i16x8.extmul_high_i8x16_s),
+            extadd_pairwise: unary_op(ctx.mod.i16x8.extadd_pairwise_i8x16_s),
+            extend_low: unary_op(ctx.mod.i16x8.extend_low_i8x16_s),
+            extend_high: unary_op(ctx.mod.i16x8.extend_high_i8x16_s),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("i32")!,
-                    ref: mod.i8x16.extract_lane_s(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i32")!,
+                    ctx.mod.i8x16.extract_lane_s(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.Unary
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("i8x16")!,
-                    ref: mod.i8x16.replace_lane(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i8x16")!,
+                    ctx.mod.i8x16.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.Select
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
             }
         },
         u8x16: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            swizzle: (left, right) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.i8x16.swizzle(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            all_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i8x16.all_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            bitmask: (value) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.bitmask(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            popcnt: (value) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.i8x16.popcnt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            add_sat: (left, right) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.i8x16.add_saturate_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            sub_sat: (left, right) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.i8x16.sub_saturate_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.i8x16.min_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.i8x16.max_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            avgr: (left, right) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.i8x16.avgr_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_low: (left, right) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.extmul_low_i8x16_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_high: (left, right) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.extmul_high_i8x16_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extadd_pairwise: (value) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.extadd_pairwise_i8x16_u(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_low: (value) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.extend_low_i8x16_u(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_high: (value) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.extend_high_i8x16_u(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            swizzle: bin_op(ctx.mod.i8x16.swizzle),
+            all_true: unary_op(ctx.mod.i8x16.all_true, Primitive.primitives.get("i32")!),
+            bitmask: unary_op(ctx.mod.i8x16.bitmask),
+            popcnt: unary_op(ctx.mod.i8x16.popcnt),
+            add_sat: bin_op(ctx.mod.i8x16.add_saturate_u),
+            sub_sat: bin_op(ctx.mod.i8x16.sub_saturate_u),
+            min: bin_op(ctx.mod.i8x16.min_u),
+            max: bin_op(ctx.mod.i8x16.max_u),
+            avgr: bin_op(ctx.mod.i8x16.avgr_u),
+            extmul_low: bin_op(ctx.mod.i16x8.extmul_low_i8x16_u),
+            extmul_high: bin_op(ctx.mod.i16x8.extmul_high_i8x16_u),
+            extadd_pairwise: unary_op(ctx.mod.i16x8.extadd_pairwise_i8x16_u),
+            extend_low: unary_op(ctx.mod.i16x8.extend_low_i8x16_u),
+            extend_high: unary_op(ctx.mod.i16x8.extend_high_i8x16_u),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("u32")!,
-                    ref: mod.i8x16.extract_lane_u(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i32")!,
+                    ctx.mod.i8x16.extract_lane_u(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.Unary
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("u8x16")!,
-                    ref: mod.i8x16.replace_lane(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("u8x16")!,
+                    ctx.mod.i8x16.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.Select
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
             }
         },
         i16x8: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            all_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i16x8.all_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            bitmask: (value) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.bitmask(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            add_sat: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.add_saturate_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            sub_sat: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.sub_saturate_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.min_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.max_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            q15mulr: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.q15mulr_sat_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_low: (left, right) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.extmul_low_i16x8_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_high: (left, right) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.extmul_high_i16x8_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extadd_pairwise: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.extadd_pairwise_i16x8_s(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_low: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.extend_low_i16x8_s(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_high: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.extend_high_i16x8_s(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            narrow: (left, right) => ({
-                type: Primitive.primitives.get("i8x16")!,
-                ref: mod.i8x16.narrow_i16x8_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            all_true: unary_op(ctx.mod.i16x8.all_true, Primitive.primitives.get("i32")!),
+            bitmask: unary_op(ctx.mod.i16x8.bitmask),
+            add_sat: bin_op(ctx.mod.i16x8.add_saturate_s),
+            sub_sat: bin_op(ctx.mod.i16x8.sub_saturate_s),
+            min: bin_op(ctx.mod.i16x8.min_s),
+            max: bin_op(ctx.mod.i16x8.max_s),
+            q15mulr: bin_op(ctx.mod.i16x8.q15mulr_sat_s),
+            extmul_low: bin_op(ctx.mod.i32x4.extmul_low_i16x8_s),
+            extmul_high: bin_op(ctx.mod.i32x4.extmul_high_i16x8_s),
+            extadd_pairwise: unary_op(ctx.mod.i32x4.extadd_pairwise_i16x8_s),
+            extend_low: unary_op(ctx.mod.i32x4.extend_low_i16x8_s),
+            extend_high: unary_op(ctx.mod.i32x4.extend_high_i16x8_s),
+            narrow: bin_op(ctx.mod.i8x16.narrow_i16x8_s),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("i32")!,
-                    ref: mod.i16x8.extract_lane_s(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i32")!,
+                    ctx.mod.i16x8.extract_lane_s(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.Unary
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("i16x8")!,
-                    ref: mod.i16x8.replace_lane(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i16x8")!,
+                    ctx.mod.i16x8.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.Select
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
             }
         },
         u16x8: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            all_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i16x8.all_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            bitmask: (value) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.bitmask(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            add_sat: (left, right) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.add_saturate_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            sub_sat: (left, right) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.sub_saturate_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.min_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.max_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            avgr: (left, right) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.avgr_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_low: (left, right) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.extmul_low_i16x8_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_high: (left, right) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.extmul_high_i16x8_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extadd_pairwise: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.extadd_pairwise_i16x8_u(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_low: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.extend_low_i16x8_u(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_high: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.extend_high_i16x8_u(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            narrow: (left, right) => ({
-                type: Primitive.primitives.get("u8x16")!,
-                ref: mod.i8x16.narrow_i16x8_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            all_true: unary_op(ctx.mod.i16x8.all_true, Primitive.primitives.get("i32")!),
+            bitmask: unary_op(ctx.mod.i16x8.bitmask),
+            add_sat: bin_op(ctx.mod.i16x8.add_saturate_u),
+            sub_sat: bin_op(ctx.mod.i16x8.sub_saturate_u),
+            min: bin_op(ctx.mod.i16x8.min_u),
+            max: bin_op(ctx.mod.i16x8.max_u),
+            avgr: bin_op(ctx.mod.i16x8.avgr_u),
+            extmul_low: bin_op(ctx.mod.i32x4.extmul_low_i16x8_u),
+            extmul_high: bin_op(ctx.mod.i32x4.extmul_high_i16x8_u),
+            extadd_pairwise: unary_op(ctx.mod.i32x4.extadd_pairwise_i16x8_u),
+            extend_low: unary_op(ctx.mod.i32x4.extend_low_i16x8_u),
+            extend_high: unary_op(ctx.mod.i32x4.extend_high_i16x8_u),
+            narrow: bin_op(ctx.mod.i8x16.narrow_i16x8_u),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("i32")!,
-                    ref: mod.i16x8.extract_lane_u(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i32")!,
+                    ctx.mod.i16x8.extract_lane_u(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.Unary
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("u16x8")!,
-                    ref: mod.i16x8.replace_lane(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("u16x8")!,
+                    ctx.mod.i16x8.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.Select
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
             }
         },
         i32x4: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            all_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32x4.all_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            bitmask: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.bitmask(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.min_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.max_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            narrow: (left, right) => ({
-                type: Primitive.primitives.get("i16x8")!,
-                ref: mod.i16x8.narrow_i32x4_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_high: (left, right) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: mod.i64x2.extmul_high_i32x4_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_low: (left, right) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: mod.i64x2.extmul_low_i32x4_s(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_high: (value) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: mod.i64x2.extend_high_i32x4_s(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_low: (value) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: mod.i64x2.extend_low_i32x4_s(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            all_true: unary_op(ctx.mod.i32x4.all_true, Primitive.primitives.get("i32")!),
+            bitmask: unary_op(ctx.mod.i32x4.bitmask),
+            abs: unary_op(ctx.mod.i32x4.abs),
+            min: bin_op(ctx.mod.i32x4.min_s),
+            max: bin_op(ctx.mod.i32x4.max_s),
+            extmul_low: bin_op(ctx.mod.i64x2.extmul_low_i32x4_s),
+            extmul_high: bin_op(ctx.mod.i64x2.extmul_high_i32x4_s),
+            extend_high: unary_op(ctx.mod.i64x2.extend_high_i32x4_s),
+            extend_low: unary_op(ctx.mod.i64x2.extend_low_i32x4_s),
+            narrow: bin_op(ctx.mod.i16x8.narrow_i32x4_s),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("i32")!,
-                    ref: mod.i32x4.extract_lane(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i32")!,
+                    ctx.mod.i32x4.extract_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.Unary
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("i32x4")!,
-                    ref: mod.i32x4.replace_lane(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i32x4")!,
+                    ctx.mod.i32x4.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.Select
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
             }
         },
         u32x4: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            all_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i32x4.all_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            bitmask: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.bitmask(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.min_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.max_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            narrow: (left, right) => ({
-                type: Primitive.primitives.get("u16x8")!,
-                ref: mod.i16x8.narrow_i32x4_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_high: (left, right) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: mod.i64x2.extmul_high_i32x4_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extmul_low: (left, right) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: mod.i64x2.extmul_low_i32x4_u(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_high: (value) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: mod.i64x2.extend_high_i32x4_u(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            extend_low: (value) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: mod.i64x2.extend_low_i32x4_u(value.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            all_true: unary_op(ctx.mod.i32x4.all_true, Primitive.primitives.get("i32")!),
+            bitmask: unary_op(ctx.mod.i32x4.bitmask),
+            abs: unary_op(ctx.mod.i32x4.abs),
+            min: bin_op(ctx.mod.i32x4.min_u),
+            max: bin_op(ctx.mod.i32x4.max_u),
+            extmul_low: bin_op(ctx.mod.i64x2.extmul_low_i32x4_u),
+            extmul_high: bin_op(ctx.mod.i64x2.extmul_high_i32x4_u),
+            extend_high: unary_op(ctx.mod.i64x2.extend_high_i32x4_u),
+            extend_low: unary_op(ctx.mod.i64x2.extend_low_i32x4_u),
+            narrow: bin_op(ctx.mod.i16x8.narrow_i32x4_u),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("u32")!,
-                    ref: mod.i32x4.extract_lane(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i32")!,
+                    ctx.mod.i32x4.extract_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.Unary
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("u32x4")!,
-                    ref: mod.i32x4.replace_lane(
-                        value.ref,
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("u32x4")!,
+                    ctx.mod.i32x4.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.Select
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
             }
         },
         i64x2: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            all_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i64x2.all_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            bitmask: (value) => ({
-                type: Primitive.primitives.get("i64x2")!,
-                ref: mod.i64x2.bitmask(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            all_true: unary_op(ctx.mod.i64x2.all_true, Primitive.primitives.get("i32")!),
+            bitmask: unary_op(ctx.mod.i64x2.bitmask),
+            abs: unary_op(ctx.mod.i64x2.abs),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("i64")!,
-                    ref: mod.i64x2.extract_lane(
-                        value.ref,
+                const result = transient(
+                    ctx,
+                    Primitive.primitives.get("i64")!,
+                    ctx.mod.i64x2.extract_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.SIMDExtract
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
+                return result;
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("i64x2")!,
-                    ref: mod.i64x2.replace_lane(
-                        value.ref,
+                const result = transient(
+                    ctx,
+                    Primitive.primitives.get("i64x2")!,
+                    ctx.mod.i64x2.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.SIMDReplace
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
+                return result;
             }
         },
         u64x2: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            all_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.i64x2.all_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            bitmask: (value) => ({
-                type: Primitive.primitives.get("u64x2")!,
-                ref: mod.i64x2.bitmask(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            all_true: unary_op(ctx.mod.i64x2.all_true, Primitive.primitives.get("i32")!),
+            bitmask: unary_op(ctx.mod.i64x2.bitmask),
+            abs: unary_op(ctx.mod.i64x2.abs),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("u64")!,
-                    ref: mod.i64x2.extract_lane(
-                        value.ref,
+
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i64")!,
+                    ctx.mod.i64x2.extract_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.SIMDExtract
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("u64x2")!,
-                    ref: mod.i64x2.replace_lane(
-                        value.ref,
+
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("u64x2")!,
+                    ctx.mod.i64x2.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.SIMDReplace
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
             }
         },
         f32x4: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            abs: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.abs(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            sqrt: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.sqrt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.min(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.max(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            pmin: (left, right) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.pmin(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            pmax: (left, right) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.pmax(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            ceil: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.ceil(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            floor: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.floor(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            trunc: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.trunc(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            nearest: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.nearest(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            trunc_sat_s: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.trunc_sat_f32x4_s(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            trunc_sat_u: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.trunc_sat_f32x4_u(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            promote_low: (value) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.promote_low_f32x4(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            abs: unary_op(ctx.mod.f32x4.abs),
+            sqrt: unary_op(ctx.mod.f32x4.sqrt),
+            min: bin_op(ctx.mod.f32x4.min),
+            max: bin_op(ctx.mod.f32x4.max),
+            pmin: bin_op(ctx.mod.f32x4.pmin),
+            pmax: bin_op(ctx.mod.f32x4.pmax),
+            ceil: unary_op(ctx.mod.f32x4.ceil),
+            floor: unary_op(ctx.mod.f32x4.floor),
+            trunc: unary_op(ctx.mod.f32x4.trunc),
+            nearest: unary_op(ctx.mod.f32x4.nearest),
+            trunc_sat_s: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_s),
+            trunc_sat_u: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_u),
+            promote_low: unary_op(ctx.mod.f64x2.promote_low_f32x4),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("f32")!,
-                    ref: mod.f32x4.extract_lane(
-                        value.ref,
+
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("f32")!,
+                    ctx.mod.f32x4.extract_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.Unary
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("f32")!,
-                    ref: mod.f32x4.replace_lane(
-                        value.ref,
+
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("f32x4")!,
+                    ctx.mod.f32x4.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.Select
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
             }
         },
         f64x2: {
-            bitselect: (left, right, control_mask) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.v128.bitselect(left.ref, right.ref, control_mask.ref),
-                expression: binaryen.ExpressionIds.Select
-            }),
-            andnot: (left, right) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.v128.andnot(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            any_true: (value) => ({
-                type: Primitive.primitives.get("i32")!,
-                ref: mod.v128.any_true(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            abs: (value) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.abs(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            sqrt: (value) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.sqrt(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            min: (left, right) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.min(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            max: (left, right) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.max(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            pmin: (left, right) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.pmin(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            pmax: (left, right) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.pmax(left.ref, right.ref),
-                expression: binaryen.ExpressionIds.Binary
-            }),
-            ceil: (value) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.ceil(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            floor: (value) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.floor(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            trunc: (value) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.trunc(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            nearest: (value) => ({
-                type: Primitive.primitives.get("f64x2")!,
-                ref: mod.f64x2.nearest(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            trunc_sat_zero_s: (value) => ({
-                type: Primitive.primitives.get("i32x4")!,
-                ref: mod.i32x4.trunc_sat_f64x2_s_zero(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            trunc_sat_zero_u: (value) => ({
-                type: Primitive.primitives.get("u32x4")!,
-                ref: mod.i32x4.trunc_sat_f64x2_u_zero(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
-            demote_zero: (value) => ({
-                type: Primitive.primitives.get("f32x4")!,
-                ref: mod.f32x4.demote_f64x2_zero(value.ref),
-                expression: binaryen.ExpressionIds.Unary
-            }),
+            bitselect: ternary_op(ctx.mod.v128.bitselect),
+            andnot: bin_op(ctx.mod.v128.andnot),
+            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            abs: unary_op(ctx.mod.f64x2.abs),
+            sqrt: unary_op(ctx.mod.f64x2.sqrt),
+            min: bin_op(ctx.mod.f64x2.min),
+            max: bin_op(ctx.mod.f64x2.max),
+            pmin: bin_op(ctx.mod.f64x2.pmin),
+            pmax: bin_op(ctx.mod.f64x2.pmax),
+            ceil: unary_op(ctx.mod.f64x2.ceil),
+            floor: unary_op(ctx.mod.f64x2.floor),
+            trunc: unary_op(ctx.mod.f64x2.trunc),
+            nearest: unary_op(ctx.mod.f64x2.nearest),
+            trunc_sat_zero_s: unary_op(ctx.mod.i32x4.trunc_sat_f64x2_s_zero),
+            trunc_sat_zero_u: unary_op(ctx.mod.i32x4.trunc_sat_f64x2_u_zero),
+            demote_zero: unary_op(ctx.mod.f32x4.demote_f64x2_zero),
             extract(value, index) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("f64")!,
-                    ref: mod.f64x2.extract_lane(
-                        value.ref,
+
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("f64")!,
+                    ctx.mod.f64x2.extract_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref)
-                    ),
-                    expression: binaryen.ExpressionIds.Unary
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                    )
+                );
             },
             replace(value, index, replacement) {
-                if (index.expression !== binaryen.ExpressionIds.Const)
+                if (
+                    binaryen.getExpressionId(index.get_expression_ref()) !==
+                    binaryen.ExpressionIds.Const
+                )
                     throw new Error("Expected constant extraction index");
-                return {
-                    type: Primitive.primitives.get("f64x2")!,
-                    ref: mod.f64x2.replace_lane(
-                        value.ref,
+
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("f64x2")!,
+                    ctx.mod.f64x2.replace_lane(
+                        value.get_expression_ref(),
                         // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.ref),
-                        replacement.ref
-                    ),
-                    expression: binaryen.ExpressionIds.Select
-                };
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
+                        replacement.get_expression_ref()
+                    )
+                );
             }
         }
     };
 }
-*/
 
 /*
 this is going to have to be:
