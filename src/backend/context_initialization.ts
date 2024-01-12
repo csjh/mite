@@ -217,7 +217,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             copysign: bin_op(ctx.mod.f32.copysign),
             min: bin_op(ctx.mod.f32.min),
             max: bin_op(ctx.mod.f32.max),
-            reinterpret: unary_op(ctx.mod.f32.reinterpret, Primitive.primitives.get("i32")!)
+            reinterpret: unary_op(ctx.mod.i32.reinterpret, Primitive.primitives.get("i32")!)
         },
         f64: {
             sqrt: unary_op(ctx.mod.f64.sqrt),
@@ -229,7 +229,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             copysign: bin_op(ctx.mod.f64.copysign),
             min: bin_op(ctx.mod.f64.min),
             max: bin_op(ctx.mod.f64.max),
-            reinterpret: unary_op(ctx.mod.f64.reinterpret, Primitive.primitives.get("i64")!)
+            reinterpret: unary_op(ctx.mod.i64.reinterpret, Primitive.primitives.get("i64")!)
         },
         i32: {
             clz: unary_op(ctx.mod.i32.clz),
@@ -237,7 +237,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             popcnt: unary_op(ctx.mod.i32.popcnt),
             rotl: bin_op(ctx.mod.i32.rotl),
             rotr: bin_op(ctx.mod.i32.rotr),
-            reinterpret: unary_op(ctx.mod.i32.reinterpret, Primitive.primitives.get("f32")!)
+            reinterpret: unary_op(ctx.mod.f32.reinterpret, Primitive.primitives.get("f32")!)
         },
         u32: {
             clz: unary_op(ctx.mod.i32.clz),
@@ -245,7 +245,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             popcnt: unary_op(ctx.mod.i32.popcnt),
             rotl: bin_op(ctx.mod.i32.rotl),
             rotr: bin_op(ctx.mod.i32.rotr),
-            reinterpret: unary_op(ctx.mod.i32.reinterpret, Primitive.primitives.get("f32")!)
+            reinterpret: unary_op(ctx.mod.f32.reinterpret, Primitive.primitives.get("f32")!)
         },
         i64: {
             clz: unary_op(ctx.mod.i64.clz),
@@ -253,7 +253,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             popcnt: unary_op(ctx.mod.i64.popcnt),
             rotl: bin_op(ctx.mod.i64.rotl),
             rotr: bin_op(ctx.mod.i64.rotr),
-            reinterpret: unary_op(ctx.mod.i64.reinterpret, Primitive.primitives.get("f64")!)
+            reinterpret: unary_op(ctx.mod.f64.reinterpret, Primitive.primitives.get("f64")!)
         },
         u64: {
             clz: unary_op(ctx.mod.i64.clz),
@@ -261,7 +261,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             popcnt: unary_op(ctx.mod.i64.popcnt),
             rotl: bin_op(ctx.mod.i64.rotl),
             rotr: bin_op(ctx.mod.i64.rotr),
-            reinterpret: unary_op(ctx.mod.i64.reinterpret, Primitive.primitives.get("f64")!)
+            reinterpret: unary_op(ctx.mod.f64.reinterpret, Primitive.primitives.get("f64")!)
         },
         v128: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),

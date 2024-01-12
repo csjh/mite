@@ -199,7 +199,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program7, 0xFFFFFFFFFFFFFFFn);
+        compileAndRun(program7, 0xfffffffffffffffn);
 
         const program8 = `
         export fn main(): i64 {

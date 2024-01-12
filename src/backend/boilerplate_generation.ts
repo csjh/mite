@@ -31,26 +31,27 @@ export function programToBoilerplate(program: Program, filename: string) {
             .join("")} memory } = wasm.instance.exports;
         const buffer = new DataView(memory.buffer);
 
-        const GetBigInt64 = DataView.prototype.getBigInt64.bind(buffer);
-        const GetBigUint64 = DataView.prototype.getBigUint64.bind(buffer);
-        const GetFloat32 = DataView.prototype.getFloat32.bind(buffer);
-        const GetFloat64 = DataView.prototype.getFloat64.bind(buffer);
-        const GetInt16 = DataView.prototype.getInt16.bind(buffer);
-        const GetInt32 = DataView.prototype.getInt32.bind(buffer);
-        const GetInt8 = DataView.prototype.getInt8.bind(buffer);
-        const GetUint16 = DataView.prototype.getUint16.bind(buffer);
-        const GetUint32 = DataView.prototype.getUint32.bind(buffer);
-        const GetUint8 = DataView.prototype.getUint8.bind(buffer);
-        const SetBigInt64 = DataView.prototype.setBigInt64.bind(buffer);
-        const SetBigUint64 = DataView.prototype.setBigUint64.bind(buffer);
-        const SetFloat32 = DataView.prototype.setFloat32.bind(buffer);
-        const SetFloat64 = DataView.prototype.setFloat64.bind(buffer);
-        const SetInt16 = DataView.prototype.setInt16.bind(buffer);
-        const SetInt32 = DataView.prototype.setInt32.bind(buffer);
-        const SetInt8 = DataView.prototype.setInt8.bind(buffer);
-        const SetUint16 = DataView.prototype.setUint16.bind(buffer);
-        const SetUint32 = DataView.prototype.setUint32.bind(buffer);
-        const SetUint8 = DataView.prototype.setUint8.bind(buffer);
+        const DataViewPrototype = DataView.prototype;
+        const GetBigInt64 =  DataViewPrototype.getBigInt64.bind(buffer);
+        const GetBigUint64 = DataViewPrototype.getBigUint64.bind(buffer);
+        const GetFloat32 =   DataViewPrototype.getFloat32.bind(buffer);
+        const GetFloat64 =   DataViewPrototype.getFloat64.bind(buffer);
+        const GetInt16 =     DataViewPrototype.getInt16.bind(buffer);
+        const GetInt32 =     DataViewPrototype.getInt32.bind(buffer);
+        const GetInt8 =      DataViewPrototype.getInt8.bind(buffer);
+        const GetUint16 =    DataViewPrototype.getUint16.bind(buffer);
+        const GetUint32 =    DataViewPrototype.getUint32.bind(buffer);
+        const GetUint8 =     DataViewPrototype.getUint8.bind(buffer);
+        const SetBigInt64 =  DataViewPrototype.setBigInt64.bind(buffer);
+        const SetBigUint64 = DataViewPrototype.setBigUint64.bind(buffer);
+        const SetFloat32 =   DataViewPrototype.setFloat32.bind(buffer);
+        const SetFloat64 =   DataViewPrototype.setFloat64.bind(buffer);
+        const SetInt16 =     DataViewPrototype.setInt16.bind(buffer);
+        const SetInt32 =     DataViewPrototype.setInt32.bind(buffer);
+        const SetInt8 =      DataViewPrototype.setInt8.bind(buffer);
+        const SetUint16 =    DataViewPrototype.setUint16.bind(buffer);
+        const SetUint32 =    DataViewPrototype.setUint32.bind(buffer);
+        const SetUint8 =     DataViewPrototype.setUint8.bind(buffer);
     `;
 
     for (const struct of structs) {

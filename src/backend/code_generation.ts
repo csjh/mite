@@ -298,6 +298,8 @@ function expressionToExpression(ctx: Context, value: Expression): MiteType {
         return indexExpressionToExpression(ctx, value);
     } else if (value.type === "ObjectExpression") {
         return objectExpressionToExpression(ctx, value);
+    } else if (value.type === "SequenceExpression") {
+        return expressionToExpression(ctx, value.expressions[0]);
     } else {
         switch (value.type) {
             case "AwaitExpression":
@@ -305,7 +307,6 @@ function expressionToExpression(ctx: Context, value: Expression): MiteType {
             case "FunctionExpression":
             case "ImportExpression":
             case "MetaProperty":
-            case "SequenceExpression":
             case "TaggedTemplateExpression":
             case "TemplateLiteral":
             case "ThisExpression":
@@ -445,8 +446,8 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
             throw new Error(`Intrinsic ${function_name} not defined for ${primary_argument}`);
         // @ts-expect-error this is fine
         return intrinsic(...args);
-        // } else if (ctx.conversions[primary_argument]?.[function_name]) {
-        //     return ctx.conversions[primary_argument][function_name](args[0]);
+    } else if (ctx.conversions[primary_argument]?.[function_name]) {
+        return ctx.conversions[primary_argument][function_name](args[0]);
     } else if (!fn) throw new Error(`Unknown function: ${function_name}`);
 
     return callFunction(

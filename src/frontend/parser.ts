@@ -366,10 +366,10 @@ export class Parser {
             expressions: []
         };
 
-        do {
-            const node = this.parseExpression();
-            expression.expressions.push(node);
-        } while (this.token.type === TokenType.COMMA && ++this.idx);
+        // do {
+        const node = this.parseExpression();
+        expression.expressions.push(node);
+        // } while (this.token.type === TokenType.COMMA && ++this.idx);
 
         this.expectToken(TokenType.RIGHT_PAREN);
         this.idx++;
