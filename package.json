@@ -24,7 +24,8 @@
     "author": "csjh",
     "license": "MIT",
     "dependencies": {
-        "binaryen": "^114.0.0"
+        "binaryen": "^114.0.0",
+        "dedent": "^1.5.1"
     },
     "devDependencies": {
         "@types/node": "^20.6.0",

@@ -8,6 +8,7 @@ import { ExportNamedDeclaration, FunctionDeclaration, Program } from "../types/n
 import { identifyStructs } from "./context_initialization.js";
 import { Primitive } from "./type_classes.js";
 import { parseType } from "./utils.js";
+import dedent from "dedent";
 
 export function programToBoilerplate(program: Program, filename: string) {
     const structs = identifyStructs(program);
@@ -24,11 +25,11 @@ export function programToBoilerplate(program: Program, filename: string) {
         )
         .map((x) => x.declaration as FunctionDeclaration);
 
-    let code = `
+    let code = dedent`
         const wasm = await WebAssembly.instantiateStreaming(fetch(import.meta.ROLLUP_FILE_URL_${filename}));
         const { ${exports
             .map((x) => `${x.id.name}: wasm_export_${x.id.name}, `)
-            .join("")} memory } = wasm.instance.exports;
+            .join("")}memory } = wasm.instance.exports;
         const buffer = new DataView(memory.buffer);
 
         const DataViewPrototype = DataView.prototype;
@@ -54,39 +55,42 @@ export function programToBoilerplate(program: Program, filename: string) {
         const SetUint8 =     DataViewPrototype.setUint8.bind(buffer);
     `;
 
+    code += "\n\n";
+
     for (const struct of structs) {
         if (struct.classification !== "struct") continue;
 
-        code += `
+        code += dedent`
             class ${struct.name} {
                 static sizeof = ${struct.sizeof};
 
                 constructor(ptr) {
                     this.ptr = ptr;
                 }
-
                 ${Array.from(struct.fields.entries(), ([name, info]) => {
                     const [getter, setter] = typeToAccessors(info);
 
                     return `
-                        get ${name}() {
-                            ${getter}
-                        }
+                get ${name}() {
+                    ${getter}
+                }
 
-                        set ${name}(val) {
-                            ${setter}
-                        }
-                    `;
-                }).join("\n\n")}
+                set ${name}(val) {
+                    ${setter}
+                }
+                `;
+                }).join("")}
             }
         `;
+
+        code += "\n\n";
     }
 
     for (const func of exports) {
         const { id, params, returnType } = func;
         const returnTypeType = parseType(ctx as Context, returnType);
 
-        code += `
+        code += dedent`
             export function ${id.name}(${params
                 .map((x) =>
                     Primitive.primitives.has(x.typeAnnotation.name)
@@ -94,18 +98,19 @@ export function programToBoilerplate(program: Program, filename: string) {
                         : `{ ptr: ${x.name.name} }`
                 )
                 .join(", ")}) {
-
                 const result = wasm_export_${id.name}(${params.map((x) => x.name.name).join(", ")});
 
-                return ${
+                ${
                     returnTypeType.classification === "primitive"
-                        ? "result"
+                        ? "return result"
                         : returnTypeType.classification === "struct"
-                        ? structToJavascript("result", returnTypeType)
-                        : arrayToJavascript("result", returnTypeType)
+                        ? structToJavascript("result", returnTypeType, true)
+                        : arrayToJavascript("result", returnTypeType, true)
                 };
             }
         `;
+
+        code += "\n\n";
     }
 
     return code;
@@ -194,7 +199,7 @@ function arrayToJavascript(ptr: string, type: ArrayTypeInformation, isReturn: bo
 }
 
 function structToJavascript(ptr: string, type: StructTypeInformation, isReturn: boolean = false) {
-    return `${isReturn ? "return" : ""} new ${type.name}(${ptr});`;
+    return `${isReturn ? "return" : ""} new ${type.name}(${ptr})`;
 }
 
 function primitiveToTypedName(primitive: string) {
