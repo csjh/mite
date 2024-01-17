@@ -11,10 +11,16 @@ type CompileOptions =
       }
     | {
           as: "boilerplate";
+          dev: true;
+          file: Uint8Array;
+      }
+    | {
+          as: "boilerplate";
+          dev: false;
           filename: string;
       };
 
-export function compile(source: string, options: { as: "boilerplate"; filename: string }): string;
+export function compile(source: string, options: CompileOptions & { as: "boilerplate" }): string;
 export function compile(source: string, options: CompileOptions & { as: "wat" }): string;
 export function compile(source: string, options?: CompileOptions): Uint8Array;
 export function compile(source: string, options: CompileOptions = {}): string | Uint8Array {
@@ -24,7 +30,7 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     const program = Parser.parse(tokens);
 
     if (options.as === "boilerplate") {
-        return programToBoilerplate(program, options.filename);
+        return programToBoilerplate(program, options);
     }
 
     const mod = programToModule(program);
