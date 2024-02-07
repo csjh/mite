@@ -339,20 +339,24 @@ function literalToExpression(ctx: Context, value: Literal): MiteType {
         case "u16":
         case "i32":
         case "u32":
-            if (typeof value.value !== "number" && typeof value.value !== "bigint") throw new Error("Expected numerical literal");
+            if (typeof value.value !== "number" && typeof value.value !== "bigint")
+                throw new Error("Expected numerical literal");
             ref = ctx.mod.i32.const(Number(value.value));
             break;
         case "i64":
         case "u64":
-            if (typeof value.value !== "number" && typeof value.value !== "bigint") throw new Error("Expected numerical literal");
+            if (typeof value.value !== "number" && typeof value.value !== "bigint")
+                throw new Error("Expected numerical literal");
             ref = ctx.mod.i64.const(...bigintToLowAndHigh(value.value));
             break;
         case "f32":
-            if (typeof value.value !== "number" && typeof value.value !== "bigint") throw new Error("Expected numerical literal");
+            if (typeof value.value !== "number" && typeof value.value !== "bigint")
+                throw new Error("Expected numerical literal");
             ref = ctx.mod.f32.const(Number(value.value));
             break;
         case "f64":
-            if (typeof value.value !== "number" && typeof value.value !== "bigint") throw new Error("Expected numerical literal");
+            if (typeof value.value !== "number" && typeof value.value !== "bigint")
+                throw new Error("Expected numerical literal");
             ref = ctx.mod.f64.const(Number(value.value));
             break;
         case "f32x4":
