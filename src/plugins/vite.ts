@@ -13,13 +13,11 @@ export function mite(): Plugin {
             const source = compile(code, { optimize: true });
 
             if (dev) {
-                const boilerplate = compile(code, {
+                return compile(code, {
                     as: "boilerplate",
                     file: source,
                     dev
                 });
-
-                return boilerplate;
             } else {
                 const file = this.emitFile({
                     type: "asset",
@@ -27,13 +25,11 @@ export function mite(): Plugin {
                     source
                 });
 
-                const boilerplate = compile(code, {
+                return compile(code, {
                     as: "boilerplate",
                     filename: file,
                     dev
                 });
-
-                return boilerplate;
             }
         }
     };
