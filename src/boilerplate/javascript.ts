@@ -5,9 +5,9 @@ import {
     TypeInformation
 } from "../types/code_gen.js";
 import { ExportNamedDeclaration, FunctionDeclaration, Program } from "../types/nodes.js";
-import { identifyStructs } from "./context_initialization.js";
-import { Primitive } from "./type_classes.js";
-import { parseType } from "./utils.js";
+import { identifyStructs } from "../backend/context_initialization.js";
+import { Primitive } from "../backend/type_classes.js";
+import { parseType } from "../backend/utils.js";
 import dedent from "dedent";
 
 type BoilerplateOptions =
@@ -131,7 +131,8 @@ export function programToBoilerplate(program: Program, options: BoilerplateOptio
         code += "\n\n";
     }
 
-    return code;
+    // remove second trailing newline
+    return code.slice(0, -1);
 }
 
 type ValueOf<T> = T extends Map<any, infer V> ? V : never;

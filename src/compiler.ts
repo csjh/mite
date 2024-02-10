@@ -2,7 +2,8 @@ import { tokenize } from "./frontend/tokenizer.js";
 import { Parser } from "./frontend/parser.js";
 import { programToModule } from "./backend/code_generation.js";
 import binaryen from "binaryen";
-import { programToBoilerplate } from "./backend/boilerplate_generation.js";
+import { programToBoilerplate as toJavascript } from "./boilerplate/javascript.js";
+import { programToBoilerplate as toDts } from "./boilerplate/dts.js";
 
 type CompileOptions =
     | {
@@ -10,17 +11,21 @@ type CompileOptions =
           optimize?: boolean;
       }
     | {
-          as: "boilerplate";
+          as: "javascript";
           dev: true;
           file: Uint8Array;
       }
     | {
-          as: "boilerplate";
+          as: "javascript";
           dev: false;
           filename: string;
+      }
+    | {
+          as: "dts";
       };
 
-export function compile(source: string, options: CompileOptions & { as: "boilerplate" }): string;
+export function compile(source: string, options: CompileOptions & { as: "javascript" }): string;
+export function compile(source: string, options: CompileOptions & { as: "wat" }): string;
 export function compile(source: string, options: CompileOptions & { as: "wat" }): string;
 export function compile(source: string, options?: CompileOptions): Uint8Array;
 export function compile(source: string, options: CompileOptions = {}): string | Uint8Array {
@@ -29,8 +34,12 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     const tokens = tokenize(source);
     const program = Parser.parse(tokens);
 
-    if (options.as === "boilerplate") {
-        return programToBoilerplate(program, options);
+    if (options.as === "javascript") {
+        return toJavascript(program, options);
+    }
+
+    if (options.as === "dts") {
+        return toDts(program);
     }
 
     const mod = programToModule(program);
