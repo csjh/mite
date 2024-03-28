@@ -9,7 +9,7 @@ import {
 import { Program, StructDeclaration } from "../types/nodes.js";
 import { MiteType, Primitive } from "./type_classes.js";
 import binaryen from "binaryen";
-import { transient } from "./utils.js";
+import { bigintToLowAndHigh, transient } from "./utils.js";
 
 export function createConversions(ctx: Context): Context["conversions"] {
     const unary_op =
@@ -25,9 +25,32 @@ export function createConversions(ctx: Context): Context["conversions"] {
             );
         };
 
+    const wrap_op = (from: "i32" | "i64", to: string) => {
+        const to_bits = parseInt(to.slice(1));
+        if (from === "i32") {
+            return unary_op(
+                (expr) => ctx.mod.i32.and(expr, ctx.mod.i32.const(2 ** to_bits - 1)),
+                Primitive.primitives.get(to)!
+            );
+        } else {
+            return unary_op(
+                (expr) =>
+                    ctx.mod.i64.and(
+                        expr,
+                        ctx.mod.i64.const(...bigintToLowAndHigh(2 ** to_bits - 1))
+                    ),
+                Primitive.primitives.get(to)!
+            );
+        }
+    };
+
     // convert from type1 to type2 is obj[type1][type2]
     return {
         i32: {
+            i8: wrap_op("i32", "i8"),
+            u8: wrap_op("i32", "u8"),
+            i16: wrap_op("i32", "i16"),
+            u16: wrap_op("i32", "u16"),
             i32: (value) => value,
             u32: (value) => transient(ctx, ctx.types.u32, value.get_expression_ref()),
             // TODO: make sure extend_s is proper, should be though
@@ -41,6 +64,10 @@ export function createConversions(ctx: Context): Context["conversions"] {
             i8x16: unary_op(ctx.mod.i8x16.splat, Primitive.primitives.get("i8x16")!)
         },
         u32: {
+            i8: wrap_op("i32", "i8"),
+            u8: wrap_op("i32", "u8"),
+            i16: wrap_op("i32", "i16"),
+            u16: wrap_op("i32", "u16"),
             i32: (value) => transient(ctx, ctx.types.i32, value.get_expression_ref()),
             u32: (value) => value,
             i64: unary_op(ctx.mod.i64.extend_s, Primitive.primitives.get("i64")!),
@@ -53,6 +80,10 @@ export function createConversions(ctx: Context): Context["conversions"] {
             u8x16: unary_op(ctx.mod.i8x16.splat, Primitive.primitives.get("u8x16")!)
         },
         i64: {
+            i8: wrap_op("i64", "i8"),
+            u8: wrap_op("i64", "u8"),
+            i16: wrap_op("i64", "i16"),
+            u16: wrap_op("i64", "u16"),
             i32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("i32")!),
             u32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("u32")!),
             i64: (value) => value,
@@ -62,6 +93,10 @@ export function createConversions(ctx: Context): Context["conversions"] {
             i64x2: unary_op(ctx.mod.i64x2.splat, Primitive.primitives.get("i64x2")!)
         },
         u64: {
+            i8: wrap_op("i64", "i8"),
+            u8: wrap_op("i64", "u8"),
+            i16: wrap_op("i64", "i16"),
+            u16: wrap_op("i64", "u16"),
             i32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("i32")!),
             u32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("u32")!),
             i64: (value) => transient(ctx, ctx.types.i64, value.get_expression_ref()),
@@ -274,7 +309,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
             swizzle: bin_op(ctx.mod.i8x16.swizzle),
             all_true: unary_op(ctx.mod.i8x16.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i8x16.bitmask),
+            bitmask: unary_op(ctx.mod.i8x16.bitmask, Primitive.primitives.get("i32")),
             popcnt: unary_op(ctx.mod.i8x16.popcnt),
             add_sat: bin_op(ctx.mod.i8x16.add_saturate_s),
             sub_sat: bin_op(ctx.mod.i8x16.sub_saturate_s),
@@ -318,6 +353,27 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                         replacement.get_expression_ref()
                     )
                 );
+            },
+            shuffle(left, right, mask) {
+                const info = binaryen.getExpressionInfo(mask.get_expression_ref());
+                const mask_values = (info as binaryen.ConstInfo).value;
+                if (
+                    (mask.type.name !== "i8x16" && mask.type.name !== "u8x16") ||
+                    info.id !== binaryen.ExpressionIds.Const ||
+                    !Array.isArray(mask_values)
+                ) {
+                    throw new Error("Expected constant SIMD mask");
+                }
+
+                return transient(
+                    ctx,
+                    Primitive.primitives.get("i8x16")!,
+                    ctx.mod.i8x16.shuffle(
+                        left.get_expression_ref(),
+                        right.get_expression_ref(),
+                        mask_values
+                    )
+                );
             }
         },
         u8x16: {
@@ -326,7 +382,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
             swizzle: bin_op(ctx.mod.i8x16.swizzle),
             all_true: unary_op(ctx.mod.i8x16.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i8x16.bitmask),
+            bitmask: unary_op(ctx.mod.i8x16.bitmask, Primitive.primitives.get("i32")),
             popcnt: unary_op(ctx.mod.i8x16.popcnt),
             add_sat: bin_op(ctx.mod.i8x16.add_saturate_u),
             sub_sat: bin_op(ctx.mod.i8x16.sub_saturate_u),
@@ -377,7 +433,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             andnot: bin_op(ctx.mod.v128.andnot),
             any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
             all_true: unary_op(ctx.mod.i16x8.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i16x8.bitmask),
+            bitmask: unary_op(ctx.mod.i16x8.bitmask, Primitive.primitives.get("i32")),
             add_sat: bin_op(ctx.mod.i16x8.add_saturate_s),
             sub_sat: bin_op(ctx.mod.i16x8.sub_saturate_s),
             min: bin_op(ctx.mod.i16x8.min_s),
@@ -428,7 +484,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             andnot: bin_op(ctx.mod.v128.andnot),
             any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
             all_true: unary_op(ctx.mod.i16x8.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i16x8.bitmask),
+            bitmask: unary_op(ctx.mod.i16x8.bitmask, Primitive.primitives.get("i32")),
             add_sat: bin_op(ctx.mod.i16x8.add_saturate_u),
             sub_sat: bin_op(ctx.mod.i16x8.sub_saturate_u),
             min: bin_op(ctx.mod.i16x8.min_u),
@@ -479,7 +535,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             andnot: bin_op(ctx.mod.v128.andnot),
             any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
             all_true: unary_op(ctx.mod.i32x4.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i32x4.bitmask),
+            bitmask: unary_op(ctx.mod.i32x4.bitmask, Primitive.primitives.get("i32")),
             abs: unary_op(ctx.mod.i32x4.abs),
             min: bin_op(ctx.mod.i32x4.min_s),
             max: bin_op(ctx.mod.i32x4.max_s),
@@ -527,7 +583,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             andnot: bin_op(ctx.mod.v128.andnot),
             any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
             all_true: unary_op(ctx.mod.i32x4.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i32x4.bitmask),
+            bitmask: unary_op(ctx.mod.i32x4.bitmask, Primitive.primitives.get("i32")),
             abs: unary_op(ctx.mod.i32x4.abs),
             min: bin_op(ctx.mod.i32x4.min_u),
             max: bin_op(ctx.mod.i32x4.max_u),
@@ -544,7 +600,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     throw new Error("Expected constant extraction index");
                 return transient(
                     ctx,
-                    Primitive.primitives.get("i32")!,
+                    Primitive.primitives.get("u32")!,
                     ctx.mod.i32x4.extract_lane(
                         value.get_expression_ref(),
                         // @ts-expect-error undocumented function
@@ -575,7 +631,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             andnot: bin_op(ctx.mod.v128.andnot),
             any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
             all_true: unary_op(ctx.mod.i64x2.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i64x2.bitmask),
+            bitmask: unary_op(ctx.mod.i64x2.bitmask, Primitive.primitives.get("i32")),
             abs: unary_op(ctx.mod.i64x2.abs),
             extract(value, index) {
                 if (
@@ -618,7 +674,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             andnot: bin_op(ctx.mod.v128.andnot),
             any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
             all_true: unary_op(ctx.mod.i64x2.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i64x2.bitmask),
+            bitmask: unary_op(ctx.mod.i64x2.bitmask, Primitive.primitives.get("i32")),
             abs: unary_op(ctx.mod.i64x2.abs),
             extract(value, index) {
                 if (
@@ -629,7 +685,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
 
                 return transient(
                     ctx,
-                    Primitive.primitives.get("i64")!,
+                    Primitive.primitives.get("u64")!,
                     ctx.mod.i64x2.extract_lane(
                         value.get_expression_ref(),
                         // @ts-expect-error undocumented function
@@ -641,8 +697,10 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                 if (
                     binaryen.getExpressionId(index.get_expression_ref()) !==
                     binaryen.ExpressionIds.Const
-                )
+                ) {
+                    console.log(binaryen.getExpressionInfo(index.get_expression_ref()));
                     throw new Error("Expected constant extraction index");
+                }
 
                 return transient(
                     ctx,
