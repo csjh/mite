@@ -10,6 +10,12 @@ import { Primitive } from "../backend/type_classes.js";
 import { parseType } from "../backend/utils.js";
 import dedent from "dedent";
 
+type Capitalize<S extends string> = S extends `${infer F}${infer R}` ? `${Uppercase<F>}${R}` : S;
+
+type DataViewGetterTypes = Extract<keyof DataView, `get${string}`> extends `get${infer T}`
+    ? Capitalize<T>
+    : never;
+
 type BoilerplateOptions =
     | {
           dev: true;
@@ -139,32 +145,19 @@ type ValueOf<T> = T extends Map<any, infer V> ? V : never;
 
 function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation["fields"]>) {
     if (type.classification === "primitive") {
-        switch (type.name) {
-            case "void":
-                return ["return undefined;", ""];
-            case "bool":
-                return [
-                    `return !!GetInt32(this[PointerSymbol] + ${offset}, true);`,
-                    `SetInt32(this[PointerSymbol] + ${offset}, !!val, true);`
-                ];
-            case "i8":
-            case "i16":
-            case "i32":
-            case "i64":
-            case "u8":
-            case "u16":
-            case "u32":
-            case "u64":
-            case "f32":
-            case "f64":
-                const typed_name = primitiveToTypedName(type.name);
-                return [
-                    `return Get${typed_name}(this[PointerSymbol] + ${offset}, true);`,
-                    `Set${typed_name}(this[PointerSymbol] + ${offset}, val, true);`
-                ];
-            default:
-                throw new Error(`Unknown primitive: ${type.name}`);
+        if (type.name === "void") return ["return undefined;", ""];
+        if (type.name === "bool") {
+            return [
+                `return !!GetInt32(this[PointerSymbol] + ${offset}, true);`,
+                `SetInt32(this[PointerSymbol] + ${offset}, !!val, true);`
+            ];
         }
+
+        const typed_name = primitiveToTypedName(type.name);
+        return [
+            `return Get${typed_name}(this[PointerSymbol] + ${offset}, true);`,
+            `Set${typed_name}(this[PointerSymbol] + ${offset}, val, true);`
+        ];
     }
 
     const ptr = is_ref
@@ -206,13 +199,13 @@ function arrayToJavascript(ptr: string, type: ArrayTypeInformation, isReturn: bo
         const typed_name = primitiveToTypedName(type.element_type.name);
         return `const base = ${ptr}; ${
             isReturn ? "return" : ""
-        } new ${typed_name}Array(memory.buffer, base + 4, GetUint32(base));`;
+        } new ${typed_name}Array(memory.buffer, base + 4, GetUint32(base, true));`;
     } else if (type.element_type.classification === "struct") {
         let array;
         if (type.element_type.is_ref) {
-            array = `Array.from(new Uint32Array(memory.buffer, base + 4, GetUint32(base)), (ptr) => new ${type.element_type.name}(ptr))`;
+            array = `Array.from(new Uint32Array(memory.buffer, base + 4, GetUint32(base, true)), (ptr) => new ${type.element_type.name}(ptr))`;
         } else {
-            array = `Array.from({ length: GetUint32(base) }, (_, i) => new ${type.element_type.name}(base + 4 + i * ${type.element_type.sizeof}))`;
+            array = `Array.from({ length: GetUint32(base, true) }, (_, i) => new ${type.element_type.name}(base + 4 + i * ${type.element_type.sizeof}))`;
         }
 
         return `const base = ${ptr}; ${isReturn ? "return" : ""} ${array}`;
@@ -228,29 +221,40 @@ function structToJavascript(ptr: string, type: StructTypeInformation, isReturn: 
     return `${isReturn ? "return" : ""} new ${type.name}(${ptr})`;
 }
 
-function primitiveToTypedName(primitive: string) {
+function primitiveToTypedName(primitive: string): DataViewGetterTypes {
     switch (primitive) {
-        case "bool":
-            return "Int32";
         case "i8":
+        case "i8x16":
             return "Int8";
         case "i16":
+        case "i16x8":
             return "Int16";
+        // bool and v128 should just be whatever the fastest integer type is
+        case "bool":
+        case "v128":
         case "i32":
+        case "i32x4":
             return "Int32";
         case "i64":
+        case "i64x2":
             return "BigInt64";
         case "u8":
+        case "u8x16":
             return "Uint8";
         case "u16":
+        case "u16x8":
             return "Uint16";
         case "u32":
+        case "u32x4":
             return "Uint32";
         case "u64":
+        case "u64x2":
             return "BigUint64";
         case "f32":
+        case "f32x4":
             return "Float32";
         case "f64":
+        case "f64x2":
             return "Float64";
         default:
             throw new Error(`Unknown primitive: ${primitive}`);

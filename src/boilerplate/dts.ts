@@ -75,7 +75,7 @@ function typeToIdentifier(type: TypeInformation) {
     if (type.classification === "primitive" || type.classification === "struct") {
         return type.name;
     } else if (type.classification === "array") {
-        return `${type.name.slice(1, -1)}[]`;
+        return `${type.name.slice(1, type.name.indexOf(';'))}[]`;
     }
 
     throw Error("Unknown type classification in typeToIdentifier");
