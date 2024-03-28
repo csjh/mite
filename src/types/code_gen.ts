@@ -14,7 +14,7 @@ type SharedTypeInformation = {
 export type ArrayTypeInformation = SharedTypeInformation & {
     classification: "array";
     element_type: InstanceTypeInformation;
-    length: number;
+    length?: number;
 };
 export type StructTypeInformation = SharedTypeInformation & {
     classification: "struct";
@@ -78,6 +78,7 @@ export type Context = {
         u64: PrimitiveTypeInformation;
         f32: PrimitiveTypeInformation;
         f64: PrimitiveTypeInformation;
+        v128: PrimitiveTypeInformation;
         i8x16: PrimitiveTypeInformation;
         u8x16: PrimitiveTypeInformation;
         i16x8: PrimitiveTypeInformation;
@@ -218,11 +219,11 @@ export type IntrinsicHandlers = Partial<{
 
     // i8x16
     // limited by syntax right now
-    // shuffle: (
-    //     left: MiteType,
-    //     right: MiteType,
-    //     mask: number[]
-    // ) => MiteType;
+    shuffle: (
+        left: MiteType,
+        right: MiteType,
+        mask: MiteType
+    ) => MiteType;
     swizzle: BinaryOperator;
     avgr: BinaryOperator;
 

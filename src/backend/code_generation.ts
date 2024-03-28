@@ -248,6 +248,21 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
         );
 
         ctx.variables.set(id.name, variable);
+
+        if (type.classification === "array" && type.length) {
+            ctx.current_block.push(
+                transient(
+                    ctx,
+                    ctx.types.i32,
+                    ctx.mod.i32.store(
+                        0,
+                        0,
+                        variable.get_expression_ref(),
+                        ctx.mod.i32.const(type.length)
+                    )
+                )
+            );
+        }
     }
 }
 
@@ -665,15 +680,30 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
 
     const first_element = expressionToExpression(updateExpected(ctx, undefined), value.elements[0]);
     const element_type = first_element.type;
-    const sizeof = element_type.sizeof * value.elements.length;
+    const sizeof = element_type.sizeof * value.elements.length + 4;
 
     const location = value.location ?? ctx.expected?.location ?? AllocationLocation.Arena;
+
+    const address = allocate(ctx, sizeof, location);
+
+    ctx.current_block.push(
+        transient(
+            ctx,
+            ctx.types.i32,
+            ctx.mod.i32.store(
+                0,
+                0,
+                address.get_expression_ref(),
+                ctx.mod.i32.const(value.elements.length)
+            )
+        )
+    );
 
     const array = createMiteType(
         ctx,
         {
             classification: "array",
-            name: `[${element_type.name}; ${value.elements.length}]`,
+            name: `[${element_type.name}]`,
             sizeof,
             element_type: { ...element_type, location },
             length: value.elements.length,
@@ -681,7 +711,7 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
             is_ref: true,
             immutable: false
         },
-        allocate(ctx, sizeof, location)
+        address
     );
 
     for (let i = 0; i < value.elements.length; i++) {

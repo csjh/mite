@@ -132,6 +132,7 @@ export function newBlock(
 }
 
 const array_regex = /\[(.*); ([0-9]*)\]/;
+const fat_regex = /\[(.*)\]/;
 export function parseType(ctx: Context, type: TypeIdentifier): InstanceTypeInformation;
 export function parseType(
     ctx: Context,
@@ -180,8 +181,12 @@ export function parseType(
         }
     }
 
-    if (array_regex.test(type)) {
-        const [_, element_type, str_length] = array_regex.exec(type)!;
+    if (array_regex.test(type) || fat_regex.test(type)) {
+        const [_, element_type, str_length] = array_regex.exec(type) ?? [
+            "",
+            ...fat_regex.exec(type)!
+        ];
+
         const length = Number(str_length);
         location ??= AllocationLocation.Arena;
         return {
@@ -242,7 +247,7 @@ function heapAllocation(ctx: Context, size: number): Primitive {
         adapt(ctx.types.u32, AllocationLocation.Local),
         transient(ctx, ctx.types.u32, ref)
     ) as Primitive;
-    ctx.variables.set(`Arena Allocation ${ctx.variables.size}`, allocation);
+    // ctx.variables.set(`Arena Allocation ${ctx.variables.size}`, allocation);
 
     return allocation;
 }
