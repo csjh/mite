@@ -42,10 +42,8 @@ import type {
     ArrayExpression,
     IndexExpression,
     TypeIdentifier,
-    ObjectExpression,
-    BooleanLiteral
+    ObjectExpression
 } from "../types/nodes.js";
-import { AllocationLocation, LinearMemoryLocation } from "../backend/type_classes.js";
 
 const precedence = [
     new Set([TokenType.STAR, TokenType.SLASH, TokenType.MODULUS]),
@@ -538,19 +536,6 @@ export class Parser {
                         expression_stack.push(next);
                     }
                     break;
-                case TokenType.ARENA:
-                // case TokenType.STACK:
-                case TokenType.JS:
-                    if (this.tokens[this.idx + 1].type === TokenType.LEFT_BRACKET) {
-                        expression_stack.push(
-                            this.parseArrayExpression(
-                                this.tokens[this.idx++].value as LinearMemoryLocation
-                            )
-                        );
-                    } else {
-                        const type = this.parseType();
-                        expression_stack.push(this.parseStructLiteral(type));
-                    }
                 default:
                     break;
             }
@@ -987,7 +972,7 @@ export class Parser {
         return { type: "BreakExpression" };
     }
 
-    private parseArrayExpression(location?: LinearMemoryLocation): ArrayExpression {
+    private parseArrayExpression(): ArrayExpression {
         this.expectToken(TokenType.LEFT_BRACKET);
         this.idx++;
 
@@ -1000,32 +985,15 @@ export class Parser {
         this.expectToken(TokenType.RIGHT_BRACKET);
         this.idx++;
 
-        return {
-            type: "ArrayExpression",
-            elements,
-            location
-        };
+        return { type: "ArrayExpression", elements };
     }
 
     private parseType(): TypeIdentifier {
         const is_ref = this.tokens[this.idx].type === TokenType.REF;
         if (is_ref) this.idx++;
 
-        let location: LinearMemoryLocation | undefined = undefined;
-        if (this.token.type === TokenType.ARENA) {
-            location = AllocationLocation.Arena;
-            this.idx++;
-            // } else if (this.token.type === TokenType.STACK) {
-            //     location = AllocationLocation.Stack;
-            //     this.idx++;
-        } else if (this.token.type === TokenType.JS) {
-            location = AllocationLocation.JS;
-            this.idx++;
-        }
-
         const token = this.tokens[this.idx++];
-        if (token.type === TokenType.IDENTIFIER)
-            return { type: "Identifier", name: token.value, location };
+        if (token.type === TokenType.IDENTIFIER) return { type: "Identifier", name: token.value };
         if (token.type !== TokenType.LEFT_BRACKET)
             throw new Error(`Expected type, got ${token.type}`);
 
@@ -1040,7 +1008,6 @@ export class Parser {
         return {
             type: "Identifier",
             name: `[${type.name}; ${length.value}]`,
-            location,
             isRef: is_ref
         };
     }
