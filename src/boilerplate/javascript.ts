@@ -115,14 +115,10 @@ export function programToBoilerplate(program: Program, options: BoilerplateOptio
         const returnTypeType = parseType(ctx as Context, returnType);
 
         code += dedent`
-            export function ${id.name}(${params
-                .map((x) =>
-                    Primitive.primitives.has(x.typeAnnotation.name)
-                        ? x.name.name
-                        : `{ [PointerSymbol]: ${x.name.name} }`
-                )
-                .join(", ")}) {
-                const result = wasm_export_${id.name}(${params.map((x) => x.name.name).join(", ")});
+            export function ${id.name}(${params.map((x) => x.name.name).join(", ")}) {
+                const result = wasm_export_${id.name}(${params
+                    .map(({ name: { name: n } }) => (Primitive.primitives.has(n) ? n : `${n}.ptr`))
+                    .join(", ")});
 
                 ${
                     returnTypeType.classification === "primitive"

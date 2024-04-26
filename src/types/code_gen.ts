@@ -1,5 +1,5 @@
 import binaryen from "binaryen";
-import { AllocationLocation, LinearMemoryLocation, MiteType } from "../backend/type_classes.js";
+import { MiteType } from "../backend/type_classes.js";
 
 export type ProgramToModuleOptions = {
     stack_size?: number;
@@ -28,18 +28,15 @@ export type TypeInformation =
     | StructTypeInformation
     | ArrayTypeInformation;
 
-type SharedInstanceTypeInformation<Location extends AllocationLocation> = {
-    location: Location;
+type SharedInstanceTypeInformation = {
     is_ref: boolean;
-    immutable: boolean;
 };
 
-export type InstanceArrayTypeInformation = ArrayTypeInformation &
-    SharedInstanceTypeInformation<LinearMemoryLocation>;
-export type InstanceStructTypeInformation = StructTypeInformation &
-    SharedInstanceTypeInformation<LinearMemoryLocation>;
-export type InstancePrimitiveTypeInformation = PrimitiveTypeInformation &
-    SharedInstanceTypeInformation<AllocationLocation>;
+export type InstanceArrayTypeInformation = ArrayTypeInformation & SharedInstanceTypeInformation;
+export type InstanceStructTypeInformation = StructTypeInformation & SharedInstanceTypeInformation;
+export type InstancePrimitiveTypeInformation = PrimitiveTypeInformation & {
+    is_ref?: boolean;
+};
 
 export type InstanceTypeInformation =
     | InstancePrimitiveTypeInformation
@@ -219,11 +216,7 @@ export type IntrinsicHandlers = Partial<{
 
     // i8x16
     // limited by syntax right now
-    shuffle: (
-        left: MiteType,
-        right: MiteType,
-        mask: MiteType
-    ) => MiteType;
+    shuffle: (left: MiteType, right: MiteType, mask: MiteType) => MiteType;
     swizzle: BinaryOperator;
     avgr: BinaryOperator;
 
