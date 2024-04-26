@@ -10,7 +10,6 @@ import {
     allocate,
     ARENA_HEAP_OFFSET,
     ARENA_HEAP_POINTER,
-    JS_HEAP_POINTER,
     toReturnType,
     createMiteType,
     constructArray
@@ -89,29 +88,12 @@ export function programToModule(
     const js_heap_size = 65536;
 
     ctx.mod.setMemory(256, 256, "memory", [], false, false, "main_memory");
-    ctx.mod.addGlobal(JS_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(stack_size));
     ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
     ctx.mod.addGlobal(
         ARENA_HEAP_POINTER,
         binaryen.i32,
         false,
         ctx.mod.i32.const(stack_size + 4 + js_heap_size)
-    );
-    ctx.mod.setStart(
-        ctx.mod.addFunction(
-            "start",
-            binaryen.createType([]),
-            binaryen.none,
-            [],
-            ctx.mod.block(null, [
-                ctx.mod.i32.store(
-                    4,
-                    0,
-                    ctx.mod.global.get(JS_HEAP_POINTER, binaryen.i32),
-                    ctx.mod.i32.const(js_heap_size | 0x80000000)
-                )
-            ])
-        )
     );
 
     ctx.functions = new Map(

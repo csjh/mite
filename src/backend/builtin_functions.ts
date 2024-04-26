@@ -1,9 +1,6 @@
 import binaryen from "binaryen";
 import { Context } from "../types/code_gen.js";
-import {
-    ARENA_HEAP_OFFSET as AHO,
-    ARENA_HEAP_POINTER as AHP,
-} from "./utils.js";
+import { ARENA_HEAP_OFFSET as AHO, ARENA_HEAP_POINTER as AHP } from "./utils.js";
 
 const PAGE_SIZE = 65536;
 

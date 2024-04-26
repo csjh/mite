@@ -18,10 +18,8 @@ import {
 } from "./type_classes.js";
 import { TypeIdentifier } from "../types/nodes.js";
 
-export const STACK_POINTER = "__stack_pointer";
 export const ARENA_HEAP_POINTER = "__arena_heap_pointer";
 export const ARENA_HEAP_OFFSET = "__arena_heap_pointer_offset";
-export const JS_HEAP_POINTER = "__js_heap_pointer";
 
 export function updateExpected(ctx: Context, expected: Context["expected"]) {
     return { ...ctx, expected };
