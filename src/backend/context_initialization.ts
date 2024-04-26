@@ -726,7 +726,6 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.getExpressionId(index.get_expression_ref()) !==
                     binaryen.ExpressionIds.Const
                 ) {
-                    console.log(binaryen.getExpressionInfo(index.get_expression_ref()));
                     throw new Error("Expected constant extraction index");
                 }
 
@@ -867,7 +866,11 @@ export function identifyStructs(program: Program): TypeInformation[] {
     const adj_list = new Map(
         Object.entries(struct_declarations).map(([id, { fields }]) => [
             id,
-            new Set(fields.map(({ typeAnnotation }) => typeAnnotation.name))
+            new Set(
+                fields
+                    .map(({ typeAnnotation }) => typeAnnotation.name)
+                    .filter((x) => !Primitive.primitives.has(x))
+            )
         ])
     ) as Map<string, Set<string>>;
 
