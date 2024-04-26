@@ -523,54 +523,72 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): MiteType
     ctx.stacks.continue.push(for_loop_user_body_label);
     ctx.stacks.depth++;
 
-    const init =
-        value.init &&
-        newBlock(ctx, () =>
-            value.init!.type === "VariableDeclaration"
-                ? variableDeclarationToExpression(ctx, value.init)
-                : expressionToExpression(ctx, value.init!)
-        );
+    const ref = newBlock(
+        ctx,
+        () => {
+            if (value.init) {
+                if (value.init.type === "VariableDeclaration") {
+                    variableDeclarationToExpression(ctx, value.init);
+                } else {
+                    expressionToExpression(ctx, value.init);
+                }
+            }
 
-    const test =
-        value.test &&
-        (value.test.type === "EmptyExpression"
-            ? ctx.mod.i32.const(1)
-            : newBlock(
-                  ctx,
-                  () => expressionToExpression(updateExpected(ctx, ctx.types.bool), value.test!),
-                  { type: binaryen.i32 }
-              ).get_expression_ref());
+            const test =
+                value.test &&
+                (value.test.type === "EmptyExpression"
+                    ? ctx.mod.i32.const(1)
+                    : newBlock(
+                          ctx,
+                          () =>
+                              expressionToExpression(
+                                  updateExpected(ctx, ctx.types.bool),
+                                  value.test!
+                              ),
+                          { type: binaryen.i32 }
+                      ).get_expression_ref());
 
-    const update = value.update && newBlock(ctx, () => expressionToExpression(ctx, value.update!));
-    const body = newBlock(ctx, () => expressionToExpression(ctx, value.body), {
-        name: for_loop_user_body_label
-    });
+            const update =
+                value.update && newBlock(ctx, () => expressionToExpression(ctx, value.update!));
+            const body = newBlock(ctx, () => expressionToExpression(ctx, value.body), {
+                name: for_loop_user_body_label
+            });
 
-    const for_loop_container = [];
-    if (init) for_loop_container.push(init.get_expression_ref());
-    if (test) {
-        // if test fails, don't even start the loop
-        for_loop_container.push(
-            ctx.mod.br_if(for_loop_container_label, ctx.mod.i32.eqz(ctx.mod.copyExpression(test)))
-        );
-    }
+            if (test) {
+                // if test fails, don't even start the loop
+                ctx.current_block.push(
+                    new TransientPrimitive(
+                        ctx,
+                        ctx.types.void,
+                        ctx.mod.br_if(
+                            for_loop_container_label,
+                            ctx.mod.i32.eqz(ctx.mod.copyExpression(test))
+                        )
+                    )
+                );
+            }
 
-    const for_loop_loop_part = [];
+            const for_loop_loop_part = [];
 
-    for_loop_loop_part.push(body.get_expression_ref());
-    if (update) for_loop_loop_part.push(update.get_expression_ref());
-    if (test) for_loop_loop_part.push(ctx.mod.br_if(for_loop_loop_part_label, test));
+            for_loop_loop_part.push(body.get_expression_ref());
+            if (update) for_loop_loop_part.push(update.get_expression_ref());
+            if (test) for_loop_loop_part.push(ctx.mod.br_if(for_loop_loop_part_label, test));
 
-    for_loop_container.push(
-        ctx.mod.loop(for_loop_loop_part_label, ctx.mod.block(null, for_loop_loop_part))
+            ctx.current_block.push(
+                new TransientPrimitive(
+                    ctx,
+                    ctx.types.void,
+                    ctx.mod.loop(for_loop_loop_part_label, ctx.mod.block(null, for_loop_loop_part))
+                )
+            );
+        },
+        { name: for_loop_container_label }
     );
-
-    const ref = ctx.mod.block(for_loop_container_label, for_loop_container);
 
     ctx.stacks.break.pop();
     ctx.stacks.continue.pop();
 
-    return new TransientPrimitive(ctx, ctx.types.void, ref);
+    return ref;
 }
 
 function doWhileExpressionToExpression(ctx: Context, value: DoWhileExpression): MiteType {

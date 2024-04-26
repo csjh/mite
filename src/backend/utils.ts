@@ -108,12 +108,23 @@ export function newBlock(
     cb: () => MiteType | void,
     { name = null, type }: { name?: string | null; type?: number } = {}
 ): MiteType {
+    const scope_id = crypto.randomUUID();
+
     const parent_block = ctx.current_block;
+    const parent_scope = ctx.variables;
+    ctx.variables = new Map(parent_scope);
     ctx.current_block = [];
     const expr = cb();
     if (expr) ctx.current_block.push(expr);
     const block = ctx.current_block;
     ctx.current_block = parent_block;
+
+    for (const [key, value] of ctx.variables) {
+        if (!parent_scope.has(key)) {
+            parent_scope.set(`${key} ${scope_id}`, value);
+        }
+    }
+    ctx.variables = parent_scope;
 
     if (block.length === 0) {
         return new TransientPrimitive(ctx, ctx.types.void, ctx.mod.nop());
