@@ -191,12 +191,18 @@ export function callFunction(
     return toReturnType(ctx, results, results_expr);
 }
 
-export function allocate(ctx: Context, type: InstanceTypeInformation, size: number): Primitive {
-    return new TransientPrimitive(
+export function allocate(ctx: Context, type: InstanceTypeInformation, size: number): Pointer {
+    const allocation = new TransientPrimitive(
         ctx,
-        ctx.types.u32,
+        Pointer.type,
         ctx.mod.call("arena_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32)
     );
+
+    const local = createMiteType(ctx, Pointer.type, ctx.current_function.local_count++);
+    ctx.variables.set(`AllocationInLocal${ctx.current_function.local_count - 1}`, local);
+    ctx.current_block.push(local.set(allocation));
+
+    return new Pointer(local as Primitive);
 }
 
 export function toReturnType(
@@ -220,7 +226,7 @@ export function toReturnType(
     }
 }
 
-export function constructArray(ctx: Context, type: InstanceArrayTypeInformation): MiteType {
+export function constructArray(ctx: Context, type: InstanceArrayTypeInformation): Pointer {
     const address = allocate(ctx, type.element_type, type.sizeof);
 
     ctx.current_block.push(
@@ -236,5 +242,5 @@ export function constructArray(ctx: Context, type: InstanceArrayTypeInformation)
         )
     );
 
-    return new Array_(ctx, type, new Pointer(address));
+    return address;
 }

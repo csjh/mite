@@ -261,15 +261,16 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
             throw new Error("Variable declaration must have type or initializer");
         }
 
-        if (type.classification === "struct" && !expr) {
-            expr = allocate(ctx, type, type.sizeof);
-        } else if (type.classification === "array" && !expr) {
-            expr = constructArray(ctx, type);
+        const local = createMiteType(ctx, type, ctx.current_function.local_count++);
+
+        if (type.classification === "struct") {
+            ctx.current_block.push(local.set(allocate(ctx, type, type.sizeof)));
+        } else if (type.classification === "array") {
+            ctx.current_block.push(local.set(constructArray(ctx, type)));
         }
 
-        const local = new LocalPrimitive(ctx, Pointer.type, ctx.current_function.local_count++);
-        if (expr) ctx.current_block.push(local.set(expr.get()));
-        ctx.variables.set(id.name, createMiteType(ctx, type, local));
+        if (expr) ctx.current_block.push(local.set(expr));
+        ctx.variables.set(id.name, local);
     }
 }
 
@@ -681,14 +682,16 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
     const first_element = expressionToExpression(updateExpected(ctx, undefined), value.elements[0]);
     const element_type = first_element.type;
 
-    const array = constructArray(ctx, {
+    const type = {
         classification: "array",
         name: `[${element_type.name}]`,
         sizeof: element_type.sizeof * value.elements.length + 4,
         element_type,
         length: value.elements.length,
         is_ref: true
-    });
+    } as const;
+    const ptr = constructArray(ctx, type);
+    const array = new Array_(ctx, type, ptr);
 
     ctx.current_block.push(
         array
@@ -719,7 +722,7 @@ function objectExpressionToExpression(ctx: Context, value: ObjectExpression): Mi
     const type = parseType(ctx, value.typeAnnotation);
     if (type.classification !== "struct") throw new Error("Cannot create non-struct object");
 
-    const struct = createMiteType(ctx, type, allocate(ctx, type, type.sizeof));
+    const struct = createMiteType(ctx, { ...type, is_ref: true }, allocate(ctx, type, type.sizeof));
 
     const fields = new Map(type.fields);
     for (const property of value.properties) {

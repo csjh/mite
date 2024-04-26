@@ -928,6 +928,10 @@ export abstract class AggregateType<T extends InstanceTypeInformation> implement
     }
 
     set(value: MiteType): MiteType {
+        if (value instanceof Pointer) {
+            return this.address.set(value);
+        }
+
         const value_type = value.type as InstanceTypeInformation;
         if (
             value_type.classification !== this.type.classification ||
@@ -937,7 +941,7 @@ export abstract class AggregateType<T extends InstanceTypeInformation> implement
         }
 
         if (value_type.is_ref || this.type.is_ref) {
-            return this.address.set(value);
+            return this.address.set((value as typeof this).address);
         } else {
             this.ctx.current_block.push(
                 new TransientPrimitive(
@@ -1041,7 +1045,7 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
             this.address.sizeof(),
             this.ctx.mod.i32.mul(
                 this.ctx.mod.i32.load(0, 0, this.address.get_expression_ref(), "main_memory"),
-                this.type.element_type.sizeof
+                this.ctx.mod.i32.const(this.type.element_type.sizeof)
             )
         );
     }
