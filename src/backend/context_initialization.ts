@@ -839,17 +839,12 @@ export function identifyStructs(program: Program): TypeInformation[] {
     const adj_list = new Map(
         Object.entries(struct_declarations).map(([id, { fields }]) => [
             id,
-            new Set(
-                fields
-                    .map(({ typeAnnotation }) => typeAnnotation.name)
-                    .filter((name) => !Primitive.primitives.has(name))
-            )
+            new Set(fields.map(({ typeAnnotation }) => typeAnnotation.name))
         ])
     ) as Map<string, Set<string>>;
 
     // detect cycles
-    const cycle_error = detectCycles(adj_list);
-    if (cycle_error) throw cycle_error;
+    detectCycles(adj_list);
 
     const top_sorted_structs = topologicalSort(adj_list);
     if (top_sorted_structs.length !== Object.keys(struct_declarations).length) {
@@ -864,7 +859,7 @@ export function identifyStructs(program: Program): TypeInformation[] {
     return Array.from(types.values());
 }
 
-function detectCycles(adj_list: Map<string, Set<string>>): Error | null {
+function detectCycles(adj_list: Map<string, Set<string>>) {
     const seen = new Set();
     for (const struct of adj_list.keys()) {
         if (seen.has(struct)) continue;
@@ -873,7 +868,7 @@ function detectCycles(adj_list: Map<string, Set<string>>): Error | null {
         while (stack.length > 0) {
             const vertex = stack.pop()!;
             if (visited.has(vertex)) {
-                return new Error(`Struct dependency cycle detected: ${vertex} uses itself`);
+                throw new Error(`Struct dependency cycle detected: ${vertex} uses itself`);
             }
             visited.add(vertex);
             seen.add(vertex);
@@ -882,7 +877,6 @@ function detectCycles(adj_list: Map<string, Set<string>>): Error | null {
             }
         }
     }
-    return null;
 }
 
 // and they said i would never use data structures and algorithms in real life....
