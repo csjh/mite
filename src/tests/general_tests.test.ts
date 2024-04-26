@@ -230,13 +230,13 @@ describe("literals", () => {
         compileAndRun(program2, 2n);
 
         const program3 = `
-        export fn main(): f64 {
+        export fn main(): f32 {
             let simd = { 1.0, 2.1, 3.4, 4.1 };
             return extract(simd, 2);
         }
         `;
 
-        compileAndRun(program3, 3.4);
+        compileAndRun(program3, 3.4000000953674316);
 
         const program4 = `
         export fn main(): f64 {

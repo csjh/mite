@@ -225,7 +225,7 @@ describe("arena struct functions", () => {
     });
 });
 
-describe("js struct functions", () => {
+describe("struct functions", () => {
     it("should work with return values", () => {
         const program = `
         struct coord {
@@ -233,16 +233,16 @@ describe("js struct functions", () => {
             y: i32
         }
 
-        fn add(a: js coord, b: js coord): js coord {
-            return js coord {
+        fn add(a: coord, b: coord): coord {
+            return coord {
                 x: a.x + b.x,
                 y: a.y + b.y
             };
         }
 
         export fn main(): i32 {
-            let a = js coord { x: 5, y: 6 };
-            let b = js coord { x: 3, y: 2 };
+            let a = coord { x: 5, y: 6 };
+            let b = coord { x: 3, y: 2 };
             let c = add(a, b);
             return c.x + c.y;
         }
@@ -258,20 +258,20 @@ describe("js struct functions", () => {
             y: i32
         }
 
-        fn add(a: js coord, b: js coord): js coord {
-            return js coord {
+        fn add(a: coord, b: coord): coord {
+            return coord {
                 x: a.x + b.x,
                 y: a.y + b.y
             };
         }
 
-        fn add2(a: js coord, b: js coord): js coord {
+        fn add2(a: coord, b: coord): coord {
             return add(a, b);
         }
 
         export fn main(): i32 {
-            let a = js coord { x: 5, y: 6 };
-            let b = js coord { x: 3, y: 2 };
+            let a = coord { x: 5, y: 6 };
+            let b = coord { x: 3, y: 2 };
             let c = add2(a, b);
             return c.x + c.y;
         }
@@ -285,21 +285,21 @@ describe("js struct functions", () => {
             y: i32
         }
 
-        fn add_3(a: js coord, b: js coord, c: js coord): js coord {
-            return js coord {
+        fn add_3(a: coord, b: coord, c: coord): coord {
+            return coord {
                 x: a.x + b.x + c.x,
                 y: a.y + b.y + c.y
             };
         }
 
-        fn add(a: js coord, b: js coord): js coord {
-            let z = js coord { x: 1, y: 2 };
+        fn add(a: coord, b: coord): coord {
+            let z = coord { x: 1, y: 2 };
             return add_3(a, b, z);
         }
 
         export fn main(): i32 {
-            let a = js coord { x: 5, y: 6 };
-            let b = js coord { x: 3, y: 2 };
+            let a = coord { x: 5, y: 6 };
+            let b = coord { x: 3, y: 2 };
             let c = add(a, b);
             return c.x + c.y;
         }
@@ -313,21 +313,21 @@ describe("js struct functions", () => {
             y: i32
         }
 
-        fn add_3(a: js coord, b: js coord, c: js coord): js coord {
-            return js coord {
+        fn add_3(a: coord, b: coord, c: coord): coord {
+            return coord {
                 x: a.x + b.x + c.x,
                 y: a.y + b.y + c.y
             };
         }
 
-        fn add(a: js coord, b: js coord): js coord {
-            let z = js coord { x: 1, y: 2 };
+        fn add(a: coord, b: coord): coord {
+            let z = coord { x: 1, y: 2 };
             return add_3(a, b, z);
         }
 
         export fn main(): i32 {
-            let a = js coord { x: 5, y: 6 };
-            let b = js coord { x: 3, y: 2 };
+            let a = coord { x: 5, y: 6 };
+            let b = coord { x: 3, y: 2 };
             return add(a, b).x + add(a, b).y;
         }
         `;
@@ -340,20 +340,20 @@ describe("js struct functions", () => {
             y: i32
         }
 
-        fn add_3(a: js coord, b: js coord, c: js coord): js coord {
-            return js coord {
+        fn add_3(a: coord, b: coord, c: coord): coord {
+            return coord {
                 x: a.x + b.x + c.x,
                 y: a.y + b.y + c.y
             };
         }
 
-        fn add(a: js coord, b: js coord): js coord {
-            return add_3(a, b, js coord { x: 1, y: 2 });
+        fn add(a: coord, b: coord): coord {
+            return add_3(a, b, coord { x: 1, y: 2 });
         }
 
         export fn main(): i32 {
-            return add(js coord { x: 5, y: 6 }, js coord { x: 3, y: 2 }).x + 
-                   add(js coord { x: 5, y: 6 }, js coord { x: 3, y: 2 }).y;
+            return add(coord { x: 5, y: 6 }, coord { x: 3, y: 2 }).x + 
+                   add(coord { x: 5, y: 6 }, coord { x: 3, y: 2 }).y;
         }
         `;
 
