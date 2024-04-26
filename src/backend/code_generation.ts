@@ -1,22 +1,19 @@
 import binaryen from "binaryen";
 import {
     bigintToLowAndHigh,
-    createMiteType,
     lookForVariable,
     miteSignatureToBinaryenSignature,
     updateExpected,
-    constant,
     newBlock,
     parseType,
-    createVariable,
     callFunction,
     allocate,
     ARENA_HEAP_OFFSET,
     ARENA_HEAP_POINTER,
     JS_HEAP_POINTER,
-    transient,
-    adapt,
-    toReturnType
+    toReturnType,
+    createMiteType,
+    constructArray
 } from "./utils.js";
 import {
     Context,
@@ -54,7 +51,15 @@ import type {
     ObjectExpression
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
-import { AllocationLocation, MiteType, Primitive } from "./type_classes.js";
+import {
+    Array_,
+    LocalPrimitive,
+    MiteType,
+    Pointer,
+    Primitive,
+    Struct,
+    TransientPrimitive
+} from "./type_classes.js";
 import { createConversions, createIntrinsics, identifyStructs } from "./context_initialization.js";
 import { addBuiltins } from "./builtin_functions.js";
 
@@ -124,8 +129,8 @@ export function programToModule(
 
     for (const type of ["i32", "i64", "f32", "f64"] as const) {
         ctx.functions.set(`log_${type}`, {
-            params: [adapt(ctx.types[type], AllocationLocation.Local)],
-            results: adapt(ctx.types.void)
+            params: [ctx.types[type]],
+            results: ctx.types.void
         });
     }
 
@@ -175,10 +180,27 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     ctx.variables = new Map();
 
     const params = new Map(
-        node.params.map(({ name, typeAnnotation }) => [
-            name.name,
-            createMiteType(ctx, parseType(ctx, typeAnnotation), local_count++)
-        ])
+        node.params.map(({ name, typeAnnotation }) => {
+            const local_index = local_count++;
+            const type = parseType(ctx, typeAnnotation);
+            const local = new LocalPrimitive(
+                ctx,
+                type.classification === "primitive" ? type : Primitive.primitives.get("u32")!,
+                local_index
+            );
+            let obj;
+            if (type.classification === "primitive") {
+                obj = local;
+            } else if (type.classification === "array") {
+                obj = new Array_(ctx, type, new Pointer(local));
+            } else if (type.classification === "struct") {
+                obj = new Struct(ctx, type, new Pointer(local));
+            } else {
+                // TODO: open issue in TS
+                obj = undefined as never;
+            }
+            return [name.name, obj];
+        })
     );
     Array.from(params.entries()).forEach(([key, val]) => ctx.variables.set(key, val));
 
@@ -238,31 +260,16 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
         } else {
             throw new Error("Variable declaration must have type or initializer");
         }
-        type.immutable = value.kind === "const";
 
-        const variable = createVariable(
-            ctx,
-            type,
-            expr?.get(),
-            typeAnnotation?.location ?? AllocationLocation.Arena
-        );
-
-        ctx.variables.set(id.name, variable);
-
-        if (type.classification === "array" && type.length) {
-            ctx.current_block.push(
-                transient(
-                    ctx,
-                    ctx.types.i32,
-                    ctx.mod.i32.store(
-                        0,
-                        0,
-                        variable.get_expression_ref(),
-                        ctx.mod.i32.const(type.length)
-                    )
-                )
-            );
+        if (type.classification === "struct" && !expr) {
+            expr = allocate(ctx, type, type.sizeof);
+        } else if (type.classification === "array" && !expr) {
+            expr = constructArray(ctx, type);
         }
+
+        const local = new LocalPrimitive(ctx, Pointer.type, ctx.current_function.local_count++);
+        if (expr) ctx.current_block.push(local.set(expr.get()));
+        ctx.variables.set(id.name, createMiteType(ctx, type, local));
     }
 }
 
@@ -673,43 +680,26 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
 
     const first_element = expressionToExpression(updateExpected(ctx, undefined), value.elements[0]);
     const element_type = first_element.type;
-    const sizeof = element_type.sizeof * value.elements.length + 4;
 
-    const location = value.location ?? ctx.expected?.location ?? AllocationLocation.Arena;
-
-    const address = allocate(ctx, sizeof, location);
+    const array = constructArray(ctx, {
+        classification: "array",
+        name: `[${element_type.name}]`,
+        sizeof: element_type.sizeof * value.elements.length + 4,
+        element_type,
+        length: value.elements.length,
+        is_ref: true
+    });
 
     ctx.current_block.push(
-        transient(
-            ctx,
-            ctx.types.i32,
-            ctx.mod.i32.store(
-                0,
-                0,
-                address.get_expression_ref(),
-                ctx.mod.i32.const(value.elements.length)
-            )
-        )
+        array
+            .index(new TransientPrimitive(ctx, ctx.types.i32, ctx.mod.i32.const(0)))
+            .set(first_element)
     );
-
-    const array = createMiteType(
-        ctx,
-        {
-            classification: "array",
-            name: `[${element_type.name}]`,
-            sizeof,
-            element_type: { ...element_type, location },
-            length: value.elements.length,
-            location,
-            is_ref: true,
-            immutable: false
-        },
-        address
-    );
-
-    for (let i = 0; i < value.elements.length; i++) {
+    for (let i = 1; i < value.elements.length; i++) {
         const expr = expressionToExpression(updateExpected(ctx, element_type), value.elements[i]);
-        ctx.current_block.push(array.index(constant(ctx, i)).set(expr));
+        ctx.current_block.push(
+            array.index(new TransientPrimitive(ctx, ctx.types.i32, ctx.mod.i32.const(i))).set(expr)
+        );
     }
 
     return array;
@@ -720,7 +710,7 @@ function indexExpressionToExpression(ctx: Context, value: IndexExpression): Mite
     if (array.type.classification !== "array") {
         throw new Error(`Cannot index non-array type ${array.type.name}`);
     }
-    const index = expressionToExpression(updateExpected(ctx, adapt(ctx.types.i32)), value.index);
+    const index = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.index);
 
     return array.index(index);
 }

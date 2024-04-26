@@ -2,18 +2,19 @@ import binaryen from "binaryen";
 import {
     Context,
     FunctionInformation,
-    InstancePrimitiveTypeInformation,
+    InstanceArrayTypeInformation,
     InstanceTypeInformation,
-    PrimitiveTypeInformation,
     TypeInformation
 } from "../types/code_gen.js";
 import {
-    AllocationLocation,
-    Array,
-    LinearMemoryLocation,
+    Array_,
+    LinearMemoryPrimitive,
+    LocalPrimitive,
     MiteType,
+    Pointer,
     Primitive,
-    Struct
+    Struct,
+    TransientPrimitive
 } from "./type_classes.js";
 import { TypeIdentifier } from "../types/nodes.js";
 
@@ -41,31 +42,35 @@ export function lookForVariable(ctx: Context, name: string): MiteType {
 export function createMiteType(
     ctx: Context,
     type: InstanceTypeInformation,
-    address_or_local: Primitive | number
+    address_or_local: MiteType | number
 ): MiteType {
-    if (type.classification === "primitive") {
-        return new Primitive(ctx, type, address_or_local);
-    } else if (type.classification === "struct") {
-        if (typeof address_or_local === "number") {
-            address_or_local = new Primitive(
+    if (typeof address_or_local === "number") {
+        if (type.classification === "primitive") {
+            return new LocalPrimitive(ctx, type, address_or_local);
+        } else {
+            const local = new LocalPrimitive(
                 ctx,
-                adapt(ctx.types.u32, AllocationLocation.Local),
+                Primitive.primitives.get("u32")!,
                 address_or_local
             );
+            if (type.classification === "array") {
+                return new Array_(ctx, type, new Pointer(local));
+            } else if (type.classification === "struct") {
+                return new Struct(ctx, type, new Pointer(local));
+            }
         }
-        return new Struct(ctx, type, address_or_local);
-    } else if (type.classification === "array") {
-        if (typeof address_or_local === "number") {
-            address_or_local = new Primitive(
-                ctx,
-                adapt(ctx.types.u32, AllocationLocation.Local),
-                address_or_local
-            );
-        }
-        return new Array(ctx, type, address_or_local);
     } else {
-        throw new Error(`Unknown type: ${type}`);
+        if (type.classification === "primitive") {
+            return new LinearMemoryPrimitive(ctx, type, address_or_local);
+        } else {
+            if (type.classification === "array") {
+                return new Array_(ctx, type, new Pointer(address_or_local.get()));
+            } else if (type.classification === "struct") {
+                return new Struct(ctx, type, new Pointer(address_or_local.get()));
+            }
+        }
     }
+    throw new Error("Unreachable");
 }
 
 // converts a mite type to binaryen type (for parameter or return type)
@@ -98,12 +103,6 @@ export function miteSignatureToBinaryenSignature(
     );
 }
 
-export function constant(ctx: Context, value: number, type: "i32" | "i64" = "i32"): Primitive {
-    const ref =
-        type === "i32" ? ctx.mod.i32.const(value) : ctx.mod.i64.const(...bigintToLowAndHigh(value));
-    return transient(ctx, ctx.types[type], ref);
-}
-
 export function newBlock(
     ctx: Context,
     cb: () => MiteType | void,
@@ -117,7 +116,7 @@ export function newBlock(
     ctx.current_block = parent_block;
 
     if (block.length === 0) {
-        return transient(ctx, ctx.types.void, ctx.mod.nop());
+        return new TransientPrimitive(ctx, ctx.types.void, ctx.mod.nop());
     } else if (block.length === 1 && !name) {
         return block[0];
     } else {
@@ -134,31 +133,13 @@ export function newBlock(
 const array_regex = /\[(.*); ([0-9]*)\]/;
 const fat_regex = /\[(.*)\]/;
 export function parseType(ctx: Context, type: TypeIdentifier): InstanceTypeInformation;
-export function parseType(
-    ctx: Context,
-    type: string,
-    location?: AllocationLocation
-): InstanceTypeInformation;
-export function parseType(
-    ctx: Context,
-    type: string | TypeIdentifier,
-    location?: AllocationLocation
-): InstanceTypeInformation {
+export function parseType(ctx: Context, type: string): InstanceTypeInformation;
+export function parseType(ctx: Context, type: string | TypeIdentifier): InstanceTypeInformation {
     if (typeof type === "object") return parseType(ctx, type.name);
     let is_ref = false;
     if (type.startsWith("ref ")) {
         is_ref = true;
         type = type.slice("ref ".length);
-    }
-
-    if (!location) {
-        for (const _place in AllocationLocation) {
-            const place = `${_place} `;
-            if (type.startsWith(place)) {
-                location = AllocationLocation[_place as keyof typeof AllocationLocation];
-                type = type.slice(place.length);
-            }
-        }
     }
 
     if (type in ctx.types) {
@@ -167,16 +148,12 @@ export function parseType(
             if (is_ref) throw new Error(`Cannot make primitive ${type} a ref`);
             return {
                 ...base_type,
-                location: location ?? AllocationLocation.Local,
-                immutable: false,
                 is_ref: false
             };
         } else {
             return {
                 ...base_type,
-                is_ref,
-                location: (location as LinearMemoryLocation) ?? AllocationLocation.Arena,
-                immutable: false
+                is_ref
             };
         }
     }
@@ -188,42 +165,16 @@ export function parseType(
         ];
 
         const length = Number(str_length);
-        location ??= AllocationLocation.Arena;
         return {
             classification: "array",
             name: type,
-            element_type: parseType(ctx, element_type, location),
+            element_type: parseType(ctx, element_type),
             length,
-            sizeof: ctx.types[element_type].sizeof * length,
-            is_ref,
-            location: location as LinearMemoryLocation,
-            immutable: false
+            sizeof: ctx.types[element_type].sizeof * length + 4,
+            is_ref
         };
     }
     throw new Error(`Unknown type: ${type}`);
-}
-
-export function createVariable(
-    ctx: Context,
-    type: InstanceTypeInformation,
-    initializer?: Primitive,
-    location: LinearMemoryLocation = AllocationLocation.Arena
-): MiteType {
-    if (type.classification === "struct") {
-        initializer ??= allocate(ctx, type.sizeof, location);
-        return createMiteType(ctx, { ...type, location }, initializer);
-    } else if (type.classification === "array") {
-        initializer ??= allocate(ctx, type.sizeof, location);
-        return createMiteType(ctx, { ...type, location }, initializer);
-    } else {
-        const variable = createMiteType(
-            ctx,
-            { ...type, location: AllocationLocation.Local },
-            ctx.current_function.local_count++
-        );
-        if (initializer) ctx.current_block.push(variable.set(initializer.get()));
-        return variable;
-    }
 }
 
 export function callFunction(
@@ -240,57 +191,12 @@ export function callFunction(
     return toReturnType(ctx, results, results_expr);
 }
 
-function heapAllocation(ctx: Context, size: number): Primitive {
-    const ref = ctx.mod.call("arena_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32);
-    const allocation = createVariable(
+export function allocate(ctx: Context, type: InstanceTypeInformation, size: number): Primitive {
+    return new TransientPrimitive(
         ctx,
-        adapt(ctx.types.u32, AllocationLocation.Local),
-        transient(ctx, ctx.types.u32, ref)
-    ) as Primitive;
-    // ctx.variables.set(`Arena Allocation ${ctx.variables.size}`, allocation);
-
-    return allocation;
-}
-
-function jsAllocation(ctx: Context, size: number): Primitive {
-    const ref = ctx.mod.call("js_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32);
-    const allocation = createVariable(
-        ctx,
-        adapt(ctx.types.u32, AllocationLocation.Local),
-        transient(ctx, ctx.types.u32, ref)
-    ) as Primitive;
-    ctx.variables.set(`JS Allocation ${ctx.variables.size}`, allocation);
-
-    return allocation;
-}
-
-export function allocate(ctx: Context, size: number, location: LinearMemoryLocation): Primitive {
-    switch (location) {
-        case AllocationLocation.Arena:
-            return heapAllocation(ctx, size);
-        case AllocationLocation.JS:
-            return jsAllocation(ctx, size);
-    }
-}
-
-export function transient(
-    ctx: Context,
-    type: PrimitiveTypeInformation,
-    expression: binaryen.ExpressionRef
-): Primitive {
-    return new Primitive(ctx, adapt(type), expression);
-}
-
-export function adapt(
-    type: PrimitiveTypeInformation,
-    location: AllocationLocation = AllocationLocation.Transient
-): InstancePrimitiveTypeInformation {
-    return {
-        ...type,
-        location,
-        is_ref: false,
-        immutable: false
-    };
+        ctx.types.u32,
+        ctx.mod.call("arena_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32)
+    );
 }
 
 export function toReturnType(
@@ -298,8 +204,37 @@ export function toReturnType(
     result: InstanceTypeInformation,
     result_expr: binaryen.ExpressionRef
 ): MiteType {
+    const ptr = new TransientPrimitive(
+        ctx,
+        result.classification === "primitive" ? result : ctx.types.u32,
+        result_expr
+    );
     if (result.classification === "primitive") {
-        return new Primitive(ctx, adapt(result), result_expr);
+        return ptr;
+    } else if (result.classification === "struct") {
+        return new Struct(ctx, result, new Pointer(ptr));
+    } else if (result.classification === "array") {
+        return new Array_(ctx, result, new Pointer(ptr));
+    } else {
+        return result;
     }
-    return createMiteType(ctx, result, new Primitive(ctx, adapt(ctx.types.u32), result_expr));
+}
+
+export function constructArray(ctx: Context, type: InstanceArrayTypeInformation): MiteType {
+    const address = allocate(ctx, type.element_type, type.sizeof);
+
+    ctx.current_block.push(
+        new TransientPrimitive(
+            ctx,
+            ctx.types.i32,
+            ctx.mod.i32.store(
+                0,
+                0,
+                address.get_expression_ref(),
+                ctx.mod.i32.const(type.length ?? 0)
+            )
+        )
+    );
+
+    return new Array_(ctx, type, new Pointer(address));
 }
