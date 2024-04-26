@@ -7,9 +7,9 @@ import {
     TypeInformation
 } from "../types/code_gen.js";
 import { Program, StructDeclaration } from "../types/nodes.js";
-import { MiteType, Primitive } from "./type_classes.js";
+import { MiteType, Primitive, TransientPrimitive } from "./type_classes.js";
 import binaryen from "binaryen";
-import { bigintToLowAndHigh, transient } from "./utils.js";
+import { bigintToLowAndHigh } from "./utils.js";
 
 export function createConversions(ctx: Context): Context["conversions"] {
     const unary_op =
@@ -18,7 +18,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
             result?: PrimitiveTypeInformation
         ) =>
         (expr: MiteType): MiteType => {
-            return transient(
+            return new TransientPrimitive(
                 ctx,
                 result ?? (expr as Primitive).type,
                 operation(expr.get_expression_ref())
@@ -52,7 +52,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
             i16: wrap_op("i32", "i16"),
             u16: wrap_op("i32", "u16"),
             i32: (value) => value,
-            u32: (value) => transient(ctx, ctx.types.u32, value.get_expression_ref()),
+            u32: (value) => new TransientPrimitive(ctx, ctx.types.u32, value.get_expression_ref()),
             // TODO: make sure extend_s is proper, should be though
             i64: unary_op(ctx.mod.i64.extend_s, Primitive.primitives.get("i64")!),
             u64: unary_op(ctx.mod.i64.extend_u, Primitive.primitives.get("u64")!),
@@ -68,7 +68,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
             u8: wrap_op("i32", "u8"),
             i16: wrap_op("i32", "i16"),
             u16: wrap_op("i32", "u16"),
-            i32: (value) => transient(ctx, ctx.types.i32, value.get_expression_ref()),
+            i32: (value) => new TransientPrimitive(ctx, ctx.types.i32, value.get_expression_ref()),
             u32: (value) => value,
             i64: unary_op(ctx.mod.i64.extend_s, Primitive.primitives.get("i64")!),
             u64: unary_op(ctx.mod.i64.extend_u, Primitive.primitives.get("u64")!),
@@ -87,7 +87,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
             i32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("i32")!),
             u32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("u32")!),
             i64: (value) => value,
-            u64: (value) => transient(ctx, ctx.types.u64, value.get_expression_ref()),
+            u64: (value) => new TransientPrimitive(ctx, ctx.types.u64, value.get_expression_ref()),
             f32: unary_op(ctx.mod.f32.convert_s.i64, Primitive.primitives.get("f32")!),
             f64: unary_op(ctx.mod.f64.convert_s.i64, Primitive.primitives.get("f64")!),
             i64x2: unary_op(ctx.mod.i64x2.splat, Primitive.primitives.get("i64x2")!)
@@ -99,7 +99,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
             u16: wrap_op("i64", "u16"),
             i32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("i32")!),
             u32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("u32")!),
-            i64: (value) => transient(ctx, ctx.types.i64, value.get_expression_ref()),
+            i64: (value) => new TransientPrimitive(ctx, ctx.types.i64, value.get_expression_ref()),
             u64: (value) => value,
             f32: unary_op(ctx.mod.f32.convert_u.i64, Primitive.primitives.get("f32")!),
             f64: unary_op(ctx.mod.f64.convert_u.i64, Primitive.primitives.get("f64")!),
@@ -125,67 +125,95 @@ export function createConversions(ctx: Context): Context["conversions"] {
         },
         v128: {
             v128: (value) => value,
-            i8x16: (value) => transient(ctx, ctx.types.i8x16, value.get_expression_ref()),
-            u8x16: (value) => transient(ctx, ctx.types.u8x16, value.get_expression_ref()),
-            i16x8: (value) => transient(ctx, ctx.types.i16x8, value.get_expression_ref()),
-            u16x8: (value) => transient(ctx, ctx.types.u16x8, value.get_expression_ref()),
-            i32x4: (value) => transient(ctx, ctx.types.i32x4, value.get_expression_ref()),
-            u32x4: (value) => transient(ctx, ctx.types.u32x4, value.get_expression_ref()),
-            i64x2: (value) => transient(ctx, ctx.types.i64x2, value.get_expression_ref()),
-            u64x2: (value) => transient(ctx, ctx.types.u64x2, value.get_expression_ref()),
-            f32x4: (value) => transient(ctx, ctx.types.f32x4, value.get_expression_ref()),
-            f64x2: (value) => transient(ctx, ctx.types.f64x2, value.get_expression_ref())
+            i8x16: (value) =>
+                new TransientPrimitive(ctx, ctx.types.i8x16, value.get_expression_ref()),
+            u8x16: (value) =>
+                new TransientPrimitive(ctx, ctx.types.u8x16, value.get_expression_ref()),
+            i16x8: (value) =>
+                new TransientPrimitive(ctx, ctx.types.i16x8, value.get_expression_ref()),
+            u16x8: (value) =>
+                new TransientPrimitive(ctx, ctx.types.u16x8, value.get_expression_ref()),
+            i32x4: (value) =>
+                new TransientPrimitive(ctx, ctx.types.i32x4, value.get_expression_ref()),
+            u32x4: (value) =>
+                new TransientPrimitive(ctx, ctx.types.u32x4, value.get_expression_ref()),
+            i64x2: (value) =>
+                new TransientPrimitive(ctx, ctx.types.i64x2, value.get_expression_ref()),
+            u64x2: (value) =>
+                new TransientPrimitive(ctx, ctx.types.u64x2, value.get_expression_ref()),
+            f32x4: (value) =>
+                new TransientPrimitive(ctx, ctx.types.f32x4, value.get_expression_ref()),
+            f64x2: (value) =>
+                new TransientPrimitive(ctx, ctx.types.f64x2, value.get_expression_ref())
         },
         i8x16: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
             i8x16: (value) => value,
-            u8x16: (value) => transient(ctx, ctx.types.u8x16, value.get_expression_ref())
+            u8x16: (value) =>
+                new TransientPrimitive(ctx, ctx.types.u8x16, value.get_expression_ref())
         },
         u8x16: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
-            i8x16: (value) => transient(ctx, ctx.types.i8x16, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
+            i8x16: (value) =>
+                new TransientPrimitive(ctx, ctx.types.i8x16, value.get_expression_ref()),
             u8x16: (value) => value
         },
         i16x8: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
             i16x8: (value) => value,
-            u16x8: (value) => transient(ctx, ctx.types.u16x8, value.get_expression_ref())
+            u16x8: (value) =>
+                new TransientPrimitive(ctx, ctx.types.u16x8, value.get_expression_ref())
         },
         u16x8: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
-            i16x8: (value) => transient(ctx, ctx.types.i16x8, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
+            i16x8: (value) =>
+                new TransientPrimitive(ctx, ctx.types.i16x8, value.get_expression_ref()),
             u16x8: (value) => value
         },
         i32x4: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
             i32x4: (value) => value,
-            u32x4: (value) => transient(ctx, ctx.types.u32x4, value.get_expression_ref()),
+            u32x4: (value) =>
+                new TransientPrimitive(ctx, ctx.types.u32x4, value.get_expression_ref()),
             f32x4: unary_op(ctx.mod.f32x4.convert_i32x4_s, ctx.types.f32x4)
         },
         u32x4: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
-            i32x4: (value) => transient(ctx, ctx.types.i32x4, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
+            i32x4: (value) =>
+                new TransientPrimitive(ctx, ctx.types.i32x4, value.get_expression_ref()),
             u32x4: (value) => value,
             f32x4: unary_op(ctx.mod.f32x4.convert_i32x4_u, ctx.types.f32x4)
         },
         f32x4: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
             i32x4: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_s, ctx.types.i32x4),
             u32x4: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_u, ctx.types.i32x4),
             f32x4: (value) => value
         },
         i64x2: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
             i64x2: (value) => value,
-            u64x2: (value) => transient(ctx, ctx.types.u64x2, value.get_expression_ref())
+            u64x2: (value) =>
+                new TransientPrimitive(ctx, ctx.types.u64x2, value.get_expression_ref())
         },
         u64x2: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
-            i64x2: (value) => transient(ctx, ctx.types.i64x2, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
+            i64x2: (value) =>
+                new TransientPrimitive(ctx, ctx.types.i64x2, value.get_expression_ref()),
             u64x2: (value) => value
         },
         f64x2: {
-            v128: (value) => transient(ctx, ctx.types.v128, value.get_expression_ref()),
+            v128: (value) =>
+                new TransientPrimitive(ctx, ctx.types.v128, value.get_expression_ref()),
             f64x2: (value) => value
         }
     };
@@ -198,7 +226,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             result?: PrimitiveTypeInformation
         ) =>
         (expr: MiteType): MiteType => {
-            return transient(
+            return new TransientPrimitive(
                 ctx,
                 result ?? (expr as Primitive).type,
                 operation(expr.get_expression_ref())
@@ -213,7 +241,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             result?: PrimitiveTypeInformation
         ) =>
         (left: MiteType, right: MiteType): MiteType => {
-            return transient(
+            return new TransientPrimitive(
                 ctx,
                 result ?? (left as Primitive).type,
                 operation(left.get_expression_ref(), right.get_expression_ref())
@@ -229,7 +257,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             result?: PrimitiveTypeInformation
         ) =>
         (first: MiteType, second: MiteType, third: MiteType): MiteType => {
-            return transient(
+            return new TransientPrimitive(
                 ctx,
                 result ?? (first as Primitive).type,
                 operation(
@@ -327,7 +355,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i32")!,
                     ctx.mod.i8x16.extract_lane_s(
@@ -343,7 +371,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i8x16")!,
                     ctx.mod.i8x16.replace_lane(
@@ -365,7 +393,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     throw new Error("Expected constant SIMD mask");
                 }
 
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i8x16")!,
                     ctx.mod.i8x16.shuffle(
@@ -400,7 +428,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i32")!,
                     ctx.mod.i8x16.extract_lane_u(
@@ -416,7 +444,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("u8x16")!,
                     ctx.mod.i8x16.replace_lane(
@@ -451,7 +479,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i32")!,
                     ctx.mod.i16x8.extract_lane_s(
@@ -467,7 +495,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i16x8")!,
                     ctx.mod.i16x8.replace_lane(
@@ -502,7 +530,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i32")!,
                     ctx.mod.i16x8.extract_lane_u(
@@ -518,7 +546,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("u16x8")!,
                     ctx.mod.i16x8.replace_lane(
@@ -550,7 +578,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i32")!,
                     ctx.mod.i32x4.extract_lane(
@@ -566,7 +594,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i32x4")!,
                     ctx.mod.i32x4.replace_lane(
@@ -598,7 +626,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("u32")!,
                     ctx.mod.i32x4.extract_lane(
@@ -614,7 +642,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("u32x4")!,
                     ctx.mod.i32x4.replace_lane(
@@ -639,7 +667,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                const result = transient(
+                const result = new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i64")!,
                     ctx.mod.i64x2.extract_lane(
@@ -656,7 +684,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     binaryen.ExpressionIds.Const
                 )
                     throw new Error("Expected constant extraction index");
-                const result = transient(
+                const result = new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("i64x2")!,
                     ctx.mod.i64x2.replace_lane(
@@ -683,7 +711,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                 )
                     throw new Error("Expected constant extraction index");
 
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("u64")!,
                     ctx.mod.i64x2.extract_lane(
@@ -702,7 +730,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                     throw new Error("Expected constant extraction index");
                 }
 
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("u64x2")!,
                     ctx.mod.i64x2.replace_lane(
@@ -738,7 +766,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                 )
                     throw new Error("Expected constant extraction index");
 
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("f32")!,
                     ctx.mod.f32x4.extract_lane(
@@ -755,7 +783,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                 )
                     throw new Error("Expected constant extraction index");
 
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("f32x4")!,
                     ctx.mod.f32x4.replace_lane(
@@ -791,7 +819,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                 )
                     throw new Error("Expected constant extraction index");
 
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("f64")!,
                     ctx.mod.f64x2.extract_lane(
@@ -808,7 +836,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                 )
                     throw new Error("Expected constant extraction index");
 
-                return transient(
+                return new TransientPrimitive(
                     ctx,
                     Primitive.primitives.get("f64x2")!,
                     ctx.mod.f64x2.replace_lane(
