@@ -19,19 +19,8 @@ import {
     PrimitiveTypeInformation,
     InstancePrimitiveTypeInformation
 } from "../types/code_gen.js";
-import { adapt, createMiteType, transient } from "./utils.js";
+import { createMiteType } from "./utils.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
-
-export enum AllocationLocation {
-    Local = "local",
-    Arena = "arena",
-    Stack = "stack",
-    JS = "js",
-    Table = "table",
-    Transient = "transient"
-}
-
-export type LinearMemoryLocation = AllocationLocation.Arena | AllocationLocation.JS;
 
 export abstract class MiteType {
     // get the value as a primitive (pointer for structs and arrays, value for locals)
@@ -53,7 +42,7 @@ export abstract class MiteType {
     abstract type: InstanceTypeInformation;
 }
 
-export class Primitive implements MiteType {
+export abstract class Primitive implements MiteType {
     static primitiveToBinaryen = new Map([
         ["void", binaryen.none],
         ["bool", binaryen.i32],
@@ -108,41 +97,12 @@ export class Primitive implements MiteType {
         if (!Primitive.primitives.has(type)) throw new Error(`Invalid primitive type ${type}`);
         return Primitive.primitives.get(type)!.sizeof;
     }
-    private binaryenType: binaryen.Type;
-    private get pointer(): binaryen.ExpressionRef {
-        if (typeof this.local_index_or_pointer === "number") throw new Error("unreachable");
-        return this.ctx.mod.copyExpression(this.local_index_or_pointer.get_expression_ref());
-    }
-    private get local_index(): number {
-        if (typeof this.local_index_or_pointer === "number") return this.local_index_or_pointer;
-        throw new Error("unreachable");
-    }
-    private get expression(): number {
-        return this.local_index;
-    }
+    protected binaryenType: binaryen.Type;
 
     constructor(
-        private ctx: Context,
-        public type: InstancePrimitiveTypeInformation,
-        private local_index_or_pointer: number | MiteType | binaryen.ExpressionRef
+        protected readonly ctx: Context,
+        public readonly type: InstancePrimitiveTypeInformation
     ) {
-        if (
-            type.location === AllocationLocation.Local &&
-            typeof local_index_or_pointer !== "number"
-        ) {
-            throw new Error("Local allocation must have a local index");
-        } else if (
-            (type.location === AllocationLocation.Arena ||
-                type.location === AllocationLocation.JS) &&
-            typeof local_index_or_pointer === "number"
-        ) {
-            throw new Error("Linear memory allocation must have a pointer");
-        } else if (
-            type.location === AllocationLocation.Transient &&
-            typeof local_index_or_pointer !== "number"
-        ) {
-            throw new Error("Transient allocation must have an expression");
-        }
         if (!Primitive.primitiveToBinaryen.has(type.name))
             throw new Error(`Invalid primitive type ${type.name}`);
 
@@ -153,152 +113,11 @@ export class Primitive implements MiteType {
         return this.ctx.mod.i32.const(Primitive.sizeof(this.type.name));
     }
 
-    get(): Primitive {
-        let expr: binaryen.ExpressionRef;
-        if (this.type.location === AllocationLocation.Local) {
-            expr = this.ctx.mod.local.get(this.local_index, this.binaryenType);
-            if (this.type.name == "bool") {
-                expr = this.ctx.mod.i32.gt_u(expr, this.ctx.mod.i32.const(0));
-            } else if (this.type.name === "i8") {
-                expr = this.ctx.mod.i32.extend8_s(expr);
-            } else if (this.type.name === "u8") {
-                expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xff));
-            } else if (this.type.name === "i16") {
-                expr = this.ctx.mod.i32.extend16_s(expr);
-            } else if (this.type.name === "u16") {
-                expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xffff));
-            }
-        } else if (this.type.location === AllocationLocation.Transient) {
-            expr = this.expression;
-        } else {
-            if (this.binaryenType === binaryen.i32) {
-                if (this.type.name == "bool") {
-                    expr = this.ctx.mod.i32.gt_u(
-                        this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory"),
-                        this.ctx.mod.i32.const(0)
-                    );
-                } else if (this.type.name === "i8") {
-                    expr = this.ctx.mod.i32.load8_s(0, 0, this.pointer, "main_memory");
-                } else if (this.type.name === "u8") {
-                    expr = this.ctx.mod.i32.load8_u(0, 0, this.pointer, "main_memory");
-                } else if (this.type.name === "i16") {
-                    expr = this.ctx.mod.i32.load16_s(0, 0, this.pointer, "main_memory");
-                } else if (this.type.name === "u16") {
-                    expr = this.ctx.mod.i32.load16_u(0, 0, this.pointer, "main_memory");
-                } else {
-                    expr = this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory");
-                }
-            } else if (this.binaryenType === binaryen.i64) {
-                expr = this.ctx.mod.i64.load(0, 0, this.pointer, "main_memory");
-            } else if (this.binaryenType === binaryen.f32) {
-                expr = this.ctx.mod.f32.load(0, 0, this.pointer, "main_memory");
-            } else if (this.binaryenType === binaryen.f64) {
-                expr = this.ctx.mod.f64.load(0, 0, this.pointer, "main_memory");
-            } else if (this.binaryenType === binaryen.v128) {
-                expr = this.ctx.mod.v128.load(0, 0, this.pointer, "main_memory");
-            } else {
-                throw new Error("unreachable");
-            }
-        }
-        return transient(this.ctx, this.type, expr);
-    }
+    abstract get(): Primitive;
 
-    get_expression_ref(): binaryen.ExpressionRef {
-        return this.ctx.mod.copyExpression(this.get().expression);
-    }
+    abstract get_expression_ref(): binaryen.ExpressionRef;
 
-    set(value: MiteType): MiteType {
-        if (value.type.name !== this.type.name) {
-            throw new Error(`Cannot set ${this.type.name} to ${value.type.name}`);
-        }
-        let expr;
-        if (this.type.location === AllocationLocation.Local) {
-            const val = value.get_expression_ref();
-            if (this.type.name == "bool") {
-                expr = this.ctx.mod.i32.gt_u(val, this.ctx.mod.i32.const(0));
-            } else if (this.type.name === "i8") {
-                expr = this.ctx.mod.i32.extend8_s(val);
-            } else if (this.type.name === "u8") {
-                expr = this.ctx.mod.i32.and(val, this.ctx.mod.i32.const(0xff));
-            } else if (this.type.name === "i16") {
-                expr = this.ctx.mod.i32.extend16_s(val);
-            } else if (this.type.name === "u16") {
-                expr = this.ctx.mod.i32.and(val, this.ctx.mod.i32.const(0xffff));
-            }
-            expr = this.ctx.mod.local.tee(this.local_index, val, this.binaryenType);
-        } else if (this.type.location === AllocationLocation.Transient) {
-            throw new Error("Cannot set transient value");
-        } else {
-            const params = [0, 0, this.pointer, value.get_expression_ref(), "main_memory"] as const;
-            // replicate tee behavior
-            // TODO: ensure binaryen optimizes out the extra load
-            if (this.binaryenType === binaryen.i32) {
-                if (this.type.name == "bool") {
-                    expr = this.ctx.mod.block(null, [
-                        this.ctx.mod.i32.store(
-                            0,
-                            0,
-                            this.pointer,
-                            this.ctx.mod.i32.gt_u(
-                                value.get_expression_ref(),
-                                this.ctx.mod.i32.const(0)
-                            ),
-                            "main_memory"
-                        ),
-                        this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory")
-                    ]);
-                } else if (this.type.name === "i8") {
-                    expr = this.ctx.mod.block(null, [
-                        this.ctx.mod.i32.store8(...params),
-                        this.ctx.mod.i32.load8_s(0, 0, this.pointer, "main_memory")
-                    ]);
-                } else if (this.type.name === "u8") {
-                    expr = this.ctx.mod.block(null, [
-                        this.ctx.mod.i32.store8(...params),
-                        this.ctx.mod.i32.load8_u(0, 0, this.pointer, "main_memory")
-                    ]);
-                } else if (this.type.name === "i16") {
-                    expr = this.ctx.mod.block(null, [
-                        this.ctx.mod.i32.store16(...params),
-                        this.ctx.mod.i32.load16_s(0, 0, this.pointer, "main_memory")
-                    ]);
-                } else if (this.type.name === "u16") {
-                    expr = this.ctx.mod.block(null, [
-                        this.ctx.mod.i32.store16(...params),
-                        this.ctx.mod.i32.load16_u(0, 0, this.pointer, "main_memory")
-                    ]);
-                } else {
-                    expr = this.ctx.mod.block(null, [
-                        this.ctx.mod.i32.store(...params),
-                        this.ctx.mod.i32.load(0, 0, this.pointer, "main_memory")
-                    ]);
-                }
-            } else if (this.binaryenType === binaryen.i64) {
-                expr = this.ctx.mod.block(null, [
-                    this.ctx.mod.i64.store(...params),
-                    this.ctx.mod.i64.load(0, 0, this.pointer, "main_memory")
-                ]);
-            } else if (this.binaryenType === binaryen.f32) {
-                expr = this.ctx.mod.block(null, [
-                    this.ctx.mod.f32.store(...params),
-                    this.ctx.mod.f32.load(0, 0, this.pointer, "main_memory")
-                ]);
-            } else if (this.binaryenType === binaryen.f64) {
-                expr = this.ctx.mod.block(null, [
-                    this.ctx.mod.f64.store(...params),
-                    this.ctx.mod.f64.load(0, 0, this.pointer, "main_memory")
-                ]);
-            } else if (this.binaryenType === binaryen.v128) {
-                expr = this.ctx.mod.block(null, [
-                    this.ctx.mod.v128.store(...params),
-                    this.ctx.mod.v128.load(0, 0, this.pointer, "main_memory")
-                ]);
-            } else {
-                throw new Error("unreachable");
-            }
-        }
-        return transient(this.ctx, this.type, expr);
-    }
+    abstract set(value: MiteType): MiteType;
 
     access(accessor: string): MiteType {
         throw new Error("Unable to access properties of a primitive.");
@@ -320,7 +139,7 @@ export class Primitive implements MiteType {
                 if (left.type.name !== this.type.name || this.type.classification !== "primitive") {
                     throw new Error(`Cannot operate on ${this.type.name} with ${left.type.name}`);
                 }
-                return transient(
+                return new TransientPrimitive(
                     this.ctx,
                     result ?? (left as Primitive).type,
                     operation(left.get_expression_ref(), right.get_expression_ref())
@@ -849,15 +668,259 @@ export class Primitive implements MiteType {
     }
 }
 
-export class Struct implements MiteType {
+export class TransientPrimitive extends Primitive {
     constructor(
-        private ctx: Context,
-        public type: InstanceStructTypeInformation,
-        private address: Primitive
+        ctx: Context,
+        public readonly type: InstancePrimitiveTypeInformation,
+        private readonly expression: binaryen.ExpressionRef
+    ) {
+        super(ctx, type);
+    }
+
+    get_expression_ref(): binaryen.ExpressionRef {
+        return this.ctx.mod.copyExpression(this.expression);
+    }
+
+    get(): Primitive {
+        return this;
+    }
+
+    set(value: MiteType): MiteType {
+        throw new Error("Cannot set transient value");
+    }
+}
+
+export class LinearMemoryPrimitive extends Primitive {
+    constructor(
+        ctx: Context,
+        type: InstancePrimitiveTypeInformation,
+        private readonly pointer: MiteType
+    ) {
+        super(ctx, type);
+    }
+
+    get_expression_ref(): binaryen.ExpressionRef {
+        return this.get().get_expression_ref();
+    }
+
+    get(): Primitive {
+        const ptr = this.pointer.get_expression_ref();
+        let expr;
+        if (this.binaryenType === binaryen.i32) {
+            if (this.type.name == "bool") {
+                expr = this.ctx.mod.i32.gt_u(
+                    this.ctx.mod.i32.load(0, 0, ptr, "main_memory"),
+                    this.ctx.mod.i32.const(0)
+                );
+            } else if (this.type.name === "i8") {
+                expr = this.ctx.mod.i32.load8_s(0, 0, ptr, "main_memory");
+            } else if (this.type.name === "u8") {
+                expr = this.ctx.mod.i32.load8_u(0, 0, ptr, "main_memory");
+            } else if (this.type.name === "i16") {
+                expr = this.ctx.mod.i32.load16_s(0, 0, ptr, "main_memory");
+            } else if (this.type.name === "u16") {
+                expr = this.ctx.mod.i32.load16_u(0, 0, ptr, "main_memory");
+            } else {
+                expr = this.ctx.mod.i32.load(0, 0, ptr, "main_memory");
+            }
+        } else if (this.binaryenType === binaryen.i64) {
+            expr = this.ctx.mod.i64.load(0, 0, ptr, "main_memory");
+        } else if (this.binaryenType === binaryen.f32) {
+            expr = this.ctx.mod.f32.load(0, 0, ptr, "main_memory");
+        } else if (this.binaryenType === binaryen.f64) {
+            expr = this.ctx.mod.f64.load(0, 0, ptr, "main_memory");
+        } else if (this.binaryenType === binaryen.v128) {
+            expr = this.ctx.mod.v128.load(0, 0, ptr, "main_memory");
+        } else {
+            throw new Error("unreachable");
+        }
+        return new TransientPrimitive(this.ctx, this.type, expr);
+    }
+
+    set(value: MiteType): MiteType {
+        if (value.type.name !== this.type.name) {
+            throw new Error(`Cannot set ${this.type.name} to ${value.type.name}`);
+        }
+
+        let expr;
+        const ptr = this.pointer.get_expression_ref();
+        const params = [0, 0, ptr, value.get_expression_ref(), "main_memory"] as const;
+        // replicate tee behavior
+        // TODO: ensure binaryen optimizes out the extra load
+        if (this.binaryenType === binaryen.i32) {
+            if (this.type.name == "bool") {
+                expr = this.ctx.mod.block(null, [
+                    this.ctx.mod.i32.store(
+                        0,
+                        0,
+                        ptr,
+                        this.ctx.mod.i32.gt_u(
+                            value.get_expression_ref(),
+                            this.ctx.mod.i32.const(0)
+                        ),
+                        "main_memory"
+                    ),
+                    this.ctx.mod.i32.load(0, 0, ptr, "main_memory")
+                ]);
+            } else if (this.type.name === "i8") {
+                expr = this.ctx.mod.block(null, [
+                    this.ctx.mod.i32.store8(...params),
+                    this.ctx.mod.i32.load8_s(0, 0, ptr, "main_memory")
+                ]);
+            } else if (this.type.name === "u8") {
+                expr = this.ctx.mod.block(null, [
+                    this.ctx.mod.i32.store8(...params),
+                    this.ctx.mod.i32.load8_u(0, 0, ptr, "main_memory")
+                ]);
+            } else if (this.type.name === "i16") {
+                expr = this.ctx.mod.block(null, [
+                    this.ctx.mod.i32.store16(...params),
+                    this.ctx.mod.i32.load16_s(0, 0, ptr, "main_memory")
+                ]);
+            } else if (this.type.name === "u16") {
+                expr = this.ctx.mod.block(null, [
+                    this.ctx.mod.i32.store16(...params),
+                    this.ctx.mod.i32.load16_u(0, 0, ptr, "main_memory")
+                ]);
+            } else {
+                expr = this.ctx.mod.block(null, [
+                    this.ctx.mod.i32.store(...params),
+                    this.ctx.mod.i32.load(0, 0, ptr, "main_memory")
+                ]);
+            }
+        } else if (this.binaryenType === binaryen.i64) {
+            expr = this.ctx.mod.block(null, [
+                this.ctx.mod.i64.store(...params),
+                this.ctx.mod.i64.load(0, 0, ptr, "main_memory")
+            ]);
+        } else if (this.binaryenType === binaryen.f32) {
+            expr = this.ctx.mod.block(null, [
+                this.ctx.mod.f32.store(...params),
+                this.ctx.mod.f32.load(0, 0, ptr, "main_memory")
+            ]);
+        } else if (this.binaryenType === binaryen.f64) {
+            expr = this.ctx.mod.block(null, [
+                this.ctx.mod.f64.store(...params),
+                this.ctx.mod.f64.load(0, 0, ptr, "main_memory")
+            ]);
+        } else if (this.binaryenType === binaryen.v128) {
+            expr = this.ctx.mod.block(null, [
+                this.ctx.mod.v128.store(...params),
+                this.ctx.mod.v128.load(0, 0, ptr, "main_memory")
+            ]);
+        } else {
+            throw new Error("unreachable");
+        }
+        return new TransientPrimitive(this.ctx, this.type, expr);
+    }
+}
+
+export class LocalPrimitive extends Primitive {
+    constructor(
+        ctx: Context,
+        public readonly type: InstancePrimitiveTypeInformation,
+        private readonly local_index: number
+    ) {
+        super(ctx, type);
+    }
+
+    get_expression_ref(): binaryen.ExpressionRef {
+        return this.get().get_expression_ref();
+    }
+
+    get(): Primitive {
+        let expr = this.ctx.mod.local.get(this.local_index, this.binaryenType);
+        if (this.type.name == "bool") {
+            expr = this.ctx.mod.i32.gt_u(expr, this.ctx.mod.i32.const(0));
+        } else if (this.type.name === "i8") {
+            expr = this.ctx.mod.i32.extend8_s(expr);
+        } else if (this.type.name === "u8") {
+            expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xff));
+        } else if (this.type.name === "i16") {
+            expr = this.ctx.mod.i32.extend16_s(expr);
+        } else if (this.type.name === "u16") {
+            expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xffff));
+        }
+        return new TransientPrimitive(this.ctx, this.type, expr);
+    }
+
+    set(value: MiteType): MiteType {
+        if (value.type.name !== this.type.name) {
+            throw new Error(`Cannot set ${this.type.name} to ${value.type.name}`);
+        }
+
+        let expr = value.get_expression_ref();
+        if (this.type.name == "bool") {
+            expr = this.ctx.mod.i32.gt_u(expr, this.ctx.mod.i32.const(0));
+        } else if (this.type.name === "i8") {
+            expr = this.ctx.mod.i32.extend8_s(expr);
+        } else if (this.type.name === "u8") {
+            expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xff));
+        } else if (this.type.name === "i16") {
+            expr = this.ctx.mod.i32.extend16_s(expr);
+        } else if (this.type.name === "u16") {
+            expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xffff));
+        }
+        return new TransientPrimitive(
+            this.ctx,
+            this.type,
+            this.ctx.mod.local.tee(this.local_index, expr, this.binaryenType)
+        );
+    }
+}
+
+export class Pointer implements MiteType {
+    public static type = Primitive.primitives.get("u32")!;
+    public type = Primitive.primitives.get("u32")!;
+
+    constructor(private readonly pointer: Primitive) {
+        if (pointer.type.name !== "u32") {
+            throw new Error("Pointer must be u32");
+        }
+    }
+
+    get_expression_ref(): binaryen.ExpressionRef {
+        return this.pointer.get_expression_ref();
+    }
+
+    get(): Primitive {
+        return this.pointer.get();
+    }
+
+    set(value: MiteType): MiteType {
+        return this.pointer.set(value);
+    }
+
+    access(_: string): MiteType {
+        throw new Error("Cannot access on pointer value");
+    }
+
+    index(_: MiteType): MiteType {
+        throw new Error("Cannot index pointer value");
+    }
+
+    sizeof(): number {
+        return this.pointer.sizeof();
+    }
+
+    operator(operator: BinaryOperator): BinaryOperatorHandler {
+        throw new Error(`Invalid operator ${operator} for pointer`);
+    }
+}
+
+export abstract class AggregateType<T extends InstanceTypeInformation> implements MiteType {
+    constructor(
+        protected ctx: Context,
+        public type: T,
+        protected address: Pointer
     ) {}
 
     get(): Primitive {
-        return this.address;
+        return new TransientPrimitive(
+            this.ctx,
+            this.address.type,
+            this.address.get_expression_ref()
+        );
     }
 
     get_expression_ref() {
@@ -865,19 +928,19 @@ export class Struct implements MiteType {
     }
 
     set(value: MiteType): MiteType {
-        const value_type = value.type as InstanceStructTypeInformation;
-        if (value_type.classification !== "struct" || value_type.name !== this.type.name) {
+        const value_type = value.type as InstanceTypeInformation;
+        if (
+            value_type.classification !== this.type.classification ||
+            value_type.name !== this.type.name
+        ) {
             throw new Error(`Unable to assign ${value_type.name} to ${this.type.name}`);
         }
-        if (this.type.immutable) {
-            throw new Error(`Unable to assign to immutable array ${this.type.name}`);
-        }
 
-        if ((!this.address.type.immutable && value_type.is_ref) || this.type.is_ref) {
+        if (value_type.is_ref || this.type.is_ref) {
             return this.address.set(value);
         } else {
             this.ctx.current_block.push(
-                transient(
+                new TransientPrimitive(
                     this.ctx,
                     this.ctx.types.void,
                     this.ctx.mod.memory.copy(
@@ -893,18 +956,24 @@ export class Struct implements MiteType {
         }
     }
 
+    abstract access(accessor: string): MiteType;
+    abstract index(index: MiteType): MiteType;
+    abstract sizeof(): binaryen.ExpressionRef;
+
+    operator(operator: BinaryOperator): BinaryOperatorHandler {
+        throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
+    }
+}
+
+export class Struct extends AggregateType<InstanceStructTypeInformation> {
     access(accessor: string): MiteType {
         if (!this.type.fields.has(accessor))
             throw new Error(`Struct ${this.type.name} does not have field ${accessor}`);
-        const field = this.type.fields.get(accessor)!;
-        const type = {
-            ...field.type,
-            location: this.type.location,
-            is_ref: field.is_ref,
-            immutable: this.type.immutable
-        };
 
-        const addr = transient(
+        const field = this.type.fields.get(accessor)!;
+        const type = { ...field.type, is_ref: field.is_ref };
+
+        const addr = new TransientPrimitive(
             this.ctx,
             this.ctx.types.u32,
             this.ctx.mod.i32.add(this.get_expression_ref(), this.ctx.mod.i32.const(field.offset))
@@ -914,71 +983,24 @@ export class Struct implements MiteType {
             return createMiteType(
                 this.ctx,
                 type,
-                new Primitive(this.ctx, adapt(this.ctx.types.u32, this.type.location), addr)
+                new LinearMemoryPrimitive(this.ctx, this.ctx.types.u32, addr)
             );
         } else {
             return createMiteType(this.ctx, type, addr);
         }
     }
 
-    index(index: MiteType): MiteType {
+    index(_: MiteType): MiteType {
         throw new Error("Unable to access indices of a struct.");
     }
 
     sizeof(): number {
         return this.ctx.mod.i32.const(this.type.sizeof);
     }
-
-    operator(operator: BinaryOperator): BinaryOperatorHandler {
-        throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
-    }
 }
 
-export class Array implements MiteType {
-    constructor(
-        private ctx: Context,
-        public type: InstanceArrayTypeInformation,
-        private address: Primitive
-    ) {}
-
-    get(): Primitive {
-        return this.address;
-    }
-
-    get_expression_ref() {
-        return this.address.get_expression_ref();
-    }
-
-    set(value: MiteType): MiteType {
-        const value_type = value.type as InstanceStructTypeInformation;
-        if (value_type.classification !== "struct" || value_type.name !== this.type.name) {
-            throw new Error(`Unable to assign ${value_type.name} to ${this.type.name}`);
-        }
-        if (this.type.immutable) {
-            throw new Error(`Unable to assign to immutable array ${this.type.name}`);
-        }
-
-        if ((!this.address.type.immutable && value_type.is_ref) || this.type.is_ref) {
-            return this.address.set(value);
-        } else {
-            this.ctx.current_block.push(
-                transient(
-                    this.ctx,
-                    this.ctx.types.void,
-                    this.ctx.mod.memory.copy(
-                        this.get_expression_ref(),
-                        value.get_expression_ref(),
-                        this.sizeof(),
-                        "main_memory",
-                        "main_memory"
-                    )
-                )
-            );
-            return this.address;
-        }
-    }
-
-    access(accessor: string): MiteType {
+export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
+    access(_: string): MiteType {
         throw new Error("Unable to access properties of an array.");
     }
 
@@ -988,7 +1010,7 @@ export class Array implements MiteType {
 
         const offset = this.address.sizeof();
 
-        const addr = transient(
+        const addr = new TransientPrimitive(
             this.ctx,
             this.ctx.types.u32,
             this.ctx.mod.i32.add(
@@ -1007,11 +1029,7 @@ export class Array implements MiteType {
             return createMiteType(
                 this.ctx,
                 this.type.element_type,
-                new Primitive(
-                    this.ctx,
-                    adapt(this.ctx.types.u32, this.type.element_type.location),
-                    addr
-                )
+                new LinearMemoryPrimitive(this.ctx, this.ctx.types.u32, addr)
             );
         } else {
             return createMiteType(this.ctx, this.type.element_type, addr);
@@ -1026,10 +1044,6 @@ export class Array implements MiteType {
                 this.type.element_type.sizeof
             )
         );
-    }
-
-    operator(operator: BinaryOperator): BinaryOperatorHandler {
-        throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
     }
 }
 
