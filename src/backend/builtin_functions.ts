@@ -53,8 +53,8 @@ export function addBuiltins(ctx: Context) {
     // prettier-ignore
     const arena_heap_malloc = ctx.mod.block(null, [
         ctx.mod.if(
-            i32.gt_u(
-                i32.add(DESIRED_SIZE.get(), ARENA_HEAP_OFFSET.get()),
+            i32.ge_u(
+                i32.add(DESIRED_SIZE.get(), i32.add(ARENA_HEAP_OFFSET.get(), ARENA_HEAP_POINTER.get())),
                 i32.mul(ctx.mod.memory.size("main_memory"), i32.const(PAGE_SIZE))),
             ctx.mod.memory.grow(ctx.mod.memory.size("main_memory"), "main_memory")),
 
