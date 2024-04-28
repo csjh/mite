@@ -831,7 +831,7 @@ export class Parser {
         const has_floats = values.some((x) => typeof x === "number");
 
         let literalType: SIMDLiteral["literalType"];
-        let bytes: TypedArray;
+        let bytes: NodeJS.TypedArray;
         if (values.length === 2) {
             if (has_floats) {
                 bytes = Float64Array.from(values.map(Number));
