@@ -226,6 +226,16 @@ export class Parser {
         }
     }
 
+    private eatToken(type: TokenType) {
+        this.expectToken(type);
+        this.idx++;
+    }
+
+    private takeToken(type: TokenType) {
+        this.expectToken(type);
+        return this.tokens[this.idx++].value;
+    }
+
     /*
     fn identifier(variable: type): type {
         // body
@@ -234,22 +244,18 @@ export class Parser {
     */
     private parseFunction(isMethod: boolean = false): FunctionDeclaration {
         if (!isMethod) {
-            this.expectToken(TokenType.FN);
-            this.idx++;
+            this.eatToken(TokenType.FN);
         }
 
-        this.expectToken(TokenType.IDENTIFIER);
-        const name = this.tokens[this.idx++].value;
+        const name = this.takeToken(TokenType.IDENTIFIER);
 
-        this.expectToken(TokenType.LEFT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.LEFT_PAREN);
 
         const params: TypedParameter[] = [];
         while (this.token.type !== TokenType.RIGHT_PAREN) {
             const name = this.getIdentifier();
 
-            this.expectToken(TokenType.COLON);
-            this.idx++;
+            this.eatToken(TokenType.COLON);
 
             const typeAnnotation = this.parseType();
 
@@ -258,10 +264,8 @@ export class Parser {
             if (this.token.type === TokenType.COMMA) this.idx++;
         }
 
-        this.expectToken(TokenType.RIGHT_PAREN);
-        this.idx++;
-        this.expectToken(TokenType.COLON);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_PAREN);
+        this.eatToken(TokenType.COLON);
 
         const returnType = this.parseType();
 
@@ -280,14 +284,12 @@ export class Parser {
     }
 
     private parseIfExpression(): IfExpression {
-        this.expectToken(TokenType.IF);
-        this.idx++;
+        this.eatToken(TokenType.IF);
+        this.eatToken(TokenType.LEFT_PAREN);
 
-        this.expectToken(TokenType.LEFT_PAREN);
-        this.idx++;
         const test = this.parseExpression();
-        this.expectToken(TokenType.RIGHT_PAREN);
-        this.idx++;
+
+        this.eatToken(TokenType.RIGHT_PAREN);
 
         const consequent = this.parseExpression();
 
@@ -306,26 +308,23 @@ export class Parser {
     }
 
     private parseForExpression(): ForExpression {
-        this.expectToken(TokenType.FOR);
-        this.idx++;
-
-        this.expectToken(TokenType.LEFT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.FOR);
+        this.eatToken(TokenType.LEFT_PAREN);
 
         const init =
             this.token.type === TokenType.LET || this.token.type === TokenType.CONST
                 ? this.parseVariableDeclaration()
                 : this.parseExpression();
-        this.expectToken(TokenType.SEMICOLON);
-        this.idx++;
+
+        this.eatToken(TokenType.SEMICOLON);
 
         const test = this.parseExpression();
-        this.expectToken(TokenType.SEMICOLON);
-        this.idx++;
+
+        this.eatToken(TokenType.SEMICOLON);
 
         const update = this.parseExpression();
-        this.expectToken(TokenType.RIGHT_PAREN);
-        this.idx++;
+
+        this.eatToken(TokenType.RIGHT_PAREN);
 
         const body = this.parseExpression();
 
@@ -339,21 +338,16 @@ export class Parser {
     }
 
     private parseDoWhileLoop(): DoWhileExpression {
-        this.expectToken(TokenType.DO);
-        this.idx++;
+        this.eatToken(TokenType.DO);
 
         const body = this.parseExpression();
 
-        this.expectToken(TokenType.WHILE);
-        this.idx++;
-
-        this.expectToken(TokenType.LEFT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.WHILE);
+        this.eatToken(TokenType.LEFT_PAREN);
 
         const test = this.parseExpression();
 
-        this.expectToken(TokenType.RIGHT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_PAREN);
 
         return {
             type: "DoWhileExpression",
@@ -363,16 +357,12 @@ export class Parser {
     }
 
     private parseWhileLoop(): WhileExpression {
-        this.expectToken(TokenType.WHILE);
-        this.idx++;
-
-        this.expectToken(TokenType.LEFT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.WHILE);
+        this.eatToken(TokenType.LEFT_PAREN);
 
         const test = this.parseExpression();
 
-        this.expectToken(TokenType.RIGHT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_PAREN);
 
         const body = this.parseExpression();
 
@@ -384,8 +374,7 @@ export class Parser {
     }
 
     private parseSequenceExpression(): SequenceExpression {
-        this.expectToken(TokenType.LEFT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.LEFT_PAREN);
 
         const expression: SequenceExpression = {
             type: "SequenceExpression",
@@ -397,15 +386,13 @@ export class Parser {
         expression.expressions.push(node);
         // } while (this.token.type === TokenType.COMMA && ++this.idx);
 
-        this.expectToken(TokenType.RIGHT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_PAREN);
 
         return expression;
     }
 
     private parseBlock(): BlockExpression {
-        this.expectToken(TokenType.LEFT_BRACE);
-        this.idx++;
+        this.eatToken(TokenType.LEFT_BRACE);
 
         const expression: BlockExpression = {
             type: "BlockExpression",
@@ -417,8 +404,7 @@ export class Parser {
             expression.body.push(node);
         }
 
-        this.expectToken(TokenType.RIGHT_BRACE);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_BRACE);
 
         return expression;
     }
@@ -443,8 +429,7 @@ export class Parser {
         }
 
         // statements end with a semicolon
-        this.expectToken(TokenType.SEMICOLON);
-        this.idx++;
+        this.eatToken(TokenType.SEMICOLON);
 
         return statement;
     }
@@ -761,14 +746,9 @@ export class Parser {
     }
 
     private getIdentifier(): Identifier {
-        const token = this.tokens[this.idx++];
-        if (token.type !== TokenType.IDENTIFIER) {
-            throw new Error(`Expected identifier, got ${token.type}`);
-        }
-        return {
-            type: "Identifier",
-            name: token.value
-        };
+        const name = this.takeToken(TokenType.IDENTIFIER);
+
+        return { type: "Identifier", name };
     }
 
     // private getBooleanLiteral(): BooleanLiteral {
@@ -784,7 +764,7 @@ export class Parser {
     // }
 
     private getNumberLiteral(): NumberLiteral {
-        const raw = this.tokens[this.idx++].value;
+        const raw = this.takeToken(TokenType.NUMBER);
         let value: bigint | number;
         // prettier-ignore
         try { value = BigInt(raw); } catch { value = Number(raw); }
@@ -847,8 +827,7 @@ export class Parser {
 
     // i32x4 n = { 1, 2, 3, 4 };
     private getSIMDLiteral(): SIMDLiteral {
-        this.expectToken(TokenType.LEFT_BRACE);
-        this.idx++;
+        this.eatToken(TokenType.LEFT_BRACE);
 
         const values: (number | bigint)[] = [];
         while (this.token.type !== TokenType.RIGHT_BRACE) {
@@ -912,8 +891,7 @@ export class Parser {
             );
         }
 
-        this.expectToken(TokenType.RIGHT_BRACE);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_BRACE);
 
         return {
             type: "Literal",
@@ -929,28 +907,24 @@ export class Parser {
             arguments: []
         };
 
-        this.expectToken(TokenType.LEFT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.LEFT_PAREN);
 
         while (true) {
             const argument = this.parseExpression();
             call_expression.arguments.push(argument);
 
             if (this.token.type === TokenType.RIGHT_PAREN) break;
-            this.expectToken(TokenType.COMMA);
-            this.idx++;
+            this.eatToken(TokenType.COMMA);
         }
 
-        this.expectToken(TokenType.RIGHT_PAREN);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_PAREN);
 
         return call_expression;
     }
 
     private parseMemberExpression(object: MemberExpression["object"]): MemberExpression {
         do {
-            this.expectToken(TokenType.PERIOD);
-            this.idx++;
+            this.eatToken(TokenType.PERIOD);
 
             const property = this.getIdentifier();
 
@@ -966,8 +940,7 @@ export class Parser {
 
     private parseIndexExpression(object: IndexExpression["object"]): IndexExpression {
         do {
-            this.expectToken(TokenType.LEFT_BRACKET);
-            this.idx++;
+            this.eatToken(TokenType.LEFT_BRACKET);
 
             const index = this.parseExpression();
 
@@ -977,8 +950,7 @@ export class Parser {
                 index
             };
 
-            this.expectToken(TokenType.RIGHT_BRACKET);
-            this.idx++;
+            this.eatToken(TokenType.RIGHT_BRACKET);
         } while (this.token.type === TokenType.LEFT_BRACKET);
 
         return object;
@@ -989,20 +961,17 @@ export class Parser {
     }
 
     private parseContinueExpression(): ContinueExpression {
-        this.expectToken(TokenType.CONTINUE);
-        this.idx++;
+        this.eatToken(TokenType.CONTINUE);
         return { type: "ContinueExpression" };
     }
 
     private parseBreakExpression(): BreakExpression {
-        this.expectToken(TokenType.BREAK);
-        this.idx++;
+        this.eatToken(TokenType.BREAK);
         return { type: "BreakExpression" };
     }
 
     private parseArrayExpression(): ArrayExpression {
-        this.expectToken(TokenType.LEFT_BRACKET);
-        this.idx++;
+        this.eatToken(TokenType.LEFT_BRACKET);
 
         const elements: Expression[] = [];
         while (this.token.type !== TokenType.RIGHT_BRACKET) {
@@ -1010,8 +979,7 @@ export class Parser {
             if (this.token.type === TokenType.COMMA) this.idx++;
         }
 
-        this.expectToken(TokenType.RIGHT_BRACKET);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_BRACKET);
 
         return { type: "ArrayExpression", elements };
     }
@@ -1026,12 +994,10 @@ export class Parser {
             throw new Error(`Expected type, got ${token.type}`);
 
         const type = this.parseType();
-        this.expectToken(TokenType.SEMICOLON);
-        this.idx++;
+        this.eatToken(TokenType.SEMICOLON);
 
         const length = this.getNumberLiteral();
-        this.expectToken(TokenType.RIGHT_BRACKET);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_BRACKET);
 
         return {
             type: "Identifier",
@@ -1047,8 +1013,7 @@ export class Parser {
             properties: []
         };
 
-        this.expectToken(TokenType.LEFT_BRACE);
-        this.idx++;
+        this.eatToken(TokenType.LEFT_BRACE);
 
         while (this.token.type !== TokenType.RIGHT_BRACE) {
             const key = this.getIdentifier();
@@ -1067,8 +1032,7 @@ export class Parser {
             if (this.token.type === TokenType.COMMA) this.idx++;
         }
 
-        this.expectToken(TokenType.RIGHT_BRACE);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_BRACE);
 
         return object;
     }
