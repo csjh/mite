@@ -1,4 +1,4 @@
-// adapter from estree
+// adapted from estree
 // shoutout estree
 
 import { BinaryOperator } from "./tokens.js";
@@ -208,6 +208,7 @@ export interface StructDeclaration extends BaseDeclaration {
     type: "StructDeclaration";
     id: Identifier;
     fields: StructField[];
+    methods: FunctionDeclaration[];
 }
 
 export interface VariableDeclaration extends BaseDeclaration {

@@ -155,28 +155,53 @@ export class Parser {
         this.idx++;
 
         const fields: StructField[] = [];
+        const methods: FunctionDeclaration[] = [];
         while (this.token.type !== TokenType.RIGHT_BRACE) {
-            const name = this.token.value;
-            this.expectToken(TokenType.IDENTIFIER);
-            this.idx++;
+            if (
+                this.tokens[this.idx].type === TokenType.IDENTIFIER &&
+                this.tokens[this.idx + 1].type === TokenType.COLON
+            ) {
+                const name = this.token.value;
+                this.expectToken(TokenType.IDENTIFIER);
+                this.idx++;
 
-            this.expectToken(TokenType.COLON);
-            this.idx++;
+                this.expectToken(TokenType.COLON);
+                this.idx++;
 
-            const type = this.token.value;
-            this.idx++;
+                const type = this.token.value;
+                this.idx++;
 
-            fields.push({
-                type: "StructField",
-                name: {
-                    type: "Identifier",
-                    name
-                },
-                typeAnnotation: {
-                    type: "Identifier",
-                    name: type
-                }
-            });
+                fields.push({
+                    type: "StructField",
+                    name: {
+                        type: "Identifier",
+                        name
+                    },
+                    typeAnnotation: {
+                        type: "Identifier",
+                        name: type
+                    }
+                });
+            } else if (
+                this.tokens[this.idx].type === TokenType.IDENTIFIER &&
+                this.tokens[this.idx + 1].type === TokenType.LEFT_PAREN
+            ) {
+                const fn = this.parseFunction(true);
+
+                fn.params.unshift({
+                    type: "TypedParameter",
+                    name: {
+                        type: "Identifier",
+                        name: "this"
+                    },
+                    typeAnnotation: {
+                        type: "Identifier",
+                        name
+                    }
+                });
+
+                methods.push(fn);
+            }
 
             if (this.token.type === TokenType.COMMA) this.idx++;
         }
@@ -190,7 +215,8 @@ export class Parser {
                 type: "Identifier",
                 name
             },
-            fields
+            fields,
+            methods
         };
     }
 
@@ -206,9 +232,11 @@ export class Parser {
         return 
     }
     */
-    private parseFunction(): FunctionDeclaration {
-        this.expectToken(TokenType.FN);
-        this.idx++;
+    private parseFunction(isMethod: boolean = false): FunctionDeclaration {
+        if (!isMethod) {
+            this.expectToken(TokenType.FN);
+            this.idx++;
+        }
 
         this.expectToken(TokenType.IDENTIFIER);
         const name = this.tokens[this.idx++].value;

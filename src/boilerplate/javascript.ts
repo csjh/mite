@@ -12,9 +12,8 @@ import dedent from "dedent";
 
 type Capitalize<S extends string> = S extends `${infer F}${infer R}` ? `${Uppercase<F>}${R}` : S;
 
-type DataViewGetterTypes = Extract<keyof DataView, `get${string}`> extends `get${infer T}`
-    ? Capitalize<T>
-    : never;
+type DataViewGetterTypes =
+    Extract<keyof DataView, `get${string}`> extends `get${infer T}` ? Capitalize<T> : never;
 
 type BoilerplateOptions =
     | {
@@ -124,8 +123,8 @@ export function programToBoilerplate(program: Program, options: BoilerplateOptio
                     returnTypeType.classification === "primitive"
                         ? "return result"
                         : returnTypeType.classification === "struct"
-                        ? structToJavascript("result", returnTypeType, true)
-                        : arrayToJavascript("result", returnTypeType, true)
+                          ? structToJavascript("result", returnTypeType, true)
+                          : arrayToJavascript("result", returnTypeType, true)
                 };
             }
         `;
