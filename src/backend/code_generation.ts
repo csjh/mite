@@ -243,6 +243,8 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
             throw new Error("Variable declaration must have type or initializer");
         }
 
+        type.is_ref = false;
+
         const local = createMiteType(ctx, type, ctx.current_function.local_count++);
 
         if (type.classification === "struct") {
