@@ -27,6 +27,23 @@ type BoilerplateOptions =
           ssr: boolean;
       };
 
+// this is probably dumb
+const streamFile = `
+function getServersideWasm(file) {
+    if (typeof Bun !== 'undefined')
+        return Bun.file(file).arrayBuffer().then((x) => WebAssembly.instantiate(x));
+    } else if (typeof Deno !== 'undefined') {
+        return WebAssembly.instantiateStreaming(Deno.open(file).then((f) => new Response(f.readable, { headers: { "Content-Type": "application/wasm" } })));
+    } else if (typeof WebAssembly.instantiateStreaming === 'function') {
+        const { createReadStream } = await import('node:fs');
+        return WebAssembly.instantiateStreaming(new Response(createReadStream(file), { headers: { "Content-Type": "application/wasm" } }));
+    } else {
+        const { readFileSync } = await import('node:fs');
+        return WebAssembly.instantiate(readFileSync(file));
+    }
+}
+`.trim();
+
 export function programToBoilerplate(program: Program, options: BoilerplateOptions) {
     const structs = identifyStructs(program);
     const ctx = {
@@ -45,23 +62,11 @@ export function programToBoilerplate(program: Program, options: BoilerplateOptio
     const wasm = options.dev
         ? `await WebAssembly.instantiate(Uint8Array.from(atob("${Buffer.from(options.file).toString("base64")}"), (c) => c.charCodeAt(0)))`
         : options.ssr
-          ? // todo: when node fetch accepts file:// urls, use that instead
-            // also maybe worth looking into using native APIs (Bun.file().readable, )
-            `await WebAssembly.instantiateStreaming(streamFile(new URL(import.meta.ROLLUP_FILE_URL_${options.filename})))`
+          ? `await getServersideWasm(new URL(import.meta.ROLLUP_FILE_URL_${options.filename}))`
           : `await WebAssembly.instantiateStreaming(fetch(import.meta.ROLLUP_FILE_URL_${options.filename}))`;
 
     let code = dedent`
-        ${!options.dev && options.ssr ? `import { createReadStream } from "node:fs";` : ""}
-
-        function streamFile(file) {
-            if (typeof Bun !== 'undefined')
-                return new Response(Bun.file(file).stream(), { headers: { "Content-Type": "application/wasm" } });
-            } else if (typeof Deno !== 'undefined') {
-                return Deno.open(file).then((f) => new Response(f.readable, { headers: { "Content-Type": "application/wasm" } }));
-            } else {
-                return new Response(createReadStream(file), { headers: { "Content-Type": "application/wasm" } });
-            }
-        }
+        ${!options.dev && options.ssr ? streamFile : ""}
 
         const wasm = ${wasm};
         const { ${exports
