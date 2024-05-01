@@ -19,10 +19,12 @@ type BoilerplateOptions =
     | {
           dev: true;
           file: Uint8Array;
+          ssr: boolean;
       }
     | {
           dev: false;
           filename: string;
+          ssr: boolean;
       };
 
 export function programToBoilerplate(program: Program, options: BoilerplateOptions) {
@@ -41,12 +43,26 @@ export function programToBoilerplate(program: Program, options: BoilerplateOptio
         .map((x) => x.declaration as FunctionDeclaration);
 
     const wasm = options.dev
-        ? `await WebAssembly.instantiate(Uint8Array.from(atob("${Buffer.from(options.file).toString(
-              "base64"
-          )}"), (c) => c.charCodeAt(0)))`
-        : `await WebAssembly.instantiateStreaming(fetch(import.meta.ROLLUP_FILE_URL_${options.filename}))`;
+        ? `await WebAssembly.instantiate(Uint8Array.from(atob("${Buffer.from(options.file).toString("base64")}"), (c) => c.charCodeAt(0)))`
+        : options.ssr
+          ? // todo: when node fetch accepts file:// urls, use that instead
+            // also maybe worth looking into using native APIs (Bun.file().readable, )
+            `await WebAssembly.instantiateStreaming(streamFile(new URL(import.meta.ROLLUP_FILE_URL_${options.filename})))`
+          : `await WebAssembly.instantiateStreaming(fetch(import.meta.ROLLUP_FILE_URL_${options.filename}))`;
 
     let code = dedent`
+        ${!options.dev && options.ssr ? `import { createReadStream } from "node:fs";` : ""}
+
+        function streamFile(file) {
+            if (typeof Bun !== 'undefined')
+                return new Response(Bun.file(file).stream(), { headers: { "Content-Type": "application/wasm" } });
+            } else if (typeof Deno !== 'undefined') {
+                return Deno.open(file).then((f) => new Response(f.readable, { headers: { "Content-Type": "application/wasm" } }));
+            } else {
+                return new Response(createReadStream(file), { headers: { "Content-Type": "application/wasm" } });
+            }
+        }
+
         const wasm = ${wasm};
         const { ${exports
             .map((x) => `${x.id.name}: wasm_export_${x.id.name}, `)

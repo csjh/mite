@@ -2,6 +2,7 @@ import type { Plugin } from "vite";
 import { compile } from "../compiler.js";
 import path from "path";
 import fs from "fs/promises";
+import { existsSync } from "fs";
 import { glob } from "glob";
 
 const dev = process.env.NODE_ENV === "development";
@@ -10,8 +11,11 @@ async function generateType(file: string) {
     if (!file.endsWith(".mite")) return;
 
     const dts = await fs.readFile(file, "utf-8").then((code) => compile(code, { as: "dts" }));
-
-    await fs.writeFile(path.join(".mite/types", `${file.replace(process.cwd(), "")}.d.ts`), dts);
+    const destination = path.join(".mite/types", `${file.replace(process.cwd(), "")}.d.ts`);
+    if (!existsSync(path.dirname(destination))) {
+        await fs.mkdir(path.dirname(destination), { recursive: true });
+    }
+    await fs.writeFile(destination, dts);
 }
 
 export async function mite(): Promise<Plugin> {
@@ -30,7 +34,7 @@ export async function mite(): Promise<Plugin> {
             const mite_files = await glob("**/*.mite", { ignore: "node_modules/**" });
             await Promise.all(mite_files.map(generateType));
         },
-        transform(code, id) {
+        transform(code, id, opts) {
             if (!id.endsWith(".mite")) return null;
 
             const source = compile(code, { optimize: true });
@@ -39,7 +43,8 @@ export async function mite(): Promise<Plugin> {
                 return compile(code, {
                     as: "javascript",
                     file: source,
-                    dev
+                    dev,
+                    ssr: !!opts?.ssr
                 });
             } else {
                 const file = this.emitFile({
@@ -51,7 +56,8 @@ export async function mite(): Promise<Plugin> {
                 return compile(code, {
                     as: "javascript",
                     filename: file,
-                    dev
+                    dev,
+                    ssr: !!opts?.ssr
                 });
             }
         }

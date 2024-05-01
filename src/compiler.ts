@@ -14,11 +14,13 @@ type CompileOptions =
           as: "javascript";
           dev: true;
           file: Uint8Array;
+          ssr: boolean;
       }
     | {
           as: "javascript";
           dev: false;
           filename: string;
+          ssr: boolean;
       }
     | {
           as: "dts";
