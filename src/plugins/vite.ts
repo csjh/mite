@@ -18,7 +18,7 @@ async function generateType(file: string) {
     await fs.writeFile(destination, dts);
 }
 
-export async function mite(): Promise<Plugin> {
+export async function mite(): Promise<Plugin<never>> {
     await fs.access(".mite").catch(() => fs.mkdir(".mite"));
     await fs.access(".mite/types").catch(() => fs.mkdir(".mite/types"));
 
