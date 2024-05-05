@@ -10,21 +10,8 @@ type CompileOptions =
           as?: "wasm" | "wat";
           optimize?: boolean;
       }
-    | {
-          as: "javascript";
-          dev: true;
-          file: Uint8Array;
-          ssr: boolean;
-      }
-    | {
-          as: "javascript";
-          dev: false;
-          filename: string;
-          ssr: boolean;
-      }
-    | {
-          as: "dts";
-      };
+    | ({ as: "javascript" } & import("./boilerplate/javascript.js").Options)
+    | ({ as: "dts" } & import("./boilerplate/dts.js").Options);
 
 export function compile(source: string, options: CompileOptions & { as: "javascript" }): string;
 export function compile(source: string, options: CompileOptions & { as: "wat" }): string;
@@ -41,7 +28,7 @@ export function compile(source: string, options: CompileOptions = {}): string | 
     }
 
     if (options.as === "dts") {
-        return toDts(program);
+        return toDts(program, options);
     }
 
     const mod = programToModule(program);

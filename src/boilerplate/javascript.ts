@@ -1,9 +1,4 @@
-import {
-    ArrayTypeInformation,
-    Context,
-    StructTypeInformation,
-    TypeInformation
-} from "../types/code_gen.js";
+import { ArrayTypeInformation, Context, StructTypeInformation } from "../types/code_gen.js";
 import { ExportNamedDeclaration, FunctionDeclaration, Program } from "../types/nodes.js";
 import { identifyStructs } from "../backend/context_initialization.js";
 import { Primitive } from "../backend/type_classes.js";
@@ -15,36 +10,11 @@ type Capitalize<S extends string> = S extends `${infer F}${infer R}` ? `${Upperc
 type DataViewGetterTypes =
     Extract<keyof DataView, `get${string}`> extends `get${infer T}` ? Capitalize<T> : never;
 
-type BoilerplateOptions =
-    | {
-          dev: true;
-          file: Uint8Array;
-          ssr: boolean;
-      }
-    | {
-          dev: false;
-          filename: string;
-          ssr: boolean;
-      };
+export type Options = {
+    createInstance(imports: string): { instantiation: string; setup?: string };
+};
 
-// this is probably dumb
-const streamFile = `
-function getServersideWasm(file) {
-    if (typeof Bun !== 'undefined')
-        return Bun.file(file).arrayBuffer().then((x) => WebAssembly.instantiate(x));
-    } else if (typeof Deno !== 'undefined') {
-        return WebAssembly.instantiateStreaming(Deno.open(file).then((f) => new Response(f.readable, { headers: { "Content-Type": "application/wasm" } })));
-    } else if (typeof WebAssembly.instantiateStreaming === 'function') {
-        const { createReadStream } = await import('node:fs');
-        return WebAssembly.instantiateStreaming(new Response(createReadStream(file), { headers: { "Content-Type": "application/wasm" } }));
-    } else {
-        const { readFileSync } = await import('node:fs');
-        return WebAssembly.instantiate(readFileSync(file));
-    }
-}
-`.trim();
-
-export function programToBoilerplate(program: Program, options: BoilerplateOptions) {
+export function programToBoilerplate(program: Program, { createInstance }: Options) {
     const structs = identifyStructs(program);
     const ctx = {
         types: Object.fromEntries([
@@ -59,16 +29,12 @@ export function programToBoilerplate(program: Program, options: BoilerplateOptio
         )
         .map((x) => x.declaration as FunctionDeclaration);
 
-    const wasm = options.dev
-        ? `await WebAssembly.instantiate(Uint8Array.from(atob("${Buffer.from(options.file).toString("base64")}"), (c) => c.charCodeAt(0)))`
-        : options.ssr
-          ? `await getServersideWasm(new URL(import.meta.ROLLUP_FILE_URL_${options.filename}))`
-          : `await WebAssembly.instantiateStreaming(fetch(import.meta.ROLLUP_FILE_URL_${options.filename}))`;
+    const { setup = "", instantiation } = createInstance("imports");
 
     let code = dedent`
-        ${!options.dev && options.ssr ? streamFile : ""}
+        ${setup}
 
-        const wasm = ${wasm};
+        const wasm = await ${instantiation};
         const { ${exports
             .map((x) => `${x.id.name}: wasm_export_${x.id.name}, `)
             .join("")}memory } = wasm.instance.exports;

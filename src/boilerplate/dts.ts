@@ -5,7 +5,9 @@ import { Primitive } from "../backend/type_classes.js";
 import { parseType } from "../backend/utils.js";
 import dedent from "dedent";
 
-export function programToBoilerplate(program: Program) {
+export type Options = {};
+
+export function programToBoilerplate(program: Program, options: Options) {
     const structs = identifyStructs(program);
     const ctx = {
         types: Object.fromEntries([

@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
 import { glob } from "glob";
+import { base64ToWasm } from "./runtime_functions.js";
 
 const dev = process.env.NODE_ENV === "development";
 
@@ -34,7 +35,7 @@ export async function mite(): Promise<Plugin<never>> {
             const mite_files = await glob("**/*.mite", { ignore: "node_modules/**" });
             await Promise.all(mite_files.map(generateType));
         },
-        transform(code, id, opts) {
+        transform(code, id, opts = {}) {
             if (!id.endsWith(".mite")) return null;
 
             const source = compile(code, { optimize: true });
@@ -42,9 +43,11 @@ export async function mite(): Promise<Plugin<never>> {
             if (dev) {
                 return compile(code, {
                     as: "javascript",
-                    file: source,
-                    dev,
-                    ssr: !!opts?.ssr
+                    createInstance(imports) {
+                        return {
+                            instantiation: `WebAssembly.instantiate(Uint8Array.from(atob("${Buffer.from(source).toString("base64")}"), (c) => c.charCodeAt(0)), ${imports})`
+                        };
+                    }
                 });
             } else {
                 const file = this.emitFile({
@@ -55,11 +58,20 @@ export async function mite(): Promise<Plugin<never>> {
 
                 return compile(code, {
                     as: "javascript",
-                    filename: file,
-                    dev,
-                    ssr: !!opts?.ssr
+                    createInstance(imports) {
+                        if (opts.ssr) {
+                            return {
+                                setup: base64ToWasm.toString(),
+                                instantiation: `base64ToWasm("${Buffer.from(source).toString("base64")}", ${imports})`
+                            };
+                        } else {
+                            return {
+                                instantiation: `WebAssembly.instantiateStreaming(fetch(import.meta.ROLLUP_FILE_URL_${file}), ${imports})`
+                            };
+                        }
+                    }
                 });
             }
         }
-    } satisfies Plugin;
+    };
 }
