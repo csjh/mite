@@ -62,7 +62,7 @@ export async function mite(): Promise<Plugin<never>> {
                         if (opts.ssr) {
                             return {
                                 setup: base64ToWasm.toString(),
-                                instantiation: `base64ToWasm("${Buffer.from(source).toString("base64")}", ${imports})`
+                                instantiation: `${base64ToWasm.name}("${Buffer.from(source).toString("base64")}", ${imports})`
                             };
                         } else {
                             return {
