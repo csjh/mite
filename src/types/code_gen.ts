@@ -175,7 +175,7 @@ export const intrinsic_names = new Set([
     "promote_low",
     "extract",
     "replace"
-]);
+]) as Omit<Set<string>, "has"> & { has: (name: string) => name is keyof IntrinsicHandlers };
 export type IntrinsicHandlers = Partial<{
     clz: UnaryOperator;
     ctz: UnaryOperator;
