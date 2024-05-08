@@ -1,4 +1,9 @@
-import { ArrayTypeInformation, Context, StructTypeInformation } from "../types/code_gen.js";
+import {
+    ArrayTypeInformation,
+    Context,
+    InstanceFunctionInformation,
+    StructTypeInformation
+} from "../types/code_gen.js";
 import { ExportNamedDeclaration, FunctionDeclaration, Program } from "../types/nodes.js";
 import { identifyStructs } from "../backend/context_initialization.js";
 import { Primitive } from "../backend/type_classes.js";
@@ -34,35 +39,34 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
     let code = dedent`
         ${setup}
 
-        const wasm = await ${instantiation};
-        const { ${exports
-            .map((x) => `${x.id.name}: wasm_export_${x.id.name}, `)
-            .join("")}memory } = wasm.instance.exports;
-        const buffer = new DataView(memory.buffer);
+        const $wasm = await ${instantiation};
+        const { $memory, $table, ${exports
+            .map((x) => `${x.id.name}: $wasm_export_${x.id.name}, `)
+            .join("")} } = $wasm.instance.exports;
+        const $buffer = new DataView($memory.buffer);
+        const $virtualized_functions = Array.from($table, (_, i) => $table.get(i));
 
-        const DataViewPrototype = DataView.prototype;
-        const GetBigInt64 =  /*#__PURE__*/ DataViewPrototype.getBigInt64.bind(buffer);
-        const GetBigUint64 = /*#__PURE__*/ DataViewPrototype.getBigUint64.bind(buffer);
-        const GetFloat32 =   /*#__PURE__*/ DataViewPrototype.getFloat32.bind(buffer);
-        const GetFloat64 =   /*#__PURE__*/ DataViewPrototype.getFloat64.bind(buffer);
-        const GetInt16 =     /*#__PURE__*/ DataViewPrototype.getInt16.bind(buffer);
-        const GetInt32 =     /*#__PURE__*/ DataViewPrototype.getInt32.bind(buffer);
-        const GetInt8 =      /*#__PURE__*/ DataViewPrototype.getInt8.bind(buffer);
-        const GetUint16 =    /*#__PURE__*/ DataViewPrototype.getUint16.bind(buffer);
-        const GetUint32 =    /*#__PURE__*/ DataViewPrototype.getUint32.bind(buffer);
-        const GetUint8 =     /*#__PURE__*/ DataViewPrototype.getUint8.bind(buffer);
-        const SetBigInt64 =  /*#__PURE__*/ DataViewPrototype.setBigInt64.bind(buffer);
-        const SetBigUint64 = /*#__PURE__*/ DataViewPrototype.setBigUint64.bind(buffer);
-        const SetFloat32 =   /*#__PURE__*/ DataViewPrototype.setFloat32.bind(buffer);
-        const SetFloat64 =   /*#__PURE__*/ DataViewPrototype.setFloat64.bind(buffer);
-        const SetInt16 =     /*#__PURE__*/ DataViewPrototype.setInt16.bind(buffer);
-        const SetInt32 =     /*#__PURE__*/ DataViewPrototype.setInt32.bind(buffer);
-        const SetInt8 =      /*#__PURE__*/ DataViewPrototype.setInt8.bind(buffer);
-        const SetUint16 =    /*#__PURE__*/ DataViewPrototype.setUint16.bind(buffer);
-        const SetUint32 =    /*#__PURE__*/ DataViewPrototype.setUint32.bind(buffer);
-        const SetUint8 =     /*#__PURE__*/ DataViewPrototype.setUint8.bind(buffer);
-
-        const PointerSymbol = Symbol("Pointer");
+        const $DataViewPrototype = DataView.prototype;
+        const $GetBigInt64 =  /*#__PURE__*/ $DataViewPrototype.getBigInt64 .bind($buffer);
+        const $GetBigUint64 = /*#__PURE__*/ $DataViewPrototype.getBigUint64.bind($buffer);
+        const $GetFloat32 =   /*#__PURE__*/ $DataViewPrototype.getFloat32  .bind($buffer);
+        const $GetFloat64 =   /*#__PURE__*/ $DataViewPrototype.getFloat64  .bind($buffer);
+        const $GetInt16 =     /*#__PURE__*/ $DataViewPrototype.getInt16    .bind($buffer);
+        const $GetInt32 =     /*#__PURE__*/ $DataViewPrototype.getInt32    .bind($buffer);
+        const $GetInt8 =      /*#__PURE__*/ $DataViewPrototype.getInt8     .bind($buffer);
+        const $GetUint16 =    /*#__PURE__*/ $DataViewPrototype.getUint16   .bind($buffer);
+        const $GetUint32 =    /*#__PURE__*/ $DataViewPrototype.getUint32   .bind($buffer);
+        const $GetUint8 =     /*#__PURE__*/ $DataViewPrototype.getUint8    .bind($buffer);
+        const $SetBigInt64 =  /*#__PURE__*/ $DataViewPrototype.setBigInt64 .bind($buffer);
+        const $SetBigUint64 = /*#__PURE__*/ $DataViewPrototype.setBigUint64.bind($buffer);
+        const $SetFloat32 =   /*#__PURE__*/ $DataViewPrototype.setFloat32  .bind($buffer);
+        const $SetFloat64 =   /*#__PURE__*/ $DataViewPrototype.setFloat64  .bind($buffer);
+        const $SetInt16 =     /*#__PURE__*/ $DataViewPrototype.setInt16    .bind($buffer);
+        const $SetInt32 =     /*#__PURE__*/ $DataViewPrototype.setInt32    .bind($buffer);
+        const $SetInt8 =      /*#__PURE__*/ $DataViewPrototype.setInt8     .bind($buffer);
+        const $SetUint16 =    /*#__PURE__*/ $DataViewPrototype.setUint16   .bind($buffer);
+        const $SetUint32 =    /*#__PURE__*/ $DataViewPrototype.setUint32   .bind($buffer);
+        const $SetUint8 =     /*#__PURE__*/ $DataViewPrototype.setUint8    .bind($buffer);
     `;
 
     code += "\n\n";
@@ -75,7 +79,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                 static sizeof = ${struct.sizeof};
 
                 constructor(ptr) {
-                    this[PointerSymbol] = ptr;
+                    this._ = ptr;
                 }
                 ${Array.from(struct.fields.entries(), ([name, info]) => {
                     const [getter, setter] = typeToAccessors(info);
@@ -85,7 +89,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                     ${getter}
                 }
 
-                set ${name}(val) {
+                set ${name}($val) {
                     ${setter}
                 }
                 `;
@@ -102,16 +106,20 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
         code += dedent`
             export function ${id.name}(${params.map((x) => x.name.name).join(", ")}) {
-                const result = wasm_export_${id.name}(${params
-                    .map(({ name: { name: n } }) => (Primitive.primitives.has(n) ? n : `${n}.ptr`))
+                const $result = $wasm_export_${id.name}(${params
+                    .map(({ name: { name: n } }) => (Primitive.primitives.has(n) ? n : `${n}._`))
                     .join(", ")});
 
                 ${
                     returnTypeType.classification === "primitive"
-                        ? "return result"
+                        ? "return $result"
                         : returnTypeType.classification === "struct"
-                          ? structToJavascript("result", returnTypeType, true)
-                          : arrayToJavascript("result", returnTypeType, true)
+                          ? structToJavascript("$result", returnTypeType, true)
+                          : returnTypeType.classification === "function"
+                            ? functionToJavascript("$result", returnTypeType, true)
+                            : returnTypeType.classification === "array"
+                              ? arrayToJavascript("$result", returnTypeType, true)
+                              : returnTypeType
                 };
             }
         `;
@@ -130,38 +138,31 @@ function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation
         if (type.name === "void") return ["return undefined;", ""];
         if (type.name === "bool") {
             return [
-                `return !!GetInt32(this[PointerSymbol] + ${offset}, true);`,
-                `SetInt32(this[PointerSymbol] + ${offset}, !!val, true);`
+                `return !!$GetInt32(this._ + ${offset}, true);`,
+                `$SetInt32(this._ + ${offset}, !!$val, true);`
             ];
         }
 
         const typed_name = primitiveToTypedName(type.name);
         return [
-            `return Get${typed_name}(this[PointerSymbol] + ${offset}, true);`,
-            `Set${typed_name}(this[PointerSymbol] + ${offset}, val, true);`
+            `return $Get${typed_name}(this._ + ${offset}, true);`,
+            `$Set${typed_name}(this._ + ${offset}, $val, true);`
         ];
     }
 
-    const ptr = is_ref
-        ? `GetUint32(this[PointerSymbol] + ${offset}, true)`
-        : `this[PointerSymbol] + ${offset}`;
+    const ptr = is_ref ? `$GetUint32(this._ + ${offset}, true)` : `this._ + ${offset}`;
 
     if (type.classification === "struct") {
         return [
             structToJavascript(ptr, type, true),
-            is_ref ? `SetUint32(this[PointerSymbol] + ${offset}, val[PointerSymbol], true);` : ""
+            is_ref ? `$SetUint32(this._ + ${offset}, $val._, true);` : ""
         ];
     }
 
     if (type.classification === "array") {
         const handler = arrayToJavascript(ptr, type, true);
         if (type.element_type.classification === "primitive") {
-            return [
-                handler,
-                is_ref
-                    ? `SetUint32(this[PointerSymbol] + ${offset}, val[PointerSymbol], true);`
-                    : ""
-            ];
+            return [handler, is_ref ? `$SetUint32(this._ + ${offset}, $val._, true);` : ""];
         } else if (type.element_type.classification === "struct") {
             return [handler, ""];
         } else if (type.element_type.classification === "array") {
@@ -179,18 +180,18 @@ function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation
 function arrayToJavascript(ptr: string, type: ArrayTypeInformation, isReturn: boolean = false) {
     if (type.element_type.classification === "primitive") {
         const typed_name = primitiveToTypedName(type.element_type.name);
-        return `const base = ${ptr}; ${
+        return `const $base = ${ptr}; ${
             isReturn ? "return" : ""
-        } new ${typed_name}Array(memory.buffer, base + 4, GetUint32(base, true));`;
+        } new ${typed_name}Array($memory.buffer, $base + 4, $GetUint32($base, true));`;
     } else if (type.element_type.classification === "struct") {
         let array;
         if (type.element_type.is_ref) {
-            array = `Array.from(new Uint32Array(memory.buffer, base + 4, GetUint32(base, true)), (ptr) => new ${type.element_type.name}(ptr))`;
+            array = `Array.from(new Uint32Array($memory.buffer, $base + 4, $GetUint32($base, true)), ($ptr) => new ${type.element_type.name}($ptr))`;
         } else {
-            array = `Array.from({ length: GetUint32(base, true) }, (_, i) => new ${type.element_type.name}(base + 4 + i * ${type.element_type.sizeof}))`;
+            array = `Array.from({ length: $GetUint32($base, true) }, (_, i) => new ${type.element_type.name}($base + 4 + i * ${type.element_type.sizeof}))`;
         }
 
-        return `const base = ${ptr}; ${isReturn ? "return" : ""} ${array}`;
+        return `const $base = ${ptr}; ${isReturn ? "return" : ""} ${array}`;
     } else if (type.element_type.classification === "array") {
         throw new Error("Nested arrays are not supported");
     } else {
@@ -241,4 +242,16 @@ function primitiveToTypedName(primitive: string): DataViewGetterTypes {
         default:
             throw new Error(`Unknown primitive: ${primitive}`);
     }
+}
+
+function functionToJavascript(
+    ptr: string,
+    type: InstanceFunctionInformation,
+    isReturn: boolean = false
+) {
+    /*
+    should benchmark alongside
+    return virtualized_functions[getUint32(ptr)].bind(null, ptr+4)
+    */
+    return `${isReturn ? "return" : ""} `;
 }
