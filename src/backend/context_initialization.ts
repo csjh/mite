@@ -267,6 +267,74 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
                 )
             );
         };
+    const extract_op = (
+        operation: (expr: binaryen.ExpressionRef, idx: number) => binaryen.ExpressionRef,
+        result: PrimitiveTypeInformation
+    ) => {
+        return (value: MiteType, index: MiteType) => {
+            if (
+                binaryen.getExpressionId(index.get_expression_ref()) !==
+                binaryen.ExpressionIds.Const
+            )
+                throw new Error("Expected constant extraction index");
+
+            const binaryen_type = binaryen.getExpressionType(index.get_expression_ref());
+            const idx =
+                binaryen_type === binaryen.i64
+                    ? // @ts-expect-error undocumented function
+                      binaryen._BinaryenConstGetValueI64(index.get_expression_ref())
+                    : binaryen_type === binaryen.i32
+                      ? // @ts-expect-error undocumented function
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                      : binaryen_type === binaryen.f32
+                        ? // @ts-expect-error undocumented function
+                          binaryen._BinaryenConstGetValueF32(index.get_expression_ref())
+                        : binaryen_type === binaryen.f64
+                          ? // @ts-expect-error undocumented function
+                            binaryen._BinaryenConstGetValueF64(index.get_expression_ref())
+                          : -1;
+
+            return new TransientPrimitive(ctx, result, operation(value.get_expression_ref(), idx));
+        };
+    };
+    const replace_op = (
+        operation: (
+            value: binaryen.ExpressionRef,
+            index: number,
+            replacement: binaryen.ExpressionRef
+        ) => binaryen.ExpressionRef,
+        result: PrimitiveTypeInformation
+    ) => {
+        return (value: MiteType, index: MiteType, replacement: MiteType) => {
+            if (
+                binaryen.getExpressionId(index.get_expression_ref()) !==
+                binaryen.ExpressionIds.Const
+            )
+                throw new Error("Expected constant extraction index");
+
+            const binaryen_type = binaryen.getExpressionType(index.get_expression_ref());
+            const idx =
+                binaryen_type === binaryen.i64
+                    ? // @ts-expect-error undocumented function
+                      binaryen._BinaryenConstGetValueI64(index.get_expression_ref())
+                    : binaryen_type === binaryen.i32
+                      ? // @ts-expect-error undocumented function
+                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
+                      : binaryen_type === binaryen.f32
+                        ? // @ts-expect-error undocumented function
+                          binaryen._BinaryenConstGetValueF32(index.get_expression_ref())
+                        : binaryen_type === binaryen.f64
+                          ? // @ts-expect-error undocumented function
+                            binaryen._BinaryenConstGetValueF64(index.get_expression_ref())
+                          : -1;
+
+            return new TransientPrimitive(
+                ctx,
+                result,
+                operation(value.get_expression_ref(), idx, replacement.get_expression_ref())
+            );
+        };
+    };
 
     return {
         void: {},
@@ -349,39 +417,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extadd_pairwise: unary_op(ctx.mod.i16x8.extadd_pairwise_i8x16_s),
             extend_low: unary_op(ctx.mod.i16x8.extend_low_i8x16_s),
             extend_high: unary_op(ctx.mod.i16x8.extend_high_i8x16_s),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i32")!,
-                    ctx.mod.i8x16.extract_lane_s(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i8x16")!,
-                    ctx.mod.i8x16.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-            },
+            extract: extract_op(ctx.mod.i8x16.extract_lane_s, Primitive.primitives.get("i32")!),
+            replace: replace_op(ctx.mod.i8x16.replace_lane, Primitive.primitives.get("i8x16")!),
             shuffle(left, right, mask) {
                 const info = binaryen.getExpressionInfo(mask.get_expression_ref());
                 const mask_values = (info as binaryen.ConstInfo).value;
@@ -422,39 +459,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extadd_pairwise: unary_op(ctx.mod.i16x8.extadd_pairwise_i8x16_u),
             extend_low: unary_op(ctx.mod.i16x8.extend_low_i8x16_u),
             extend_high: unary_op(ctx.mod.i16x8.extend_high_i8x16_u),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i32")!,
-                    ctx.mod.i8x16.extract_lane_u(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("u8x16")!,
-                    ctx.mod.i8x16.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-            }
+            extract: extract_op(ctx.mod.i8x16.extract_lane_u, Primitive.primitives.get("u8")!),
+            replace: replace_op(ctx.mod.i8x16.replace_lane, Primitive.primitives.get("u8x16")!)
         },
         i16x8: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
@@ -473,39 +479,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extend_low: unary_op(ctx.mod.i32x4.extend_low_i16x8_s),
             extend_high: unary_op(ctx.mod.i32x4.extend_high_i16x8_s),
             narrow: bin_op(ctx.mod.i8x16.narrow_i16x8_s),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i32")!,
-                    ctx.mod.i16x8.extract_lane_s(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i16x8")!,
-                    ctx.mod.i16x8.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-            }
+            extract: extract_op(ctx.mod.i16x8.extract_lane_s, Primitive.primitives.get("i16")!),
+            replace: replace_op(ctx.mod.i16x8.replace_lane, Primitive.primitives.get("i16x8")!)
         },
         u16x8: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
@@ -524,39 +499,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extend_low: unary_op(ctx.mod.i32x4.extend_low_i16x8_u),
             extend_high: unary_op(ctx.mod.i32x4.extend_high_i16x8_u),
             narrow: bin_op(ctx.mod.i8x16.narrow_i16x8_u),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i32")!,
-                    ctx.mod.i16x8.extract_lane_u(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("u16x8")!,
-                    ctx.mod.i16x8.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-            }
+            extract: extract_op(ctx.mod.i16x8.extract_lane_u, Primitive.primitives.get("u16")!),
+            replace: replace_op(ctx.mod.i16x8.replace_lane, Primitive.primitives.get("u16x8")!)
         },
         i32x4: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
@@ -572,39 +516,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extend_high: unary_op(ctx.mod.i64x2.extend_high_i32x4_s),
             extend_low: unary_op(ctx.mod.i64x2.extend_low_i32x4_s),
             narrow: bin_op(ctx.mod.i16x8.narrow_i32x4_s),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i32")!,
-                    ctx.mod.i32x4.extract_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i32x4")!,
-                    ctx.mod.i32x4.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-            }
+            extract: extract_op(ctx.mod.i32x4.extract_lane, Primitive.primitives.get("i32")!),
+            replace: replace_op(ctx.mod.i32x4.replace_lane, Primitive.primitives.get("i32x4")!)
         },
         u32x4: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
@@ -620,39 +533,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extend_high: unary_op(ctx.mod.i64x2.extend_high_i32x4_u),
             extend_low: unary_op(ctx.mod.i64x2.extend_low_i32x4_u),
             narrow: bin_op(ctx.mod.i16x8.narrow_i32x4_u),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("u32")!,
-                    ctx.mod.i32x4.extract_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("u32x4")!,
-                    ctx.mod.i32x4.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-            }
+            extract: extract_op(ctx.mod.i32x4.extract_lane, Primitive.primitives.get("u32")!),
+            replace: replace_op(ctx.mod.i32x4.replace_lane, Primitive.primitives.get("u32x4")!)
         },
         i64x2: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
@@ -661,41 +543,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             all_true: unary_op(ctx.mod.i64x2.all_true, Primitive.primitives.get("i32")!),
             bitmask: unary_op(ctx.mod.i64x2.bitmask, Primitive.primitives.get("i32")),
             abs: unary_op(ctx.mod.i64x2.abs),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                const result = new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i64")!,
-                    ctx.mod.i64x2.extract_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-                return result;
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-                const result = new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("i64x2")!,
-                    ctx.mod.i64x2.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-                return result;
-            }
+            extract: extract_op(ctx.mod.i64x2.extract_lane, Primitive.primitives.get("i64")!),
+            replace: replace_op(ctx.mod.i64x2.replace_lane, Primitive.primitives.get("i64x2")!)
         },
         u64x2: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
@@ -704,42 +553,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             all_true: unary_op(ctx.mod.i64x2.all_true, Primitive.primitives.get("i32")!),
             bitmask: unary_op(ctx.mod.i64x2.bitmask, Primitive.primitives.get("i32")),
             abs: unary_op(ctx.mod.i64x2.abs),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("u64")!,
-                    ctx.mod.i64x2.extract_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                ) {
-                    throw new Error("Expected constant extraction index");
-                }
-
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("u64x2")!,
-                    ctx.mod.i64x2.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-            }
+            extract: extract_op(ctx.mod.i64x2.extract_lane, Primitive.primitives.get("u64")!),
+            replace: replace_op(ctx.mod.i64x2.replace_lane, Primitive.primitives.get("u64x2")!)
         },
         f32x4: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
@@ -758,41 +573,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             trunc_sat_s: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_s),
             trunc_sat_u: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_u),
             promote_low: unary_op(ctx.mod.f64x2.promote_low_f32x4),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("f32")!,
-                    ctx.mod.f32x4.extract_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("f32x4")!,
-                    ctx.mod.f32x4.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-            }
+            extract: extract_op(ctx.mod.f32x4.extract_lane, Primitive.primitives.get("f32")!),
+            replace: replace_op(ctx.mod.f32x4.replace_lane, Primitive.primitives.get("f32x4")!)
         },
         f64x2: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
@@ -811,41 +593,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             trunc_sat_zero_s: unary_op(ctx.mod.i32x4.trunc_sat_f64x2_s_zero),
             trunc_sat_zero_u: unary_op(ctx.mod.i32x4.trunc_sat_f64x2_u_zero),
             demote_zero: unary_op(ctx.mod.f32x4.demote_f64x2_zero),
-            extract(value, index) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("f64")!,
-                    ctx.mod.f64x2.extract_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref())
-                    )
-                );
-            },
-            replace(value, index, replacement) {
-                if (
-                    binaryen.getExpressionId(index.get_expression_ref()) !==
-                    binaryen.ExpressionIds.Const
-                )
-                    throw new Error("Expected constant extraction index");
-
-                return new TransientPrimitive(
-                    ctx,
-                    Primitive.primitives.get("f64x2")!,
-                    ctx.mod.f64x2.replace_lane(
-                        value.get_expression_ref(),
-                        // @ts-expect-error undocumented function
-                        binaryen._BinaryenConstGetValueI32(index.get_expression_ref()),
-                        replacement.get_expression_ref()
-                    )
-                );
-            }
+            extract: extract_op(ctx.mod.f64x2.extract_lane, Primitive.primitives.get("f64")!),
+            replace: replace_op(ctx.mod.f64x2.replace_lane, Primitive.primitives.get("f64x2")!)
         }
     };
 }

@@ -179,7 +179,7 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     let local_count = 0;
     const parent_scope = new Map(ctx.variables);
     ctx.variables = new Map(ctx.variables);
-    
+
     const params = new Map(
         node.params.map(({ name, typeAnnotation }) => {
             const local_index = local_count++;
@@ -462,24 +462,39 @@ function assignmentExpressionToExpression(ctx: Context, value: AssignmentExpress
 }
 
 function callExpressionToExpression(ctx: Context, value: CallExpression): MiteType {
-    const args = value.arguments.map((arg) => expressionToExpression(ctx, arg));
+    let args;
 
-    const primary_argument = args[0]?.type.name;
     if (value.callee.type === "Identifier") {
         const name = value.callee.name;
         if (intrinsic_names.has(name)) {
+            args = value.arguments.map((arg) => expressionToExpression(ctx, arg));
+            const primary_argument = args[0]?.type.name;
+
             if (!primary_argument) throw new Error("Intrinsic must have primary argument");
             const intrinsic = ctx.intrinsics[primary_argument][name];
             if (!intrinsic)
                 throw new Error(`Intrinsic ${name} not defined for ${primary_argument}`);
             // @ts-expect-error this is fine
             return intrinsic(...args);
-        } else if (ctx.conversions[primary_argument]?.[name]) {
-            return ctx.conversions[primary_argument][name](args[0]);
+        } else if (!Object.values(ctx.conversions).every((x) => !Object.hasOwn(x, name))) {
+            args = value.arguments.map((arg) => expressionToExpression(ctx, arg));
+            const primary_argument = args[0]?.type.name;
+
+            if (ctx.conversions[primary_argument]?.[name]) {
+                return ctx.conversions[primary_argument][name](args[0]);
+            }
         }
     }
 
     const fn = expressionToExpression(ctx, value.callee);
+    if (fn.type.classification !== "function") {
+        throw new Error(`Cannot call non-function type ${fn.type.name}`);
+    }
+
+    args ??= fn.type.implementation.params.map((type, i) =>
+        expressionToExpression(updateExpected(ctx, type), value.arguments[i])
+    );
+
     return fn.call(
         args.length !== 0 &&
             binaryen.getExpressionId(args[0].get_expression_ref()) === binaryen.ExpressionIds.Nop
