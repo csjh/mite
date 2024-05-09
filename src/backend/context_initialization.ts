@@ -690,7 +690,8 @@ function structDeclarationToTypeInformation(
     const type: Omit<StructTypeInformation, "sizeof"> = {
         classification: "struct",
         name: node.id.name,
-        fields: new Map()
+        fields: new Map(),
+        methods: new Map()
     };
 
     let offset = 0;

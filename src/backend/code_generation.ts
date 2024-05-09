@@ -114,6 +114,34 @@ export function programToModule(
         );
     }
 
+    for (const struct of program.body.filter((x) => x.type === "StructDeclaration")) {
+        for (const { id, params, returnType } of struct.methods) {
+            (ctx.types[struct.id.name] as InstanceStructTypeInformation).methods.set(id.name, {
+                classification: "function",
+                name: `${struct.id.name}.${id.name}`,
+                sizeof: 0,
+                implementation: {
+                    params: params.map(({ typeAnnotation }) => parseType(ctx, typeAnnotation)),
+                    results: parseType(ctx, returnType)
+                }
+            });
+
+            // TODO: this shouldn't be necessary
+            ctx.variables.set(
+                `${struct.id.name}.${id.name}`,
+                new DirectFunction(ctx, {
+                    classification: "function",
+                    name: `${struct.id.name}.${id.name}`,
+                    sizeof: 0,
+                    implementation: {
+                        params: params.map(({ typeAnnotation }) => parseType(ctx, typeAnnotation)),
+                        results: parseType(ctx, returnType)
+                    }
+                })
+            );
+        }
+    }
+
     for (const type of ["i32", "i64", "f32", "f64"] as const) {
         ctx.variables.set(
             `log_${type}`,
