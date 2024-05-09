@@ -1,0 +1,13 @@
+fn add(x: i32, y: i32): i32 {
+    return x + y;
+}
+
+fn getAdd(): (i32, i32) => i32 {
+    return add;
+}
+
+export fn main(): i32 {
+    let a = getAdd();
+    let b = add;
+    return a(1, 2) + b(3, 4);
+}
