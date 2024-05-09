@@ -95,7 +95,7 @@ export function miteSignatureToBinaryenSignature(
     variables: TypeInformation[],
     body: binaryen.ExpressionRef
 ): binaryen.ExpressionRef {
-    const binaryen_parameters_untyped = params.map(typeInformationToBinaryen);
+    const binaryen_parameters_untyped = params.map((x) => typeInformationToBinaryen(x.type));
     const binaryen_parameters = binaryen.createType(binaryen_parameters_untyped);
     const binaryen_return_type = typeInformationToBinaryen(results);
     const binaryen_variables = variables.map(typeInformationToBinaryen);
@@ -166,13 +166,19 @@ export function parseType(
         type = type.slice("ref ".length);
     }
 
-    // (int, int) => int
+    // (x: int, y: int) => int
     if (type.startsWith("(")) {
         const [params_str, results_str] = type.split(" => ");
         const params = params_str
             .slice(1, -1)
             .split(", ")
-            .map((x) => parseType(ctx, x));
+            .map((x) => {
+                const [name, type] = x.split(": ", 2);
+                return {
+                    name,
+                    type: parseType(ctx, type)
+                };
+            });
         const results = parseType(ctx, results_str);
         return {
             classification: "function",

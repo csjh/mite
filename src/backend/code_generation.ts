@@ -110,7 +110,10 @@ export function programToModule(
                 name: id.name,
                 sizeof: 0,
                 implementation: {
-                    params: params.map(({ typeAnnotation }) => parseType(ctx, typeAnnotation)),
+                    params: params.map(({ name, typeAnnotation }) => ({
+                        name: name.name,
+                        type: parseType(ctx, typeAnnotation)
+                    })),
                     results: parseType(ctx, returnType)
                 }
             })
@@ -124,7 +127,10 @@ export function programToModule(
                 name: `${struct.id.name}.${id.name}`,
                 sizeof: 0,
                 implementation: {
-                    params: params.map(({ typeAnnotation }) => parseType(ctx, typeAnnotation)),
+                    params: params.map(({ name, typeAnnotation }) => ({
+                        name: name.name,
+                        type: parseType(ctx, typeAnnotation)
+                    })),
                     results: parseType(ctx, returnType)
                 }
             });
@@ -137,7 +143,10 @@ export function programToModule(
                     name: `${struct.id.name}.${id.name}`,
                     sizeof: 0,
                     implementation: {
-                        params: params.map(({ typeAnnotation }) => parseType(ctx, typeAnnotation)),
+                        params: params.map(({ name, typeAnnotation }) => ({
+                            name: name.name,
+                            type: parseType(ctx, typeAnnotation)
+                        })),
                         results: parseType(ctx, returnType)
                     }
                 })
@@ -153,7 +162,7 @@ export function programToModule(
                 name: `log_${type}`,
                 sizeof: 0,
                 implementation: {
-                    params: [ctx.types[type]],
+                    params: [{ name: "value", type: ctx.types[type] }],
                     results: ctx.types.void
                 }
             })
@@ -539,7 +548,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
     }
 
     args ??= thisless_params.map((type, i) =>
-        expressionToExpression(updateExpected(ctx, type), value.arguments[i])
+        expressionToExpression(updateExpected(ctx, type.type), value.arguments[i])
     );
 
     return fn.call(args);

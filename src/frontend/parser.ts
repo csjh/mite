@@ -993,8 +993,19 @@ export class Parser {
         if (token.type === TokenType.IDENTIFIER) return { type: "Identifier", name: token.value };
         if (token.type === TokenType.LEFT_PAREN) {
             const params = [];
+            let unnamed = 0;
             while (this.token.type !== TokenType.RIGHT_PAREN) {
-                params.push(this.parseType());
+                let name;
+                if (
+                    this.token.type === TokenType.IDENTIFIER &&
+                    this.tokens[this.idx + 1].type === TokenType.COLON
+                ) {
+                    name = this.getIdentifier();
+                    this.eatToken(TokenType.COLON);
+                } else {
+                    name = `$${unnamed++}`;
+                }
+                params.push({ name, type: this.parseType() });
                 if (this.token.type === TokenType.COMMA) this.idx++;
             }
             this.eatToken(TokenType.RIGHT_PAREN);
@@ -1006,7 +1017,7 @@ export class Parser {
 
             return {
                 type: "Identifier",
-                name: `(${params.map((x) => x.name).join(", ")}) => ${result.name}`,
+                name: `(${params.map((x) => `${x.name}: ${x.type.isRef ? "ref " : ""}${x.type.name}`).join(", ")}) => ${result.name}`,
                 isRef: is_ref
             };
         } else if (token.type === TokenType.LEFT_BRACKET) {

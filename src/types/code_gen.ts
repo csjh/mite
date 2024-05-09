@@ -54,8 +54,13 @@ export type InstanceTypeInformation =
     | InstanceArrayTypeInformation
     | InstanceFunctionInformation;
 
+type Parameter = {
+    name: string;
+    type: InstanceTypeInformation;
+};
+
 export type FunctionInformation = {
-    params: InstanceTypeInformation[];
+    params: Parameter[];
     results: InstanceTypeInformation;
 };
 
