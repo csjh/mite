@@ -23,10 +23,16 @@ export type StructTypeInformation = SharedTypeInformation & {
 export type PrimitiveTypeInformation = SharedTypeInformation & {
     classification: "primitive";
 };
+export type DirectFunctionInformation = SharedTypeInformation & {
+    classification: "function";
+    implementation: FunctionInformation;
+};
+
 export type TypeInformation =
     | PrimitiveTypeInformation
     | StructTypeInformation
-    | ArrayTypeInformation;
+    | ArrayTypeInformation
+    | DirectFunctionInformation;
 
 type SharedInstanceTypeInformation = {
     is_ref: boolean;
@@ -37,11 +43,15 @@ export type InstanceStructTypeInformation = StructTypeInformation & SharedInstan
 export type InstancePrimitiveTypeInformation = PrimitiveTypeInformation & {
     is_ref?: boolean;
 };
+export type InstanceFunctionInformation = DirectFunctionInformation & {
+    is_ref?: boolean;
+};
 
 export type InstanceTypeInformation =
     | InstancePrimitiveTypeInformation
     | InstanceStructTypeInformation
-    | InstanceArrayTypeInformation;
+    | InstanceArrayTypeInformation
+    | InstanceFunctionInformation;
 
 export type FunctionInformation = {
     params: InstanceTypeInformation[];
@@ -53,8 +63,6 @@ export type Context = {
     mod: binaryen.Module;
     /** Variables defined in this scope */
     variables: Map<string, MiteType>;
-    /** Functions defined in this scope */
-    functions: Map<string, FunctionInformation>;
     /** The return type expected from the current expression. Used for literal coercion. */
     expected?: InstanceTypeInformation;
     /** Types and their intrinsics */

@@ -990,20 +990,39 @@ export class Parser {
 
         const token = this.tokens[this.idx++];
         if (token.type === TokenType.IDENTIFIER) return { type: "Identifier", name: token.value };
-        if (token.type !== TokenType.LEFT_BRACKET)
+        if (token.type === TokenType.LEFT_PAREN) {
+            const params = [];
+            while (this.token.type !== TokenType.RIGHT_PAREN) {
+                params.push(this.parseType());
+                if (this.token.type === TokenType.COMMA) this.idx++;
+            }
+            this.eatToken(TokenType.RIGHT_PAREN);
+
+            this.eatToken(TokenType.ASSIGNMENT);
+            this.eatToken(TokenType.GREATER_THAN);
+
+            const result = this.parseType();
+
+            return {
+                type: "Identifier",
+                name: `(${params.map((x) => x.name).join(", ")}) => ${result.name}`,
+                isRef: is_ref
+            };
+        } else if (token.type === TokenType.LEFT_BRACKET) {
+            const type = this.parseType();
+            this.eatToken(TokenType.SEMICOLON);
+
+            const length = this.getNumberLiteral();
+            this.eatToken(TokenType.RIGHT_BRACKET);
+
+            return {
+                type: "Identifier",
+                name: `[${type.name}; ${length.value}]`,
+                isRef: is_ref
+            };
+        } else {
             throw new Error(`Expected type, got ${token.type}`);
-
-        const type = this.parseType();
-        this.eatToken(TokenType.SEMICOLON);
-
-        const length = this.getNumberLiteral();
-        this.eatToken(TokenType.RIGHT_BRACKET);
-
-        return {
-            type: "Identifier",
-            name: `[${type.name}; ${length.value}]`,
-            isRef: is_ref
-        };
+        }
     }
 
     private parseStructLiteral(typeAnnotation: TypeIdentifier): ObjectExpression {

@@ -144,11 +144,28 @@ const fat_regex = /\[(.*)\]/;
 export function parseType(ctx: Context, type: TypeIdentifier): InstanceTypeInformation;
 export function parseType(ctx: Context, type: string): InstanceTypeInformation;
 export function parseType(ctx: Context, type: string | TypeIdentifier): InstanceTypeInformation {
-    if (typeof type === "object") return parseType(ctx, type.name);
-    let is_ref = false;
+    let is_ref = typeof type === "object" ? !!type.isRef : false;
+    if (typeof type === "object") type = type.name;
     if (type.startsWith("ref ")) {
         is_ref = true;
         type = type.slice("ref ".length);
+    }
+
+    // (int, int) => int
+    if (type.startsWith("(")) {
+        const [params_str, results_str] = type.split(" => ");
+        const params = params_str
+            .slice(1, -1)
+            .split(", ")
+            .map((x) => parseType(ctx, x));
+        const results = parseType(ctx, results_str);
+        return {
+            classification: "function",
+            name: type, // not really used
+            implementation: { params, results },
+            is_ref,
+            sizeof: 8
+        };
     }
 
     if (type in ctx.types) {
