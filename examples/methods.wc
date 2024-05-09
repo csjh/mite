@@ -1,0 +1,18 @@
+struct accumulator {
+    x: i32,
+    increment(x: i32): void {
+        this.x += x;
+    }
+}
+
+fn doSomeWork(cb: (i32) => void): void {
+    cb(1);
+    cb(2);
+    cb(3);
+}
+
+export fn main(): i32 {
+    let acc = accumulator { x: 0 };
+    doSomeWork(acc.increment);
+    return acc.x;
+}

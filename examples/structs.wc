@@ -1,15 +1,14 @@
 struct coord {
     x: i32,
-    y: i32
+    y: i32,
+    add(a: coord): coord {
+        return coord { x: this.x + a.x, y: this.y + a.y };
+    }
 }
 
 struct locations {
     home: coord,
     work: coord
-}
-
-fn add(a: coord, b: coord): coord {
-    return coord { x: a.x + b.x, y: a.y + b.y };
 }
 
 export fn main(): i32 {
@@ -23,5 +22,5 @@ export fn main(): i32 {
     };
     let l = locations { home, work };
     l.work.y = 8;
-    return add(add(l.work, l.work), add(l.home, l.home)).x;
+    return l.work.add(l.work).add(l.home.add(l.home)).x;
 }
