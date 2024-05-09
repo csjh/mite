@@ -45,7 +45,7 @@ export function compile(source: string, options: CompileOptions = {}): string | 
 
     // the mite standard library
     for (const type of ["i32", "i64", "f32", "f64"]) {
-        // @ts-ignore
+        // @ts-expect-error binaryen types
         mod.addFunctionImport(`log_${type}`, "console", "log", binaryen[type], binaryen.none);
     }
 

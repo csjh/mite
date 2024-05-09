@@ -126,7 +126,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
     return code.slice(0, -1);
 }
 
-type ValueOf<T> = T extends Map<any, infer V> ? V : never;
+type ValueOf<T> = T extends Map<unknown, infer V> ? V : never;
 
 function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation["fields"]>): {
     getter: string;
@@ -166,7 +166,7 @@ function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation
             setter: ""
         };
     } else {
-        // @ts-expect-error
+        // @ts-expect-error unreachable probably
         throw new Error(`Unknown type: ${type.classification}`);
     }
 }

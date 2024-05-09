@@ -75,7 +75,7 @@ export function createMiteType(
         }
     }
 
-    // @ts-expect-error
+    // @ts-expect-error unreachable probably
     type.classification;
     return undefined as never;
 }

@@ -10,8 +10,8 @@ const output = compile(program);
 await fs.writeFile("out.wasm", output);
 
 const compiled = new WebAssembly.Module(output);
-// @ts-ignore
+// @ts-expect-error this works
 const instance = new WebAssembly.Instance(compiled, { console });
 
-// @ts-ignore
+// @ts-expect-error this works
 console.log(instance.exports.main());

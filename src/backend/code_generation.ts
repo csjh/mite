@@ -168,7 +168,6 @@ function handleDeclaration(ctx: Context, node: Declaration): void {
             break;
         case "FunctionDeclaration":
             buildFunctionDeclaration(ctx, node);
-            ctx.variables = before;
             break;
         case "StructDeclaration":
             // struct declarations don't carry any runtime weight
@@ -180,7 +179,7 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     let local_count = 0;
     const parent_scope = new Map(ctx.variables);
     ctx.variables = new Map(ctx.variables);
-
+    
     const params = new Map(
         node.params.map(({ name, typeAnnotation }) => {
             const local_index = local_count++;
@@ -667,20 +666,20 @@ function blockExpressionToExpression(ctx: Context, value: BlockExpression): Mite
     );
 }
 
-function continueExpressionToExpression(ctx: Context, value: ContinueExpression): MiteType {
+function continueExpressionToExpression(ctx: Context, _: ContinueExpression): MiteType {
     const loop = ctx.stacks.continue.at(-1);
     if (!loop) throw new Error("Cannot continue outside of loop");
     return new TransientPrimitive(ctx, ctx.types.void, ctx.mod.br(loop));
 }
 
 // todo: support labeled breaks;
-function breakExpressionToExpression(ctx: Context, value: BreakExpression): MiteType {
+function breakExpressionToExpression(ctx: Context, _: BreakExpression): MiteType {
     const block = ctx.stacks.break.at(-1);
     if (!block) throw new Error("Cannot break outside of a block");
     return new TransientPrimitive(ctx, ctx.types.void, ctx.mod.br(block));
 }
 
-function emptyExpressionToExpression(ctx: Context, value: EmptyExpression): MiteType {
+function emptyExpressionToExpression(ctx: Context, _: EmptyExpression): MiteType {
     return new TransientPrimitive(ctx, ctx.types.void, ctx.mod.nop());
 }
 

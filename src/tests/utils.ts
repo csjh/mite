@@ -1,7 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { compile } from "../compiler.js";
 import assert from "node:assert";
-import { expect } from "bun:test";
 
 export function compileAndRun(
     program: string,
@@ -23,12 +22,12 @@ export function compileAndRun(
     });
 
     if (expected_output === "error") {
-        // @ts-expect-error
+        // @ts-expect-error wasm exports
         assert.throws(() => instance.exports[func]());
         return;
     }
 
-    // @ts-expect-error
+    // @ts-expect-error wasm exports
     const number = instance.exports[func]();
 
     if (typeof expected_output === "number" || typeof expected_output === "bigint") {

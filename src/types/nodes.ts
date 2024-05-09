@@ -21,6 +21,7 @@ export interface NodeMap {
     AssignmentProperty: AssignmentProperty;
     CatchClause: CatchClause;
     Expression: Expression;
+    // eslint-disable-next-line @typescript-eslint/ban-types
     Function: Function;
     Identifier: Identifier;
     Literal: Literal;

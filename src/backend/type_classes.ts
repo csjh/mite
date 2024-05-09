@@ -128,15 +128,15 @@ export abstract class Primitive implements MiteType {
 
     abstract set(value: MiteType): MiteType;
 
-    access(accessor: string): MiteType {
+    access(_: string): MiteType {
         throw new Error("Unable to access properties of a primitive.");
     }
 
-    index(index: MiteType): MiteType {
+    index(_: MiteType): MiteType {
         throw new Error("Unable to access indices of a primitive.");
     }
 
-    call(args: MiteType[]): MiteType {
+    call(_: MiteType[]): MiteType {
         throw new Error("Unable to call a primitive.");
     }
 
@@ -698,7 +698,7 @@ export class TransientPrimitive extends Primitive {
         return this;
     }
 
-    set(value: MiteType): MiteType {
+    set(_: MiteType): MiteType {
         throw new Error("Cannot set transient value");
     }
 }
@@ -912,7 +912,7 @@ export class Pointer implements MiteType {
         throw new Error("Cannot index pointer value");
     }
 
-    call(args: MiteType[]): MiteType {
+    call(_: MiteType[]): MiteType {
         throw new Error("Cannot call pointer value");
     }
 
@@ -977,15 +977,15 @@ export abstract class AggregateType<T extends InstanceTypeInformation> implement
         }
     }
 
-    access(accessor: string): MiteType {
+    access(_: string): MiteType {
         throw new Error("Method not implemented.");
     }
 
-    index(index: MiteType): MiteType {
+    index(_: MiteType): MiteType {
         throw new Error("Method not implemented.");
     }
 
-    call(args: MiteType[]): MiteType {
+    call(_: MiteType[]): MiteType {
         throw new Error("Method not implemented.");
     }
 

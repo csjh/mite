@@ -1,10 +1,5 @@
 /// <reference types="bun-types" />
 
-import { describe, it, expect } from "bun:test";
-import { compileAndRun } from "./utils.js";
-import { compile } from "../compiler.js";
-import assert from "assert";
-
 // describe("general errors", () => {
 //     it("should not stack overflow with a 64kb stack", () => {
 //         const program = `

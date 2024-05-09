@@ -5,9 +5,9 @@ import { Primitive } from "../backend/type_classes.js";
 import { parseType } from "../backend/utils.js";
 import dedent from "dedent";
 
-export type Options = {};
+export type Options = unknown;
 
-export function programToBoilerplate(program: Program, options: Options) {
+export function programToBoilerplate(program: Program, _: Options) {
     const structs = identifyStructs(program);
     const ctx = {
         types: Object.fromEntries([
@@ -84,7 +84,7 @@ function typeToIdentifier(type: TypeInformation): string {
         )}`;
     }
 
-    // @ts-expect-error
+    // @ts-expect-error unreachable probably
     type.classification;
     throw Error("Unknown type classification in typeToIdentifier");
 }

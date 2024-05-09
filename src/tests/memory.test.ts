@@ -13,5 +13,7 @@ describe("memory size", () => {
             return 0;
         }
         `;
+
+        compileAndRun(program, 0);
     });
 });

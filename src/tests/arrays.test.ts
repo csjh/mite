@@ -2,7 +2,6 @@
 
 import { describe, it } from "bun:test";
 import { compileAndRun } from "./utils.js";
-import assert from "assert";
 
 // describe("array declarations", () => {
 //     it("should trigger stack overflow", () => {

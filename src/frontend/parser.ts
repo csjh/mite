@@ -535,11 +535,12 @@ export class Parser {
                 //     expression_stack.push(this.getBooleanLiteral());
                 //     break;
                 case TokenType.IDENTIFIER:
+                    // eslint-disable-next-line no-case-declarations
                     const next = this.getIdentifier();
-                    // @ts-expect-error
+                    // @ts-expect-error idek
                     if (this.token.type === TokenType.LEFT_PAREN) {
                         expression_stack.push(this.parseCallExpression(next));
-                        // @ts-expect-error
+                        // @ts-expect-error idek
                     } else if (this.token.type === TokenType.LEFT_BRACE) {
                         expression_stack.push(this.parseStructLiteral(next));
                     } else {
@@ -774,8 +775,7 @@ export class Parser {
             };
         }
 
-        let signed = value < 0n;
-        if (signed) {
+        if (value < 0n) {
             if (value > -(2n ** 31n)) {
                 return {
                     type: "Literal",

@@ -20,5 +20,17 @@ module.exports = {
         ecmaVersion: "latest",
         sourceType: "module"
     },
-    plugins: ["@typescript-eslint"]
+    plugins: ["@typescript-eslint"],
+    rules: {
+        "no-constant-condition": "off",
+        "no-case-declarations": "off",
+        "@typescript-eslint/no-unused-vars": [
+            "error", // or "error"
+            {
+                "argsIgnorePattern": "^_",
+                "varsIgnorePattern": "^_",
+                "caughtErrorsIgnorePattern": "^_"
+            }
+        ]
+    }
 };
