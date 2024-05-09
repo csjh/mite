@@ -21,13 +21,18 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
             ...Primitive.primitives.entries(),
             ...structs.map((x) => [x.name, x])
         ])
-    };
+    } as Context;
     const exports = program.body
         .filter(
             (x): x is ExportNamedDeclaration =>
                 x.type === "ExportNamedDeclaration" && x.declaration.type === "FunctionDeclaration"
         )
         .map((x) => x.declaration as FunctionDeclaration);
+    const methods = Object.fromEntries(
+        program.body
+            .filter((x) => x.type === "StructDeclaration")
+            .map((x) => [x.id.name, x.methods])
+    );
 
     const { setup = "", instantiation } = createInstance("{}");
 
@@ -78,11 +83,11 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
                 constructor(ptr) {
                     this._ = ptr;
-                }
-                ${Array.from(struct.fields.entries(), ([name, info]) => {
+                }${Array.from(struct.fields.entries(), ([name, info]) => {
                     const { getter, setter } = typeToAccessors(info);
 
                     return `
+
                 get ${name}() {
                     ${getter}
                 }
@@ -90,7 +95,13 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                 set ${name}($val) {
                     ${setter}
                 }`;
-                }).join("\n")}
+                }).join("")}${methods[struct.name]
+                    .map((fn) => {
+                        return `
+
+                ${functionDeclarationToString(ctx, fn, 16)}`;
+                    })
+                    .join("")}
             }
         `;
 
@@ -98,26 +109,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
     }
 
     for (const func of exports) {
-        const { id, params, returnType } = func;
-        const returnTypeType = parseType(ctx as Context, returnType);
-
-        code += dedent`
-            export function ${id.name}(${params.map((x) => x.name.name).join(", ")}) {
-                const $result = $wasm_export_${id.name}(${params
-                    .map(({ name: { name: n } }) => (Primitive.primitives.has(n) ? n : `${n}._`))
-                    .join(", ")});
-
-                ${
-                    // prettier-ignore
-                    returnTypeType.classification === "primitive" ? "return $result"
-                  : returnTypeType.classification === "struct"    ? structToJavascript("$result", returnTypeType, true)
-                  : returnTypeType.classification === "array"     ? arrayToJavascript("$result", returnTypeType, true)
-                  : returnTypeType.classification === "function"  ? functionToJavascript("$result", true)
-                  // @ts-expect-error unreachable
-                  : returnTypeType.classification
-                };
-            }
-        `;
+        code += `export function ${functionDeclarationToString(ctx, func, 0)}`;
 
         code += "\n\n";
     }
@@ -242,4 +234,26 @@ function primitiveToTypedName(primitive: string): DataViewGetterTypes {
 
 function functionToJavascript(ptr: string, isReturn: boolean = false) {
     return `${isReturn ? "return " : ""}$toJavascriptFunction(${ptr})`;
+}
+
+function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, indentation: number) {
+    const { id, params, returnType } = func;
+    if (params[0]?.name.name === "this") params.shift();
+    const returnTypeType = parseType(ctx, returnType);
+
+    return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {
+\t    const $result = $wasm_export_${id.name}(${params
+        .map(({ name: { name: n } }) => (Primitive.primitives.has(n) ? n : `${n}._`))
+        .join(", ")});
+\t
+\t    ${
+        // prettier-ignore
+        returnTypeType.classification === "primitive" ? "return $result"
+        : returnTypeType.classification === "struct"    ? structToJavascript("$result", returnTypeType, true)
+        : returnTypeType.classification === "array"     ? arrayToJavascript("$result", returnTypeType, true)
+        : returnTypeType.classification === "function"  ? functionToJavascript("$result", true)
+        // @ts-expect-error unreachable
+        : returnTypeType.classification
+    };
+\t}`.replaceAll("\t", " ".repeat(indentation));
 }

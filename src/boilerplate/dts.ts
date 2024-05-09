@@ -1,4 +1,4 @@
-import { Context, TypeInformation } from "../types/code_gen.js";
+import { Context, InstanceStructTypeInformation, TypeInformation } from "../types/code_gen.js";
 import { ExportNamedDeclaration, FunctionDeclaration, Program } from "../types/nodes.js";
 import { identifyStructs } from "../backend/context_initialization.js";
 import { Primitive } from "../backend/type_classes.js";
@@ -15,6 +15,24 @@ export function programToBoilerplate(program: Program, _: Options) {
             ...structs.map((x) => [x.name, x])
         ])
     } as Context;
+
+    for (const struct of program.body.filter((x) => x.type === "StructDeclaration")) {
+        for (const { id, params, returnType } of struct.methods) {
+            (ctx.types[struct.id.name] as InstanceStructTypeInformation).methods.set(id.name, {
+                classification: "function",
+                name: `${struct.id.name}.${id.name}`,
+                sizeof: 0,
+                implementation: {
+                    params: params.map(({ name, typeAnnotation }) => ({
+                        name: name.name,
+                        type: parseType(ctx, typeAnnotation)
+                    })),
+                    results: parseType(ctx, returnType)
+                }
+            });
+        }
+    }
+
     const exports = program.body
         .filter(
             (x): x is ExportNamedDeclaration =>
@@ -44,12 +62,20 @@ export function programToBoilerplate(program: Program, _: Options) {
 
         code += dedent`
             declare class ${struct.name} {
-                static sizeof: number;
-                ${Array.from(struct.fields.entries(), ([name, info]) => {
+                static sizeof: number;${Array.from(struct.fields.entries(), ([name, info]) => {
                     return `
-                get ${name}(): ${info.type.name};
-                set ${name}(val: ${info.type.name});`;
-                }).join("\n")}
+
+                get ${name}(): ${typeToIdentifier(info.type)};
+                set ${name}(val: ${typeToIdentifier(info.type)});`;
+                }).join("")}${Array.from(
+                    struct.methods.entries(),
+                    // prettier-ignore
+                    ([name, { implementation: { params, results } }]) => {
+                        return `
+
+                ${name}(${params.slice(1).map((x) => `${x.name}: ${typeToIdentifier(x.type)}`).join(", ")}): ${typeToIdentifier(results)};`;
+                    }
+                ).join("")}
             }
         `;
 
@@ -79,7 +105,7 @@ function typeToIdentifier(type: TypeInformation): string {
     } else if (type.classification === "array") {
         return `${type.name.slice(1, type.name.indexOf(";"))}[]`;
     } else if (type.classification === "function") {
-        return `(${type.implementation.params.map((x, i) => `$${i}: ${typeToIdentifier(x)}`).join(", ")}) => ${typeToIdentifier(
+        return `(${type.implementation.params.map((x) => `${x.name}: ${typeToIdentifier(x.type)}`).join(", ")}) => ${typeToIdentifier(
             type.implementation.results
         )}`;
     }
