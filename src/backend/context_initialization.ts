@@ -9,7 +9,7 @@ import {
 import { Program, StructDeclaration } from "../types/nodes.js";
 import { MiteType, Primitive, TransientPrimitive } from "./type_classes.js";
 import binaryen from "binaryen";
-import { bigintToLowAndHigh } from "./utils.js";
+import { bigintToLowAndHigh, parseType } from "./utils.js";
 
 export function createConversions(ctx: Context): Context["conversions"] {
     const unary_op =
@@ -695,27 +695,21 @@ function structDeclarationToTypeInformation(
 
     let offset = 0;
     for (const { name, typeAnnotation } of node.fields) {
-        if (Primitive.primitives.has(typeAnnotation.name)) {
-            const sizeof = Primitive.sizeof(typeAnnotation.name)!;
-            type.fields.set(name.name, {
-                type: Primitive.primitives.get(typeAnnotation.name)!,
-                offset,
-                is_ref: typeAnnotation.isRef ?? false
-            });
-            // TODO: alignment
-            offset += sizeof;
-        } else if (structs.has(typeAnnotation.name)) {
-            const struct = structs.get(typeAnnotation.name)!;
-            type.fields.set(name.name, {
-                type: struct,
-                offset,
-                is_ref: typeAnnotation.isRef ?? false
-            });
-            offset += struct.sizeof;
-        } else {
-            // probably array
-            throw new Error(`Unknown type: ${typeAnnotation.name}`);
-        }
+        const field_type = parseType(
+            {
+                ...Object.fromEntries(Primitive.primitives),
+                ...Object.fromEntries(structs)
+            } as Context["types"],
+            typeAnnotation
+        );
+
+        type.fields.set(name.name, {
+            type: field_type,
+            offset,
+            is_ref: typeAnnotation.isRef ?? false
+        });
+        // TODO: alignment
+        offset += field_type.sizeof;
     }
 
     return { ...type, sizeof: offset };
