@@ -377,7 +377,7 @@ export interface IfExpression extends BaseExpression {
 
 export interface CallExpression extends BaseExpression {
     type: "CallExpression";
-    callee: Identifier;
+    callee: Expression;
     arguments: Array<Expression>;
 }
 

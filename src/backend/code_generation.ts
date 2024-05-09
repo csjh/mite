@@ -73,10 +73,10 @@ export function programToModule(
     const ctx: Context = {
         mod,
         variables: new Map(),
-        functions: new Map(),
         stacks: { continue: [], break: [], depth: 0 },
         types: { ...primitives, ...structs } as Context["types"],
         current_block: [],
+        captured_functions: [],
         local_count: 0,
         // @ts-expect-error initially we're not in a function
         current_function: null
@@ -96,24 +96,36 @@ export function programToModule(
         ctx.mod.i32.const(stack_size + 4 + js_heap_size)
     );
 
-    ctx.functions = new Map(
-        program.body
-            .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
-            .filter((x): x is FunctionDeclaration => x.type === "FunctionDeclaration")
-            .map(({ id, params, returnType }) => [
-                id.name,
-                {
+    for (const { id, params, returnType } of program.body
+        .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
+        .filter((x): x is FunctionDeclaration => x.type === "FunctionDeclaration")) {
+        ctx.variables.set(
+            id.name,
+            new DirectFunction(ctx, {
+                classification: "function",
+                name: id.name,
+                sizeof: 0,
+                implementation: {
                     params: params.map(({ typeAnnotation }) => parseType(ctx, typeAnnotation)),
                     results: parseType(ctx, returnType)
                 }
-            ])
-    );
+            })
+        );
+    }
 
     for (const type of ["i32", "i64", "f32", "f64"] as const) {
-        ctx.functions.set(`log_${type}`, {
-            params: [ctx.types[type]],
-            results: ctx.types.void
-        });
+        ctx.variables.set(
+            `log_${type}`,
+            new DirectFunction(ctx, {
+                classification: "function",
+                name: `log_${type}`,
+                sizeof: 0,
+                implementation: {
+                    params: [ctx.types[type]],
+                    results: ctx.types.void
+                }
+            })
+        );
     }
 
     for (const node of program.body) {
@@ -150,6 +162,7 @@ function handleDeclaration(ctx: Context, node: Declaration): void {
             break;
         case "FunctionDeclaration":
             buildFunctionDeclaration(ctx, node);
+            ctx.variables = before;
             break;
         case "StructDeclaration":
             // struct declarations don't carry any runtime weight
@@ -159,7 +172,8 @@ function handleDeclaration(ctx: Context, node: Declaration): void {
 
 function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void {
     let local_count = 0;
-    ctx.variables = new Map();
+    const parent_scope = new Map(ctx.variables);
+    ctx.variables = new Map(ctx.variables);
 
     const params = new Map(
         node.params.map(({ name, typeAnnotation }) => {
@@ -170,7 +184,7 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
                 type.classification === "primitive" ? type : Primitive.primitives.get("u32")!,
                 local_index
             );
-            let obj;
+            let obj: MiteType;
             if (type.classification === "primitive") {
                 obj = local;
             } else if (type.classification === "array") {
@@ -178,7 +192,6 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
             } else if (type.classification === "struct") {
                 obj = new Struct(ctx, type, new Pointer(local));
             } else {
-                // TODO: open issue in TS
                 obj = undefined as never;
             }
             return [name.name, obj];
@@ -186,28 +199,30 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     );
     Array.from(params.entries()).forEach(([key, val]) => ctx.variables.set(key, val));
 
-    const current_function = {
-        ...ctx.functions.get(node.id.name)!,
+    const current_function = (ctx.current_function = {
+        ...(lookForVariable(ctx, node.id.name).type as InstanceFunctionInformation).implementation,
         stack_frame_size: 0,
         local_count
-    };
-
-    const function_body = newBlock(ctx, () => {
-        node.body.body.forEach((statement) =>
-            statementToExpression({ ...ctx, current_function }, statement)
-        );
     });
+
+    const function_body = newBlock(ctx, () =>
+        node.body.body.forEach((statement) => statementToExpression(ctx, statement))
+    );
 
     const function_variables = Array.from(ctx.variables.entries())
         .filter(([name]) => !params.has(name))
+        .filter(([_, mitetype]) => !(mitetype instanceof DirectFunction))
         .map(([, { type }]) => type);
 
     miteSignatureToBinaryenSignature(
-        { ...ctx, current_function },
+        ctx,
+        current_function,
         node.id.name,
         function_variables,
         function_body.get_expression_ref()
     );
+
+    ctx.variables = parent_scope;
 }
 
 function statementToExpression(ctx: Context, value: Statement): void {
@@ -442,29 +457,25 @@ function assignmentExpressionToExpression(ctx: Context, value: AssignmentExpress
 }
 
 function callExpressionToExpression(ctx: Context, value: CallExpression): MiteType {
-    const function_name = value.callee.name;
-    const fn = ctx.functions.get(function_name);
-    const args = value.arguments.map((arg, i) =>
-        expressionToExpression(updateExpected(ctx, fn?.params[i]), arg)
-    );
+    const args = value.arguments.map((arg) => expressionToExpression(ctx, arg));
 
     const primary_argument = args[0]?.type.name;
-    if (intrinsic_names.has(function_name)) {
-        if (!primary_argument) throw new Error("Intrinsic must have primary argument");
-        const intrinsic =
-            ctx.intrinsics[primary_argument][function_name as keyof IntrinsicHandlers];
-        if (!intrinsic)
-            throw new Error(`Intrinsic ${function_name} not defined for ${primary_argument}`);
-        // @ts-expect-error this is fine
-        return intrinsic(...args);
-    } else if (ctx.conversions[primary_argument]?.[function_name]) {
-        return ctx.conversions[primary_argument][function_name](args[0]);
-    } else if (!fn) throw new Error(`Unknown function: ${function_name}`);
+    if (value.callee.type === "Identifier") {
+        const name = value.callee.name;
+        if (intrinsic_names.has(name)) {
+            if (!primary_argument) throw new Error("Intrinsic must have primary argument");
+            const intrinsic = ctx.intrinsics[primary_argument][name];
+            if (!intrinsic)
+                throw new Error(`Intrinsic ${name} not defined for ${primary_argument}`);
+            // @ts-expect-error this is fine
+            return intrinsic(...args);
+        } else if (ctx.conversions[primary_argument]?.[name]) {
+            return ctx.conversions[primary_argument][name](args[0]);
+        }
+    }
 
-    return callFunction(
-        ctx,
-        function_name,
-        fn,
+    const fn = expressionToExpression(ctx, value.callee);
+    return fn.call(
         args.length !== 0 &&
             binaryen.getExpressionId(args[0].get_expression_ref()) === binaryen.ExpressionIds.Nop
             ? []
@@ -483,7 +494,7 @@ function ifExpressionToExpression(ctx: Context, value: IfExpression): MiteType {
         );
     }
 
-    return toReturnType(
+    return fromExpressionRef(
         ctx,
         true_branch.type,
         ctx.mod.if(

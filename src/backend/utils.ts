@@ -81,12 +81,11 @@ export function typeInformationToBinaryen(type: TypeInformation) {
 
 export function miteSignatureToBinaryenSignature(
     ctx: Context,
+    { params, results }: FunctionInformation,
     name: string,
     variables: TypeInformation[],
     body: binaryen.ExpressionRef
 ): binaryen.ExpressionRef {
-    const { params, results } = ctx.current_function;
-
     const binaryen_parameters_untyped = params.map(typeInformationToBinaryen);
     const binaryen_parameters = binaryen.createType(binaryen_parameters_untyped);
     const binaryen_return_type = typeInformationToBinaryen(results);
@@ -135,7 +134,7 @@ export function newBlock(
             block.map((x) => x.get_expression_ref()),
             type
         );
-        return toReturnType(ctx, ret, blocked);
+        return fromExpressionRef(ctx, ret, blocked);
     }
 }
 
@@ -203,20 +202,6 @@ export function parseType(ctx: Context, type: string | TypeIdentifier): Instance
     throw new Error(`Unknown type: ${type}`);
 }
 
-export function callFunction(
-    ctx: Context,
-    function_name: string,
-    { params, results }: FunctionInformation,
-    args: MiteType[]
-): MiteType {
-    const results_expr = ctx.mod.call(
-        function_name,
-        args.map((arg) => arg.get_expression_ref()),
-        typeInformationToBinaryen(results)
-    );
-    return toReturnType(ctx, results, results_expr);
-}
-
 export function allocate(ctx: Context, type: InstanceTypeInformation, size: number): Pointer {
     const allocation = new TransientPrimitive(
         ctx,
@@ -231,7 +216,7 @@ export function allocate(ctx: Context, type: InstanceTypeInformation, size: numb
     return new Pointer(local as Primitive);
 }
 
-export function toReturnType(
+export function fromExpressionRef(
     ctx: Context,
     result: InstanceTypeInformation,
     result_expr: binaryen.ExpressionRef

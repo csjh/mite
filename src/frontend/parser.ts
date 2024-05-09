@@ -1,9 +1,7 @@
 import {
     TokenType,
     Token,
-    BINARY_OPERATORS,
     BinaryOperator,
-    ASSIGNMENT_OPERATORS,
     AssignmentOperator,
     LogicalOperator
 } from "../types/tokens.js";
@@ -16,7 +14,6 @@ import type {
     Identifier,
     BinaryExpression,
     Expression,
-    Literal,
     AssignmentExpression,
     VariableDeclaration,
     ExpressionStatement,

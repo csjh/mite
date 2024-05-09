@@ -1051,5 +1051,101 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
     }
 }
 
+export class DirectFunction implements MiteType {
+    constructor(
+        private readonly ctx: Context,
+        readonly type: InstanceFunctionInformation
+    ) {}
+
+    get_expression_ref(): binaryen.ExpressionRef {
+        return this.get().get_expression_ref();
+    }
+
+    get() {
+        const captured_name = `Captured|${this.type.name}`;
+        if (this.ctx.captured_functions.indexOf(captured_name) === -1) {
+            miteSignatureToBinaryenSignature(
+                this.ctx,
+                {
+                    // dummy parameter for ctx
+                    params: [Primitive.primitives.get("i32")!, ...this.type.implementation.params],
+                    results: this.type.implementation.results
+                },
+                captured_name,
+                [],
+                this.ctx.mod.block(null, [
+                    this.ctx.mod.call(
+                        this.type.name,
+                        this.type.implementation.params.map((type, i) =>
+                            this.ctx.mod.local.get(i + 1, typeInformationToBinaryen(type))
+                        ),
+                        typeInformationToBinaryen(this.type.implementation.results)
+                    )
+                ])
+            );
+            this.ctx.captured_functions.push(captured_name);
+        }
+
+        const ptr = allocate(
+            this.ctx,
+            IndirectFunction.struct_type,
+            IndirectFunction.struct_type.sizeof
+        );
+
+        const func = new IndirectFunction(this.ctx, this.type, ptr);
+
+        this.ctx.current_block.push(
+            func.struct
+                .access("pointer")
+                .set(
+                    new TransientPrimitive(
+                        this.ctx,
+                        Pointer.type,
+                        this.ctx.mod.i32.const(this.ctx.captured_functions.indexOf(captured_name))
+                    )
+                )
+        );
+
+        return func.get();
+    }
+
+    set(_: MiteType): MiteType {
+        throw new Error("Cannot set function value");
+    }
+
+    access(_: string): MiteType {
+        throw new Error("Cannot access on function value");
+    }
+
+    index(_: MiteType): MiteType {
+        throw new Error("Cannot index function value");
+    }
+
+    call(args: MiteType[]): MiteType {
+        const { params, results } = this.type.implementation;
+        if (args.length !== params.length) {
+            throw new Error(
+                `Function ${this.type.name} expects ${params.length} arguments, got ${args.length}`
+            );
+        }
+
+        const results_expr = this.ctx.mod.call(
+            this.type.name,
+            args.map((arg) => arg.get_expression_ref()),
+            typeInformationToBinaryen(results)
+        );
+
+        return fromExpressionRef(this.ctx, results, results_expr);
+    }
+
+    sizeof(): number {
+        return this.ctx.mod.i32.const(0);
+    }
+
+    operator(operator: BinaryOperator): BinaryOperatorHandler {
+        throw new Error(`Invalid operator ${operator} for function`);
+    }
+}
+
 // funcref, externref
 // export class Reference implements MiteType {}
