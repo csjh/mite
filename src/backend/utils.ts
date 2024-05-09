@@ -147,11 +147,18 @@ export function newBlock(
     }
 }
 
+function isCtx(obj: Context | Context["types"]): obj is Context {
+    return "captured_functions" in obj && Array.isArray(obj.captured_functions);
+}
+
 const array_regex = /\[(.*); ([0-9]*)\]/;
 const fat_regex = /\[(.*)\]/;
-export function parseType(ctx: Context, type: TypeIdentifier): InstanceTypeInformation;
-export function parseType(ctx: Context, type: string): InstanceTypeInformation;
-export function parseType(ctx: Context, type: string | TypeIdentifier): InstanceTypeInformation {
+export function parseType(
+    ctx: Context | Context["types"],
+    type: string | TypeIdentifier
+): InstanceTypeInformation {
+    if (!isCtx(ctx)) return parseType({ types: ctx, captured_functions: [''] } as Context, type);
+
     let is_ref = typeof type === "object" ? !!type.isRef : false;
     if (typeof type === "object") type = type.name;
     if (type.startsWith("ref ")) {
