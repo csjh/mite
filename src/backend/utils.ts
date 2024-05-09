@@ -148,7 +148,7 @@ export function newBlock(
 }
 
 function isCtx(obj: Context | Context["types"]): obj is Context {
-    return "captured_functions" in obj && Array.isArray(obj.captured_functions);
+    return !("i32" in obj);
 }
 
 const array_regex = /\[(.*); ([0-9]*)\]/;
@@ -157,7 +157,7 @@ export function parseType(
     ctx: Context | Context["types"],
     type: string | TypeIdentifier
 ): InstanceTypeInformation {
-    if (!isCtx(ctx)) return parseType({ types: ctx, captured_functions: [''] } as Context, type);
+    if (isCtx(ctx)) return parseType(ctx.types, type);
 
     let is_ref = typeof type === "object" ? !!type.isRef : false;
     if (typeof type === "object") type = type.name;
@@ -183,8 +183,8 @@ export function parseType(
         };
     }
 
-    if (type in ctx.types) {
-        const base_type = ctx.types[type];
+    if (type in ctx) {
+        const base_type = ctx[type];
         if (base_type.classification === "primitive") {
             if (is_ref) throw new Error(`Cannot make primitive ${type} a ref`);
             return {
@@ -211,7 +211,7 @@ export function parseType(
             name: type,
             element_type: parseType(ctx, element_type),
             length,
-            sizeof: ctx.types[element_type].sizeof * length + 4,
+            sizeof: ctx[element_type].sizeof * length + 4,
             is_ref
         };
     }
