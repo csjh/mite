@@ -1000,26 +1000,36 @@ export abstract class AggregateType<T extends InstanceTypeInformation> implement
 
 export class Struct extends AggregateType<InstanceStructTypeInformation> {
     access(accessor: string): MiteType {
-        if (!this.type.fields.has(accessor))
-            throw new Error(`Struct ${this.type.name} does not have field ${accessor}`);
+        if (!this.type.fields.has(accessor) && !this.type.methods.has(accessor)) {
+            throw new Error(`Struct ${this.type.name} does not have field or method ${accessor}`);
+        }
 
-        const field = this.type.fields.get(accessor)!;
-        const type = { ...field.type, is_ref: field.is_ref };
+        if (this.type.fields.has(accessor)) {
+            const field = this.type.fields.get(accessor)!;
+            const type = { ...field.type, is_ref: field.is_ref };
 
-        const addr = new TransientPrimitive(
-            this.ctx,
-            this.ctx.types.u32,
-            this.ctx.mod.i32.add(this.get_expression_ref(), this.ctx.mod.i32.const(field.offset))
-        );
-
-        if (type.is_ref) {
-            return createMiteType(
+            const addr = new TransientPrimitive(
                 this.ctx,
-                type,
-                new LinearMemoryPrimitive(this.ctx, this.ctx.types.u32, addr)
+                this.ctx.types.u32,
+                this.ctx.mod.i32.add(
+                    this.get_expression_ref(),
+                    this.ctx.mod.i32.const(field.offset)
+                )
             );
+
+            if (type.is_ref) {
+                return createMiteType(
+                    this.ctx,
+                    type,
+                    new LinearMemoryPrimitive(this.ctx, this.ctx.types.u32, addr)
+                );
+            } else {
+                return createMiteType(this.ctx, type, addr);
+            }
+        } else if (this.type.methods.has(accessor)) {
+            return new StructMethod(this.ctx, this.type.methods.get(accessor)!, this);
         } else {
-            return createMiteType(this.ctx, type, addr);
+            throw new Error("unreachable");
         }
     }
 
@@ -1186,6 +1196,7 @@ export class IndirectFunction extends AggregateType<InstanceFunctionInformation>
             ["pointer", { type: Pointer.type, offset: Pointer.type.sizeof * 0, is_ref: false }],
             ["ctx",     { type: Pointer.type, offset: Pointer.type.sizeof * 1, is_ref: false }]
         ]),
+        methods: new Map(),
         is_ref: false
     } satisfies InstanceStructTypeInformation;
     readonly struct: Struct;
@@ -1217,6 +1228,88 @@ export class IndirectFunction extends AggregateType<InstanceFunctionInformation>
 
     sizeof(): binaryen.ExpressionRef {
         return this.ctx.mod.i32.const(IndirectFunction.struct_type.sizeof);
+    }
+}
+
+export class StructMethod implements MiteType {
+    constructor(
+        private readonly ctx: Context,
+        readonly type: InstanceFunctionInformation,
+        readonly this_: Struct
+    ) {}
+
+    get_expression_ref(): binaryen.ExpressionRef {
+        return this.get().get_expression_ref();
+    }
+
+    get() {
+        if (this.ctx.captured_functions.indexOf(this.type.name) === -1) {
+            this.ctx.captured_functions.push(this.type.name);
+        }
+
+        const ptr = allocate(
+            this.ctx,
+            IndirectFunction.struct_type,
+            IndirectFunction.struct_type.sizeof
+        );
+
+        const func = new IndirectFunction(this.ctx, this.type, ptr);
+
+        this.ctx.current_block.push(
+            func.struct
+                .access("pointer")
+                .set(
+                    new TransientPrimitive(
+                        this.ctx,
+                        Pointer.type,
+                        this.ctx.mod.i32.const(this.ctx.captured_functions.indexOf(this.type.name))
+                    )
+                ),
+            func.struct
+                .access("ctx")
+                .set(
+                    new TransientPrimitive(this.ctx, Pointer.type, this.this_.get_expression_ref())
+                )
+        );
+
+        return func.get();
+    }
+
+    set(_: MiteType): MiteType {
+        throw new Error("Cannot set function value");
+    }
+
+    access(_: string): MiteType {
+        throw new Error("Cannot access on function value");
+    }
+
+    index(_: MiteType): MiteType {
+        throw new Error("Cannot index function value");
+    }
+
+    call(args: MiteType[]): MiteType {
+        const { params, results } = this.type.implementation;
+        if (args.length !== params.length - 1) {
+            throw new Error(
+                `Function ${this.type.name} expects ${params.length - 1} arguments, got ${args.length}`
+            );
+        }
+
+        const results_expr = this.ctx.mod.call(
+            this.type.name,
+            [this.this_.get_expression_ref(), ...args.map((arg) => arg.get_expression_ref())],
+            typeInformationToBinaryen(results)
+        );
+
+        return fromExpressionRef(this.ctx, results, results_expr);
+    }
+
+    sizeof(): number {
+        return this.ctx.mod.i32.const(0);
+    }
+
+    operator(operator: BinaryOperator): BinaryOperatorHandler {
+        throw new Error(`Invalid operator ${operator} for function`);
     }
 }
 

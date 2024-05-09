@@ -18,6 +18,7 @@ import {
     Context,
     InstanceFunctionInformation,
     InstancePrimitiveTypeInformation,
+    InstanceStructTypeInformation,
     InstanceTypeInformation,
     ProgramToModuleOptions,
     intrinsic_names
@@ -53,11 +54,13 @@ import { BinaryOperator, TokenType } from "../types/tokens.js";
 import {
     Array_,
     DirectFunction,
+    IndirectFunction,
     LocalPrimitive,
     MiteType,
     Pointer,
     Primitive,
     Struct,
+    StructMethod,
     TransientPrimitive
 } from "./type_classes.js";
 import { createConversions, createIntrinsics, identifyStructs } from "./context_initialization.js";
@@ -198,7 +201,10 @@ function handleDeclaration(ctx: Context, node: Declaration): void {
             buildFunctionDeclaration(ctx, node);
             break;
         case "StructDeclaration":
-            // struct declarations don't carry any runtime weight
+            for (const decl of node.methods) {
+                decl.id.name = `${node.id.name}.${decl.id.name}`;
+                buildFunctionDeclaration(ctx, decl);
+            }
             break;
     }
 }
@@ -224,7 +230,11 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
                 obj = new Array_(ctx, type, new Pointer(local));
             } else if (type.classification === "struct") {
                 obj = new Struct(ctx, type, new Pointer(local));
+            } else if (type.classification === "function") {
+                obj = new IndirectFunction(ctx, type, new Pointer(local));
             } else {
+                // @ts-expect-error unreachable
+                type.classification;
                 obj = undefined as never;
             }
             return [name.name, obj];
@@ -519,7 +529,18 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
         throw new Error(`Cannot call non-function type ${fn.type.name}`);
     }
 
-    args ??= fn.type.implementation.params.map((type, i) =>
+    const thisless_params =
+        fn instanceof StructMethod
+            ? fn.type.implementation.params.slice(1)
+            : fn.type.implementation.params;
+
+    if (thisless_params.length !== value.arguments.length) {
+        throw new Error(
+            `Expected ${thisless_params.length} arguments, got ${value.arguments.length} in call to ${fn.type.name}`
+        );
+    }
+
+    args ??= thisless_params.map((type, i) =>
         expressionToExpression(updateExpected(ctx, type), value.arguments[i])
     );
 
