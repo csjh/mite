@@ -1,9 +1,4 @@
-import {
-    ArrayTypeInformation,
-    Context,
-    InstanceFunctionInformation,
-    StructTypeInformation
-} from "../types/code_gen.js";
+import { ArrayTypeInformation, Context, StructTypeInformation } from "../types/code_gen.js";
 import { ExportNamedDeclaration, FunctionDeclaration, Program } from "../types/nodes.js";
 import { identifyStructs } from "../backend/context_initialization.js";
 import { Primitive } from "../backend/type_classes.js";
@@ -34,17 +29,16 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         )
         .map((x) => x.declaration as FunctionDeclaration);
 
-    const { setup = "", instantiation } = createInstance("imports");
+    const { setup = "", instantiation } = createInstance("{}");
 
     let code = dedent`
-        ${setup}
-
+        ${setup ? setup + "\n" : ""}
         const $wasm = await ${instantiation};
         const { $memory, $table, ${exports
             .map((x) => `${x.id.name}: $wasm_export_${x.id.name}, `)
-            .join("")} } = $wasm.instance.exports;
+            .join("")}} = $wasm.instance.exports;
         const $buffer = new DataView($memory.buffer);
-        const $virtualized_functions = Array.from($table, (_, i) => $table.get(i));
+        const $virtualized_functions =  /*#__PURE__*/ Array.from($table, (_, i) => $table.get(i));
 
         const $DataViewPrototype = DataView.prototype;
         const $GetBigInt64 =  /*#__PURE__*/ $DataViewPrototype.getBigInt64 .bind($buffer);
@@ -67,6 +61,10 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         const $SetUint16 =    /*#__PURE__*/ $DataViewPrototype.setUint16   .bind($buffer);
         const $SetUint32 =    /*#__PURE__*/ $DataViewPrototype.setUint32   .bind($buffer);
         const $SetUint8 =     /*#__PURE__*/ $DataViewPrototype.setUint8    .bind($buffer);
+        ${/* function bindings actually don't really care about types */ ""}
+        function $toJavascriptFunction($ptr) {
+            return $virtualized_functions[$GetUint32($ptr, true)].bind(null, $GetUint32($ptr + 4, true));
+        }
     `;
 
     code += "\n\n";
@@ -82,7 +80,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                     this._ = ptr;
                 }
                 ${Array.from(struct.fields.entries(), ([name, info]) => {
-                    const [getter, setter] = typeToAccessors(info);
+                    const { getter, setter } = typeToAccessors(info);
 
                     return `
                 get ${name}() {
@@ -91,9 +89,8 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
                 set ${name}($val) {
                     ${setter}
-                }
-                `;
-                }).join("")}
+                }`;
+                }).join("\n")}
             }
         `;
 
@@ -111,15 +108,13 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                     .join(", ")});
 
                 ${
-                    returnTypeType.classification === "primitive"
-                        ? "return $result"
-                        : returnTypeType.classification === "struct"
-                          ? structToJavascript("$result", returnTypeType, true)
-                          : returnTypeType.classification === "function"
-                            ? functionToJavascript("$result", returnTypeType, true)
-                            : returnTypeType.classification === "array"
-                              ? arrayToJavascript("$result", returnTypeType, true)
-                              : returnTypeType
+                    // prettier-ignore
+                    returnTypeType.classification === "primitive" ? "return $result"
+                  : returnTypeType.classification === "struct"    ? structToJavascript("$result", returnTypeType, true)
+                  : returnTypeType.classification === "array"     ? arrayToJavascript("$result", returnTypeType, true)
+                  : returnTypeType.classification === "function"  ? functionToJavascript("$result", true)
+                  // @ts-expect-error unreachable
+                  : returnTypeType.classification
                 };
             }
         `;
@@ -133,48 +128,47 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
 type ValueOf<T> = T extends Map<any, infer V> ? V : never;
 
-function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation["fields"]>) {
+function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation["fields"]>): {
+    getter: string;
+    setter: string;
+} {
+    const ptr = is_ref ? `$GetUint32(this._ + ${offset}, true)` : `(this._ + ${offset})`;
+
     if (type.classification === "primitive") {
-        if (type.name === "void") return ["return undefined;", ""];
+        if (type.name === "void") return { getter: "return undefined", setter: "" };
         if (type.name === "bool") {
-            return [
-                `return !!$GetInt32(this._ + ${offset}, true);`,
-                `$SetInt32(this._ + ${offset}, !!$val, true);`
-            ];
+            return {
+                getter: `return !!$GetInt32(${ptr}, true);`,
+                setter: `$SetInt32(${ptr}, !!$val, true);`
+            };
         }
 
         const typed_name = primitiveToTypedName(type.name);
-        return [
-            `return $Get${typed_name}(this._ + ${offset}, true);`,
-            `$Set${typed_name}(this._ + ${offset}, $val, true);`
-        ];
+        return {
+            getter: `return $Get${typed_name}(${ptr}, true);`,
+            setter: `$Set${typed_name}(${ptr}, $val, true);`
+        };
+    } else if (type.classification === "struct") {
+        // TODO: handle non-ref setters
+        return {
+            getter: structToJavascript(ptr, type, true),
+            setter: is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
+        };
+    } else if (type.classification === "array") {
+        // TODO: handle non-ref setters
+        return {
+            getter: arrayToJavascript(ptr, type, true),
+            setter: is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
+        };
+    } else if (type.classification === "function") {
+        return {
+            getter: functionToJavascript(ptr, true),
+            setter: ""
+        };
+    } else {
+        // @ts-expect-error
+        throw new Error(`Unknown type: ${type.classification}`);
     }
-
-    const ptr = is_ref ? `$GetUint32(this._ + ${offset}, true)` : `this._ + ${offset}`;
-
-    if (type.classification === "struct") {
-        return [
-            structToJavascript(ptr, type, true),
-            is_ref ? `$SetUint32(this._ + ${offset}, $val._, true);` : ""
-        ];
-    }
-
-    if (type.classification === "array") {
-        const handler = arrayToJavascript(ptr, type, true);
-        if (type.element_type.classification === "primitive") {
-            return [handler, is_ref ? `$SetUint32(this._ + ${offset}, $val._, true);` : ""];
-        } else if (type.element_type.classification === "struct") {
-            return [handler, ""];
-        } else if (type.element_type.classification === "array") {
-            throw new Error("Nested arrays are not supported");
-        } else {
-            // @ts-expect-error unreachable probably
-            throw new Error(`Unknown type: ${type.element_type.classification}`);
-        }
-    }
-
-    // @ts-expect-error unreachable probably
-    throw new Error(`Unknown type: ${type.classification}`);
 }
 
 function arrayToJavascript(ptr: string, type: ArrayTypeInformation, isReturn: boolean = false) {
@@ -194,6 +188,8 @@ function arrayToJavascript(ptr: string, type: ArrayTypeInformation, isReturn: bo
         return `const $base = ${ptr}; ${isReturn ? "return" : ""} ${array}`;
     } else if (type.element_type.classification === "array") {
         throw new Error("Nested arrays are not supported");
+    } else if (type.element_type.classification === "function") {
+        return `const $base = ${ptr}; ${isReturn ? "return" : ""} Array.from({ length: $GetUint32($base, true) }, (_, i) => ${functionToJavascript("$base + i * 4")})`;
     } else {
         // @ts-expect-error unreachable probably
         throw new Error(`Unknown type: ${type.element_type.classification}`);
@@ -244,14 +240,6 @@ function primitiveToTypedName(primitive: string): DataViewGetterTypes {
     }
 }
 
-function functionToJavascript(
-    ptr: string,
-    type: InstanceFunctionInformation,
-    isReturn: boolean = false
-) {
-    /*
-    should benchmark alongside
-    return virtualized_functions[getUint32(ptr)].bind(null, ptr+4)
-    */
-    return `${isReturn ? "return" : ""} `;
+function functionToJavascript(ptr: string, isReturn: boolean = false) {
+    return `${isReturn ? "return " : ""}$toJavascriptFunction(${ptr})`;
 }

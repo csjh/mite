@@ -88,7 +88,7 @@ export function programToModule(
 
     const js_heap_size = 65536;
 
-    ctx.mod.setMemory(256, -1, "memory", [], false, false, "main_memory");
+    ctx.mod.setMemory(256, -1, "$memory", [], false, false, "main_memory");
     ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
     ctx.mod.addGlobal(
         ARENA_HEAP_POINTER,

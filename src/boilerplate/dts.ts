@@ -73,12 +73,18 @@ export function programToBoilerplate(program: Program, options: Options) {
     return code.slice(0, -1);
 }
 
-function typeToIdentifier(type: TypeInformation) {
+function typeToIdentifier(type: TypeInformation): string {
     if (type.classification === "primitive" || type.classification === "struct") {
         return type.name;
     } else if (type.classification === "array") {
         return `${type.name.slice(1, type.name.indexOf(";"))}[]`;
+    } else if (type.classification === "function") {
+        return `(${type.implementation.params.map((x, i) => `$${i}: ${typeToIdentifier(x)}`).join(", ")}) => ${typeToIdentifier(
+            type.implementation.results
+        )}`;
     }
 
+    // @ts-expect-error
+    type.classification;
     throw Error("Unknown type classification in typeToIdentifier");
 }
