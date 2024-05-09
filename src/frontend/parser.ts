@@ -553,7 +553,8 @@ export class Parser {
 
             while (
                 this.token.type === TokenType.LEFT_BRACKET ||
-                this.token.type === TokenType.PERIOD
+                this.token.type === TokenType.PERIOD ||
+                this.token.type === TokenType.LEFT_PAREN
             ) {
                 const last = expression_stack.pop()!;
                 if (typeof last === "string") throw new Error("Expected expression");
@@ -561,6 +562,8 @@ export class Parser {
                     expression_stack.push(this.parseIndexExpression(last));
                 } else if (this.token.type === TokenType.PERIOD) {
                     expression_stack.push(this.parseMemberExpression(last));
+                } else if (this.token.type === TokenType.LEFT_PAREN) {
+                    expression_stack.push(this.parseCallExpression(last));
                 }
             }
 
@@ -897,10 +900,10 @@ export class Parser {
         };
     }
 
-    private parseCallExpression(func_name: Identifier): CallExpression {
+    private parseCallExpression(callee: Expression): CallExpression {
         const call_expression: CallExpression = {
             type: "CallExpression",
-            callee: func_name,
+            callee,
             arguments: []
         };
 
