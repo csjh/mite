@@ -909,10 +909,11 @@ export class Parser {
 
         this.eatToken(TokenType.LEFT_PAREN);
 
-        while (true) {
+        while (this.token.type !== TokenType.RIGHT_PAREN) {
             const argument = this.parseExpression();
             call_expression.arguments.push(argument);
 
+            // @ts-expect-error idek
             if (this.token.type === TokenType.RIGHT_PAREN) break;
             this.eatToken(TokenType.COMMA);
         }

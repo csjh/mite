@@ -544,12 +544,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
         expressionToExpression(updateExpected(ctx, type), value.arguments[i])
     );
 
-    return fn.call(
-        args.length !== 0 &&
-            binaryen.getExpressionId(args[0].get_expression_ref()) === binaryen.ExpressionIds.Nop
-            ? []
-            : args
-    );
+    return fn.call(args);
 }
 
 function ifExpressionToExpression(ctx: Context, value: IfExpression): MiteType {
