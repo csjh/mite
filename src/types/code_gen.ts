@@ -105,6 +105,8 @@ export type Context = {
     structs: Record<string, Omit<StructTypeInformation, "instance">>;
     /** The current block */
     current_block: MiteType[];
+    /** All captured functions that will go into the virtualized_functions table */
+    captured_functions: string[];
     /** Data about current function */
     current_function: FunctionInformation & {
         stack_frame_size: number;

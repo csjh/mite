@@ -17,9 +17,17 @@ import {
     InstanceTypeInformation,
     BinaryOperator as BinaryOperatorHandler,
     PrimitiveTypeInformation,
-    InstancePrimitiveTypeInformation
+    InstancePrimitiveTypeInformation,
+    InstanceFunctionInformation
 } from "../types/code_gen.js";
-import { createMiteType } from "./utils.js";
+import {
+    allocate,
+    createMiteType,
+    fromExpressionRef,
+    miteSignatureToBinaryenSignature,
+    typeInformationToBinaryen,
+    VIRTUALIZED_FUNCTIONS
+} from "./utils.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 
 export abstract class MiteType {
@@ -33,7 +41,8 @@ export abstract class MiteType {
     abstract access(accessor: string): MiteType;
     // access with [] operator (this is going to have to be split into two like the above)
     abstract index(index: MiteType): MiteType;
-    // call (todo for funcrefs)
+    // call the value as a function
+    abstract call(args: MiteType[]): MiteType;
     // abstract call(args: MiteType[]): MiteType;
     abstract sizeof(): number;
     // operators
@@ -125,6 +134,10 @@ export abstract class Primitive implements MiteType {
 
     index(index: MiteType): MiteType {
         throw new Error("Unable to access indices of a primitive.");
+    }
+
+    call(args: MiteType[]): MiteType {
+        throw new Error("Unable to call a primitive.");
     }
 
     operator(operator: BinaryOperator): BinaryOperatorHandler {
@@ -899,6 +912,10 @@ export class Pointer implements MiteType {
         throw new Error("Cannot index pointer value");
     }
 
+    call(args: MiteType[]): MiteType {
+        throw new Error("Cannot call pointer value");
+    }
+
     sizeof(): number {
         return this.pointer.sizeof();
     }
@@ -960,9 +977,21 @@ export abstract class AggregateType<T extends InstanceTypeInformation> implement
         }
     }
 
-    abstract access(accessor: string): MiteType;
-    abstract index(index: MiteType): MiteType;
-    abstract sizeof(): binaryen.ExpressionRef;
+    access(accessor: string): MiteType {
+        throw new Error("Method not implemented.");
+    }
+
+    index(index: MiteType): MiteType {
+        throw new Error("Method not implemented.");
+    }
+
+    call(args: MiteType[]): MiteType {
+        throw new Error("Method not implemented.");
+    }
+
+    sizeof(): binaryen.ExpressionRef {
+        throw new Error("Method not implemented.");
+    }
 
     operator(operator: BinaryOperator): BinaryOperatorHandler {
         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
@@ -1144,6 +1173,50 @@ export class DirectFunction implements MiteType {
 
     operator(operator: BinaryOperator): BinaryOperatorHandler {
         throw new Error(`Invalid operator ${operator} for function`);
+    }
+}
+
+export class IndirectFunction extends AggregateType<InstanceFunctionInformation> {
+    static struct_type = {
+        classification: "struct",
+        name: "direct function struct",
+        sizeof: Pointer.type.sizeof * 2,
+        // prettier-ignore
+        fields: new Map([
+            ["pointer", { type: Pointer.type, offset: Pointer.type.sizeof * 0, is_ref: false }],
+            ["ctx",     { type: Pointer.type, offset: Pointer.type.sizeof * 1, is_ref: false }]
+        ]),
+        is_ref: false
+    } satisfies InstanceStructTypeInformation;
+    readonly struct: Struct;
+
+    constructor(ctx: Context, type: InstanceFunctionInformation, address: Pointer) {
+        super(ctx, type, address);
+        this.struct = new Struct(ctx, IndirectFunction.struct_type, address);
+    }
+
+    call(args: MiteType[]): MiteType {
+        const pointer = this.struct.access("pointer").get_expression_ref();
+        const ctx = this.struct.access("ctx").get_expression_ref();
+
+        return fromExpressionRef(
+            this.ctx,
+            this.type.implementation.results,
+            this.ctx.mod.call_indirect(
+                VIRTUALIZED_FUNCTIONS,
+                pointer,
+                [ctx, ...args.map((arg) => arg.get_expression_ref())],
+                binaryen.createType([
+                    binaryen.i32,
+                    ...this.type.implementation.params.map(typeInformationToBinaryen)
+                ]),
+                typeInformationToBinaryen(this.type.implementation.results)
+            )
+        );
+    }
+
+    sizeof(): binaryen.ExpressionRef {
+        return this.ctx.mod.i32.const(IndirectFunction.struct_type.sizeof);
     }
 }
 

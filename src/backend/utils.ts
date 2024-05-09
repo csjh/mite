@@ -8,6 +8,7 @@ import {
 } from "../types/code_gen.js";
 import {
     Array_,
+    IndirectFunction,
     LinearMemoryPrimitive,
     LocalPrimitive,
     MiteType,
@@ -20,6 +21,7 @@ import { TypeIdentifier } from "../types/nodes.js";
 
 export const ARENA_HEAP_POINTER = "__arena_heap_pointer";
 export const ARENA_HEAP_OFFSET = "__arena_heap_pointer_offset";
+export const VIRTUALIZED_FUNCTIONS = "__virtualized_functions";
 
 export function updateExpected(ctx: Context, expected: Context["expected"]) {
     return { ...ctx, expected };
@@ -55,6 +57,8 @@ export function createMiteType(
                 return new Array_(ctx, type, new Pointer(local));
             } else if (type.classification === "struct") {
                 return new Struct(ctx, type, new Pointer(local));
+            } else if (type.classification === "function") {
+                return new IndirectFunction(ctx, type, new Pointer(local));
             }
         }
     } else {
@@ -65,10 +69,15 @@ export function createMiteType(
                 return new Array_(ctx, type, new Pointer(address_or_local.get()));
             } else if (type.classification === "struct") {
                 return new Struct(ctx, type, new Pointer(address_or_local.get()));
+            } else if (type.classification === "function") {
+                return new IndirectFunction(ctx, type, new Pointer(address_or_local.get()));
             }
         }
     }
-    throw new Error("Unreachable");
+
+    // @ts-expect-error
+    type.classification;
+    return undefined as never;
 }
 
 // converts a mite type to binaryen type (for parameter or return type)
@@ -232,6 +241,8 @@ export function fromExpressionRef(
         return new Struct(ctx, result, new Pointer(ptr));
     } else if (result.classification === "array") {
         return new Array_(ctx, result, new Pointer(ptr));
+    } else if (result.classification === "function") {
+        return new IndirectFunction(ctx, result, new Pointer(ptr));
     } else {
         return result;
     }

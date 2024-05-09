@@ -6,19 +6,19 @@ import {
     updateExpected,
     newBlock,
     parseType,
-    callFunction,
     allocate,
     ARENA_HEAP_OFFSET,
     ARENA_HEAP_POINTER,
-    toReturnType,
+    fromExpressionRef,
     createMiteType,
-    constructArray
+    constructArray,
+    VIRTUALIZED_FUNCTIONS
 } from "./utils.js";
 import {
     Context,
+    InstanceFunctionInformation,
     InstancePrimitiveTypeInformation,
     InstanceTypeInformation,
-    IntrinsicHandlers,
     ProgramToModuleOptions,
     intrinsic_names
 } from "../types/code_gen.js";
@@ -52,6 +52,7 @@ import type {
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import {
     Array_,
+    DirectFunction,
     LocalPrimitive,
     MiteType,
     Pointer,
@@ -140,7 +141,12 @@ export function programToModule(
         }
     }
 
-    return ctx.mod;
+    const fns = ctx.captured_functions;
+    mod.addTable(VIRTUALIZED_FUNCTIONS, fns.length, fns.length);
+    mod.addActiveElementSegment(VIRTUALIZED_FUNCTIONS, "initializer", fns, mod.i32.const(0));
+    mod.addTableExport(VIRTUALIZED_FUNCTIONS, "$table");
+
+    return mod;
 }
 
 function handleDeclaration(ctx: Context, node: Declaration): void {
