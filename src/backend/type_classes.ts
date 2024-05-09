@@ -957,7 +957,7 @@ export abstract class AggregateType<T extends InstanceTypeInformation> implement
             throw new Error(`Unable to assign ${value_type.name} to ${this.type.name}`);
         }
 
-        if (value_type.is_ref || this.type.is_ref) {
+        if (this.type.is_ref && value_type.is_ref) {
             return this.address.set((value as typeof this).address);
         } else {
             this.ctx.current_block.push(

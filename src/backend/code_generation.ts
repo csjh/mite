@@ -301,8 +301,6 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
             throw new Error("Variable declaration must have type or initializer");
         }
 
-        type.is_ref = false;
-
         const local = createMiteType(ctx, type, ctx.current_function.local_count++);
 
         if (type.classification === "struct") {
@@ -765,7 +763,7 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
         sizeof: element_type.sizeof * value.elements.length + 4,
         element_type,
         length: value.elements.length,
-        is_ref: true
+        is_ref: false
     } as const;
     const ptr = constructArray(ctx, type);
     const array = new Array_(ctx, type, ptr);
@@ -799,7 +797,7 @@ function objectExpressionToExpression(ctx: Context, value: ObjectExpression): Mi
     const type = parseType(ctx, value.typeAnnotation);
     if (type.classification !== "struct") throw new Error("Cannot create non-struct object");
 
-    const struct = createMiteType(ctx, { ...type, is_ref: true }, allocate(ctx, type, type.sizeof));
+    const struct = createMiteType(ctx, type, allocate(ctx, type, type.sizeof));
 
     const fields = new Map(type.fields);
     for (const property of value.properties) {
@@ -807,10 +805,7 @@ function objectExpressionToExpression(ctx: Context, value: ObjectExpression): Mi
         if (!field) throw new Error(`Struct ${type.name} has no field ${property.key.name}`);
         fields.delete(property.key.name);
 
-        const expr = expressionToExpression(
-            updateExpected(ctx, { ...field.type, is_ref: false }),
-            property.value
-        );
+        const expr = expressionToExpression(updateExpected(ctx, field.type), property.value);
         ctx.current_block.push(struct.access(property.key.name).set(expr));
     }
 

@@ -18,7 +18,7 @@ export type ArrayTypeInformation = SharedTypeInformation & {
 };
 export type StructTypeInformation = SharedTypeInformation & {
     classification: "struct";
-    fields: Map<string, { type: TypeInformation; offset: number; is_ref: boolean }>;
+    fields: Map<string, { type: InstanceTypeInformation; offset: number; is_ref: boolean }>;
     methods: Map<string, InstanceFunctionInformation>;
 };
 export type PrimitiveTypeInformation = SharedTypeInformation & {
