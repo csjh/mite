@@ -224,7 +224,7 @@ export function fromExpressionRef(
 ): MiteType {
     const ptr = new TransientPrimitive(
         ctx,
-        result.classification === "primitive" ? result : ctx.types.u32,
+        result.classification === "primitive" ? result : Pointer.type,
         result_expr
     );
     if (result.classification === "primitive") {
