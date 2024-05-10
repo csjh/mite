@@ -57,22 +57,18 @@ export function programToBoilerplate(program: Program, _: Options) {
 
     code += "\n\n";
 
-    for (const struct of structs) {
-        if (struct.classification !== "struct") continue;
-
+    for (const { name, fields, methods } of structs) {
         code += dedent`
-            declare class ${struct.name} {
-                static sizeof: number;${Array.from(struct.fields.entries(), ([name, info]) => {
-                    return `
-
+            declare class ${name} {
+                static sizeof: number;${Array.from(fields.entries(), ([name, info]) => {
+                    return `\n
                 get ${name}(): ${typeToIdentifier(info.type)};
                 set ${name}(val: ${typeToIdentifier(info.type)});`;
                 }).join("")}${Array.from(
-                    struct.methods.entries(),
+                    methods.entries(),
                     // prettier-ignore
                     ([name, { implementation: { params, results } }]) => {
-                        return `
-
+                        return `\n
                 ${name}(${params.slice(1).map((x) => `${x.name}: ${typeToIdentifier(x.type)}`).join(", ")}): ${typeToIdentifier(results)};`;
                     }
                 ).join("")}
@@ -82,14 +78,11 @@ export function programToBoilerplate(program: Program, _: Options) {
         code += "\n\n";
     }
 
-    for (const func of exports) {
-        const { id, params, returnType } = func;
-        const returnTypeType = parseType(ctx, returnType);
-
+    for (const { id, params, returnType } of exports) {
         code += dedent`
             export declare function ${id.name}(${params
                 .map((x) => `${x.name.name}: ${typeToIdentifier(parseType(ctx, x.typeAnnotation))}`)
-                .join(", ")}): ${typeToIdentifier(returnTypeType)};
+                .join(", ")}): ${typeToIdentifier(parseType(ctx, returnType))};
         `;
 
         code += "\n\n";

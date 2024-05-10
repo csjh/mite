@@ -74,20 +74,17 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
     code += "\n\n";
 
-    for (const struct of structs) {
-        if (struct.classification !== "struct") continue;
-
+    for (const { sizeof, fields, name } of structs) {
         code += dedent`
-            class ${struct.name} {
-                static sizeof = ${struct.sizeof};
+            class ${name} {
+                static sizeof = ${sizeof};
 
                 constructor(ptr) {
                     this._ = ptr;
-                }${Array.from(struct.fields.entries(), ([name, info]) => {
+                }${Array.from(fields.entries(), ([name, info]) => {
                     const { getter, setter } = typeToAccessors(info);
 
-                    return `
-
+                    return `\n
                 get ${name}() {
                     ${getter}
                 }
@@ -95,10 +92,9 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                 set ${name}($val) {
                     ${setter}
                 }`;
-                }).join("")}${methods[struct.name]
+                }).join("")}${methods[name]
                     .map((fn) => {
-                        return `
-
+                        return `\n
                 ${functionDeclarationToString(ctx, fn, 16)}`;
                     })
                     .join("")}

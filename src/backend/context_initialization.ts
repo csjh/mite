@@ -1,11 +1,6 @@
 // don't be offput by the fact this is 3000 lines, it's almost all boilerplate
 
-import {
-    Context,
-    PrimitiveTypeInformation,
-    StructTypeInformation,
-    TypeInformation
-} from "../types/code_gen.js";
+import { Context, PrimitiveTypeInformation, StructTypeInformation } from "../types/code_gen.js";
 import { Program, StructDeclaration } from "../types/nodes.js";
 import { MiteType, Primitive, TransientPrimitive } from "./type_classes.js";
 import binaryen from "binaryen";
@@ -606,7 +601,7 @@ this is going to have to be:
 3. topologically sort the structs (if there are any cycles, throw an error)
 4. determine sizeofs in that order
 */
-export function identifyStructs(program: Program): TypeInformation[] {
+export function identifyStructs(program: Program): StructTypeInformation[] {
     const struct_declarations = Object.fromEntries(
         program.body
             .filter((x): x is StructDeclaration => x.type === "StructDeclaration")
