@@ -19,7 +19,7 @@ export type ArrayTypeInformation = SharedTypeInformation & {
 export type StructTypeInformation = SharedTypeInformation & {
     classification: "struct";
     fields: Map<string, { type: InstanceTypeInformation; offset: number }>;
-    methods: Map<string, InstanceFunctionInformation>;
+    methods: Map<string, InstanceFunctionTypeInformation>;
 };
 export type PrimitiveTypeInformation = SharedTypeInformation & {
     classification: "primitive";
@@ -27,6 +27,10 @@ export type PrimitiveTypeInformation = SharedTypeInformation & {
 export type FunctionTypeInformation = SharedTypeInformation & {
     classification: "function";
     implementation: FunctionInformation;
+};
+export type StringTypeInformation = SharedTypeInformation & {
+    classification: "string";
+    name: "string";
 };
 
 export type TypeInformation =
@@ -39,21 +43,19 @@ type SharedInstanceTypeInformation = {
     is_ref: boolean;
 };
 
-export type InstanceArrayTypeInformation = ArrayTypeInformation & SharedInstanceTypeInformation;
-export type InstanceStructTypeInformation = StructTypeInformation & SharedInstanceTypeInformation;
-export type InstancePrimitiveTypeInformation = PrimitiveTypeInformation & {
-    is_ref?: boolean;
-};
-export type InstanceFunctionInformation = FunctionTypeInformation & SharedInstanceTypeInformation;
-export type InstanceFunctionInformation = DirectFunctionInformation & {
-    is_ref?: boolean;
-};
+type Instance<T> = SharedInstanceTypeInformation & T;
+
+export type InstanceArrayTypeInformation = Instance<ArrayTypeInformation>;
+export type InstanceStructTypeInformation = Instance<StructTypeInformation>;
+export type InstancePrimitiveTypeInformation = PrimitiveTypeInformation & { is_ref?: boolean };
+export type InstanceFunctionTypeInformation = Instance<FunctionTypeInformation>;
+export type InstanceStringTypeInformation = Instance<StringTypeInformation> & { is_ref: true };
 
 export type InstanceTypeInformation =
     | InstancePrimitiveTypeInformation
     | InstanceStructTypeInformation
     | InstanceArrayTypeInformation
-    | InstanceFunctionInformation;
+    | InstanceFunctionTypeInformation;
 
 type Parameter = {
     name: string;

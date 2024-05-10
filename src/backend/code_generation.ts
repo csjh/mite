@@ -16,7 +16,7 @@ import {
 } from "./utils.js";
 import {
     Context,
-    InstanceFunctionInformation,
+    InstanceFunctionTypeInformation,
     InstancePrimitiveTypeInformation,
     InstanceStructTypeInformation,
     InstanceTypeInformation,
@@ -138,7 +138,7 @@ export function programToModule(
                     results: parseType(ctx, returnType)
                 },
                 is_ref: false
-            } satisfies InstanceFunctionInformation;
+            } satisfies InstanceFunctionTypeInformation;
 
             (ctx.types[struct.id.name] as InstanceStructTypeInformation).methods.set(
                 id.name,
@@ -249,7 +249,8 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     Array.from(params.entries()).forEach(([key, val]) => ctx.variables.set(key, val));
 
     const current_function = (ctx.current_function = {
-        ...(lookForVariable(ctx, node.id.name).type as InstanceFunctionInformation).implementation,
+        ...(lookForVariable(ctx, node.id.name).type as InstanceFunctionTypeInformation)
+            .implementation,
         stack_frame_size: 0,
         local_count
     });
