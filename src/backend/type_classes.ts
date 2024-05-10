@@ -18,7 +18,7 @@ import {
     BinaryOperator as BinaryOperatorHandler,
     PrimitiveTypeInformation,
     InstancePrimitiveTypeInformation,
-    InstanceFunctionInformation
+    InstanceFunctionTypeInformation
 } from "../types/code_gen.js";
 import {
     allocate,
@@ -1096,7 +1096,7 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
 export class DirectFunction implements MiteType {
     constructor(
         private readonly ctx: Context,
-        readonly type: InstanceFunctionInformation
+        readonly type: InstanceFunctionTypeInformation
     ) {}
 
     get_expression_ref(): binaryen.ExpressionRef {
@@ -1192,7 +1192,7 @@ export class DirectFunction implements MiteType {
     }
 }
 
-export class IndirectFunction extends AggregateType<InstanceFunctionInformation> {
+export class IndirectFunction extends AggregateType<InstanceFunctionTypeInformation> {
     static struct_type = {
         classification: "struct",
         name: "direct function struct",
@@ -1207,7 +1207,7 @@ export class IndirectFunction extends AggregateType<InstanceFunctionInformation>
     } satisfies InstanceStructTypeInformation;
     readonly struct: Struct;
 
-    constructor(ctx: Context, type: InstanceFunctionInformation, address: Pointer) {
+    constructor(ctx: Context, type: InstanceFunctionTypeInformation, address: Pointer) {
         super(ctx, type, address);
         this.struct = new Struct(ctx, IndirectFunction.struct_type, address);
     }
@@ -1240,7 +1240,7 @@ export class IndirectFunction extends AggregateType<InstanceFunctionInformation>
 export class StructMethod implements MiteType {
     constructor(
         private readonly ctx: Context,
-        readonly type: InstanceFunctionInformation,
+        readonly type: InstanceFunctionTypeInformation,
         readonly this_: Struct
     ) {}
 
