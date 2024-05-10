@@ -413,8 +413,24 @@ export interface Identifier extends BaseNode, BaseExpression, BasePattern {
     name: string;
 }
 
-export interface TypeIdentifier extends Identifier {
-    isRef?: boolean;
+export interface TypeIdentifier extends BaseNode {
+    type: "TypeIdentifier";
+    isRef: boolean;
+    _type:
+        | {
+              type: "Identifier";
+              name: string;
+          }
+        | {
+              type: "Array";
+              elementType: TypeIdentifier;
+              length?: number;
+          }
+        | {
+              type: "Function";
+              params: TypedParameter[];
+              returnType: TypeIdentifier;
+          };
 }
 
 export interface Literal extends BaseNode, BaseExpression {

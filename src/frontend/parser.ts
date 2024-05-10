@@ -114,8 +114,7 @@ export class Parser {
     }
 
     private parseExport(): ExportNamedDeclaration {
-        this.expectToken(TokenType.EXPORT);
-        this.idx++;
+        this.eatToken(TokenType.EXPORT);
 
         let declaration: Declaration;
         switch (this.token.type) {
@@ -142,14 +141,11 @@ export class Parser {
     }
     */
     private parseStruct(): StructDeclaration {
-        this.expectToken(TokenType.STRUCT);
-        this.idx++;
+        this.eatToken(TokenType.STRUCT);
 
-        this.expectToken(TokenType.IDENTIFIER);
-        const name = this.tokens[this.idx++].value;
+        const name = this.getIdentifier();
 
-        this.expectToken(TokenType.LEFT_BRACE);
-        this.idx++;
+        this.eatToken(TokenType.LEFT_BRACE);
 
         const fields: StructField[] = [];
         const methods: FunctionDeclaration[] = [];
@@ -158,26 +154,14 @@ export class Parser {
                 this.tokens[this.idx].type === TokenType.IDENTIFIER &&
                 this.tokens[this.idx + 1].type === TokenType.COLON
             ) {
-                const name = this.token.value;
-                this.expectToken(TokenType.IDENTIFIER);
-                this.idx++;
-
-                this.expectToken(TokenType.COLON);
-                this.idx++;
-
-                const type = this.token.value;
-                this.idx++;
+                const name = this.getIdentifier();
+                this.eatToken(TokenType.COLON);
+                const typeAnnotation = this.parseType();
 
                 fields.push({
                     type: "StructField",
-                    name: {
-                        type: "Identifier",
-                        name
-                    },
-                    typeAnnotation: {
-                        type: "Identifier",
-                        name: type
-                    }
+                    name,
+                    typeAnnotation
                 });
             } else if (
                 this.tokens[this.idx].type === TokenType.IDENTIFIER &&
@@ -192,26 +176,23 @@ export class Parser {
                         name: "this"
                     },
                     typeAnnotation: {
-                        type: "Identifier",
-                        name
+                        type: "TypeIdentifier",
+                        isRef: true,
+                        _type: name
                     }
                 });
 
                 methods.push(fn);
             }
 
-            if (this.token.type === TokenType.COMMA) this.idx++;
+            if (this.token.type === TokenType.COMMA) this.eatToken(TokenType.COMMA);
         }
 
-        this.expectToken(TokenType.RIGHT_BRACE);
-        this.idx++;
+        this.eatToken(TokenType.RIGHT_BRACE);
 
         return {
             type: "StructDeclaration",
-            id: {
-                type: "Identifier",
-                name
-            },
+            id: name,
             fields,
             methods
         };
@@ -244,7 +225,7 @@ export class Parser {
             this.eatToken(TokenType.FN);
         }
 
-        const name = this.takeToken(TokenType.IDENTIFIER);
+        const id = this.getIdentifier();
 
         this.eatToken(TokenType.LEFT_PAREN);
 
@@ -258,7 +239,7 @@ export class Parser {
 
             params.push({ type: "TypedParameter", name, typeAnnotation });
 
-            if (this.token.type === TokenType.COMMA) this.idx++;
+            if (this.token.type === TokenType.COMMA) this.eatToken(TokenType.COMMA);
         }
 
         this.eatToken(TokenType.RIGHT_PAREN);
@@ -270,10 +251,7 @@ export class Parser {
 
         return {
             type: "FunctionDeclaration",
-            id: {
-                type: "Identifier",
-                name
-            },
+            id,
             params,
             returnType,
             body
@@ -292,7 +270,7 @@ export class Parser {
 
         let alternate: Expression | null = null;
         if (this.token.type === TokenType.ELSE) {
-            this.idx++;
+            this.eatToken(TokenType.ELSE);
             alternate = this.parseExpression();
         }
 
@@ -410,7 +388,7 @@ export class Parser {
         let statement: Statement;
 
         if (this.token.type === TokenType.RETURN) {
-            this.idx++;
+            this.eatToken(TokenType.RETURN);
             const expression = this.parseExpression();
             statement = {
                 type: "ReturnStatement",
@@ -447,7 +425,7 @@ export class Parser {
             };
 
             if (this.token.type === TokenType.COLON) {
-                this.idx++;
+                this.eatToken(TokenType.COLON);
                 const type = this.parseType();
 
                 declaration.typeAnnotation = type;
@@ -455,7 +433,7 @@ export class Parser {
 
             // has initializer
             if (this.token.type === TokenType.ASSIGNMENT) {
-                this.idx++;
+                this.eatToken(TokenType.ASSIGNMENT);
                 declaration.init = this.parseExpression();
             }
 
@@ -832,7 +810,7 @@ export class Parser {
         const values: (number | bigint)[] = [];
         while (this.token.type !== TokenType.RIGHT_BRACE) {
             values.push(this.getNumberLiteral().value);
-            if (this.token.type === TokenType.COMMA) this.idx++;
+            if (this.token.type === TokenType.COMMA) this.eatToken(TokenType.COMMA);
         }
 
         const has_floats = values.some((x) => typeof x === "number");
@@ -977,7 +955,7 @@ export class Parser {
         const elements: Expression[] = [];
         while (this.token.type !== TokenType.RIGHT_BRACKET) {
             elements.push(this.parseExpression());
-            if (this.token.type === TokenType.COMMA) this.idx++;
+            if (this.token.type === TokenType.COMMA) this.eatToken(TokenType.COMMA);
         }
 
         this.eatToken(TokenType.RIGHT_BRACKET);
@@ -986,16 +964,22 @@ export class Parser {
     }
 
     private parseType(): TypeIdentifier {
-        const is_ref = this.tokens[this.idx].type === TokenType.REF;
-        if (is_ref) this.idx++;
+        const isRef = this.tokens[this.idx].type === TokenType.REF;
+        if (isRef) this.eatToken(TokenType.REF);
 
-        const token = this.tokens[this.idx++];
-        if (token.type === TokenType.IDENTIFIER) return { type: "Identifier", name: token.value };
-        if (token.type === TokenType.LEFT_PAREN) {
-            const params = [];
+        const token = this.tokens[this.idx];
+        if (token.type === TokenType.IDENTIFIER) {
+            return {
+                type: "TypeIdentifier",
+                _type: this.getIdentifier(),
+                isRef
+            };
+        } else if (token.type === TokenType.LEFT_PAREN) {
+            this.eatToken(TokenType.LEFT_PAREN);
+            const params: TypedParameter[] = [];
             let unnamed = 0;
             while (this.token.type !== TokenType.RIGHT_PAREN) {
-                let name;
+                let name: Identifier;
                 if (
                     this.token.type === TokenType.IDENTIFIER &&
                     this.tokens[this.idx + 1].type === TokenType.COLON
@@ -1003,44 +987,58 @@ export class Parser {
                     name = this.getIdentifier();
                     this.eatToken(TokenType.COLON);
                 } else {
-                    name = `$${unnamed++}`;
+                    name = { type: "Identifier", name: `$${unnamed++}` };
                 }
-                params.push({ name, type: this.parseType() });
-                if (this.token.type === TokenType.COMMA) this.idx++;
+                params.push({
+                    type: "TypedParameter",
+                    name,
+                    typeAnnotation: this.parseType()
+                });
+                if (this.token.type === TokenType.COMMA) this.eatToken(TokenType.COMMA);
             }
             this.eatToken(TokenType.RIGHT_PAREN);
 
             this.eatToken(TokenType.ASSIGNMENT);
             this.eatToken(TokenType.GREATER_THAN);
 
-            const result = this.parseType();
+            const returnType = this.parseType();
 
             return {
-                type: "Identifier",
-                name: `(${params.map((x) => `${x.name}: ${x.type.isRef ? "ref " : ""}${x.type.name}`).join(", ")}) => ${result.name}`,
-                isRef: is_ref
+                type: "TypeIdentifier",
+                _type: {
+                    type: "Function",
+                    params,
+                    returnType
+                },
+                isRef
             };
         } else if (token.type === TokenType.LEFT_BRACKET) {
-            const type = this.parseType();
+            this.eatToken(TokenType.LEFT_BRACKET);
+            const elementType = this.parseType();
             this.eatToken(TokenType.SEMICOLON);
 
-            const length = this.getNumberLiteral();
+            const _type: TypeIdentifier["_type"] = { type: "Array", elementType };
+
+            if (this.token.type === TokenType.NUMBER) {
+                _type.length = Number(this.getNumberLiteral().value);
+            }
+
             this.eatToken(TokenType.RIGHT_BRACKET);
 
-            return {
-                type: "Identifier",
-                name: `[${type.name}; ${length.value}]`,
-                isRef: is_ref
-            };
+            return { type: "TypeIdentifier", _type, isRef: isRef || _type.length === undefined };
         } else {
             throw new Error(`Expected type, got ${token.type}`);
         }
     }
 
-    private parseStructLiteral(typeAnnotation: TypeIdentifier): ObjectExpression {
+    private parseStructLiteral(typeAnnotation: Identifier): ObjectExpression {
         const object: ObjectExpression = {
             type: "ObjectExpression",
-            typeAnnotation,
+            typeAnnotation: {
+                type: "TypeIdentifier",
+                isRef: false,
+                _type: typeAnnotation
+            },
             properties: []
         };
 
@@ -1060,7 +1058,7 @@ export class Parser {
                 method: false
             });
 
-            if (this.token.type === TokenType.COMMA) this.idx++;
+            if (this.token.type === TokenType.COMMA) this.eatToken(TokenType.COMMA);
         }
 
         this.eatToken(TokenType.RIGHT_BRACE);

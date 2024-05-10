@@ -147,48 +147,35 @@ function isCtx(obj: Context | Context["types"]): obj is Context {
     return !("i32" in obj);
 }
 
-const array_regex = /\[(.*); ([0-9]*)\]/;
-const fat_regex = /\[(.*)\]/;
 export function parseType(
     ctx: Context | Context["types"],
-    type: string | TypeIdentifier
+    type: TypeIdentifier
 ): InstanceTypeInformation {
     if (isCtx(ctx)) return parseType(ctx.types, type);
 
-    let is_ref = typeof type === "object" ? !!type.isRef : false;
-    if (typeof type === "object") type = type.name;
-    if (type.startsWith("ref ")) {
-        is_ref = true;
-        type = type.slice("ref ".length);
-    }
+    const { isRef, _type } = type;
 
     // (x: int, y: int) => int
-    if (type.startsWith("(")) {
-        const [params_str, results_str] = type.split(" => ");
-        const params = params_str
-            .slice(1, -1)
-            .split(", ")
-            .map((x) => {
-                const [name, type] = x.split(": ", 2);
-                return {
-                    name,
-                    type: parseType(ctx, type)
-                };
-            });
-        const results = parseType(ctx, results_str);
+    if (_type.type === "Function") {
+        const implementation = {
+            params: _type.params.map((x) => ({
+                name: x.name.name,
+                type: parseType(ctx, x.typeAnnotation)
+            })),
+            results: parseType(ctx, _type.returnType)
+        };
+
         return {
             classification: "function",
-            name: type, // not really used
-            implementation: { params, results },
-            is_ref,
+            name: `(${implementation.params.map((x) => `${x.name}: ${x.type.name}`).join(", ")}) => ${implementation.results.name}`,
+            implementation,
+            is_ref: isRef,
             sizeof: 8
         };
-    }
-
-    if (type in ctx) {
-        const base_type = ctx[type];
+    } else if (_type.type === "Identifier") {
+        const base_type = ctx[_type.name];
         if (base_type.classification === "primitive") {
-            if (is_ref) throw new Error(`Cannot make primitive ${type} a ref`);
+            if (type.isRef) throw new Error(`Cannot make primitive ${type} a ref`);
             return {
                 ...base_type,
                 is_ref: false
@@ -196,25 +183,20 @@ export function parseType(
         } else {
             return {
                 ...base_type,
-                is_ref
+                is_ref: isRef
             };
         }
-    }
-
-    if (array_regex.test(type) || fat_regex.test(type)) {
-        const [_, element_type, str_length] = array_regex.exec(type) ?? [
-            "",
-            ...fat_regex.exec(type)!
-        ];
-
-        const length = Number(str_length);
+    } else if (_type.type === "Array") {
+        const element_type = parseType(ctx, _type.elementType);
         return {
             classification: "array",
-            name: type,
-            element_type: parseType(ctx, element_type),
-            length,
-            sizeof: ctx[element_type].sizeof * length + 4,
-            is_ref
+            name: _type.length
+                ? `[${element_type.name}; ${_type.length}]`
+                : `[${element_type.name}]`,
+            element_type,
+            length: _type.length,
+            sizeof: _type.length ? element_type.sizeof * _type.length + 4 : 0,
+            is_ref: isRef
         };
     }
     throw new Error(`Unknown type: ${type}`);

@@ -612,7 +612,9 @@ export function identifyStructs(program: Program): StructTypeInformation[] {
             id,
             new Set(
                 fields
-                    .map(({ typeAnnotation }) => typeAnnotation.name)
+                    .filter((x) => x.typeAnnotation._type.type === "identifier")
+                    // @ts-expect-error we know this is an identifier
+                    .map(({ typeAnnotation }) => typeAnnotation._type.name)
                     .filter((x) => !Primitive.primitives.has(x))
             )
         ])

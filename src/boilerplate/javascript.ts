@@ -264,7 +264,9 @@ function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, in
     return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {
 \t    const $result = $wasm_export_${id.name}(${params
         .map(({ typeAnnotation, name: { name } }) =>
-            Primitive.primitives.has(typeAnnotation.name) ? name : `${name}._`
+            "name" in typeAnnotation._type && Primitive.primitives.has(typeAnnotation._type.name)
+                ? name
+                : `${name}._`
         )
         .join(", ")});
 \t
