@@ -1009,7 +1009,7 @@ export class Struct extends AggregateType<InstanceStructTypeInformation> {
 
             const addr = new TransientPrimitive(
                 this.ctx,
-                this.ctx.types.u32,
+                Pointer.type,
                 this.ctx.mod.i32.add(this.get_expression_ref(), this.ctx.mod.i32.const(offset))
             );
 
@@ -1018,7 +1018,7 @@ export class Struct extends AggregateType<InstanceStructTypeInformation> {
                 return createMiteType(
                     this.ctx,
                     type,
-                    new LinearMemoryPrimitive(this.ctx, this.ctx.types.u32, addr)
+                    new LinearMemoryPrimitive(this.ctx, Pointer.type, addr)
                 );
             } else {
                 return createMiteType(this.ctx, type, addr);
@@ -1055,7 +1055,7 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
 
         const addr = new TransientPrimitive(
             this.ctx,
-            this.ctx.types.u32,
+            Pointer.type,
             this.ctx.mod.i32.add(
                 offset,
                 this.ctx.mod.i32.add(
@@ -1075,7 +1075,7 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
             return createMiteType(
                 this.ctx,
                 this.type.element_type,
-                new LinearMemoryPrimitive(this.ctx, this.ctx.types.u32, addr)
+                new LinearMemoryPrimitive(this.ctx, Pointer.type, addr)
             );
         } else {
             return createMiteType(this.ctx, this.type.element_type, addr);
