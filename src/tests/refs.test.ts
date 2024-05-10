@@ -32,4 +32,27 @@ describe("refs", () => {
 
         compileAndRun(program, 5);
     });
+
+    it("should work with struct members", () => {
+        const program = `
+        struct Coord {
+            x: i32,
+            y: i32
+        }
+
+        struct Foo {
+            shared: ref Coord
+        }
+
+        export fn main(): i32 {
+            let a = Coord { x: 5, y: 6 };
+            let b = Foo { shared: a };
+            let c = Foo { shared: a };
+            b.shared.x = 3;
+            return b.shared.x == c.shared.x;
+        }
+        `;
+
+        compileAndRun(program, 1);
+    });
 });

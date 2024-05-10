@@ -61,12 +61,15 @@ export function createMiteType(
         if (type.classification === "primitive") {
             return new LinearMemoryPrimitive(ctx, type, address_or_local);
         } else {
+            const primitive =
+                address_or_local instanceof Primitive ? address_or_local : address_or_local.get();
+
             if (type.classification === "array") {
-                return new Array_(ctx, type, new Pointer(address_or_local.get()));
+                return new Array_(ctx, type, new Pointer(primitive));
             } else if (type.classification === "struct") {
-                return new Struct(ctx, type, new Pointer(address_or_local.get()));
+                return new Struct(ctx, type, new Pointer(primitive));
             } else if (type.classification === "function") {
-                return new IndirectFunction(ctx, type, new Pointer(address_or_local.get()));
+                return new IndirectFunction(ctx, type, new Pointer(primitive));
             }
         }
     }
