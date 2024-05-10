@@ -35,7 +35,8 @@ export function programToBoilerplate(program: Program, _: Options) {
                         type: parseType(ctx, typeAnnotation)
                     })),
                     results: parseType(ctx, returnType)
-                }
+                },
+                is_ref: false
             });
         }
     }

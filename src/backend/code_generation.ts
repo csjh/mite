@@ -116,7 +116,8 @@ export function programToModule(
                         type: parseType(ctx, typeAnnotation)
                     })),
                     results: parseType(ctx, returnType)
-                }
+                },
+                is_ref: false
             })
         );
     }
@@ -125,7 +126,7 @@ export function programToModule(
         (x): x is StructDeclaration => x.type === "StructDeclaration"
     )) {
         for (const { id, params, returnType } of struct.methods) {
-            (ctx.types[struct.id.name] as InstanceStructTypeInformation).methods.set(id.name, {
+            const method_type = {
                 classification: "function",
                 name: `${struct.id.name}.${id.name}`,
                 sizeof: 0,
@@ -135,25 +136,17 @@ export function programToModule(
                         type: parseType(ctx, typeAnnotation)
                     })),
                     results: parseType(ctx, returnType)
-                }
-            });
+                },
+                is_ref: false
+            } satisfies InstanceFunctionInformation;
+
+            (ctx.types[struct.id.name] as InstanceStructTypeInformation).methods.set(
+                id.name,
+                method_type
+            );
 
             // TODO: this shouldn't be necessary
-            ctx.variables.set(
-                `${struct.id.name}.${id.name}`,
-                new DirectFunction(ctx, {
-                    classification: "function",
-                    name: `${struct.id.name}.${id.name}`,
-                    sizeof: 0,
-                    implementation: {
-                        params: params.map(({ name, typeAnnotation }) => ({
-                            name: name.name,
-                            type: parseType(ctx, typeAnnotation)
-                        })),
-                        results: parseType(ctx, returnType)
-                    }
-                })
-            );
+            ctx.variables.set(`${struct.id.name}.${id.name}`, new DirectFunction(ctx, method_type));
         }
     }
 
@@ -167,7 +160,8 @@ export function programToModule(
                 implementation: {
                     params: [{ name: "value", type: ctx.types[type] }],
                     results: ctx.types.void
-                }
+                },
+                is_ref: false
             })
         );
     }

@@ -24,7 +24,7 @@ export type StructTypeInformation = SharedTypeInformation & {
 export type PrimitiveTypeInformation = SharedTypeInformation & {
     classification: "primitive";
 };
-export type DirectFunctionInformation = SharedTypeInformation & {
+export type FunctionTypeInformation = SharedTypeInformation & {
     classification: "function";
     implementation: FunctionInformation;
 };
@@ -33,7 +33,7 @@ export type TypeInformation =
     | PrimitiveTypeInformation
     | StructTypeInformation
     | ArrayTypeInformation
-    | DirectFunctionInformation;
+    | FunctionTypeInformation;
 
 type SharedInstanceTypeInformation = {
     is_ref: boolean;
@@ -44,6 +44,7 @@ export type InstanceStructTypeInformation = StructTypeInformation & SharedInstan
 export type InstancePrimitiveTypeInformation = PrimitiveTypeInformation & {
     is_ref?: boolean;
 };
+export type InstanceFunctionInformation = FunctionTypeInformation & SharedInstanceTypeInformation;
 export type InstanceFunctionInformation = DirectFunctionInformation & {
     is_ref?: boolean;
 };
