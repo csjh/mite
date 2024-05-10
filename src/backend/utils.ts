@@ -190,9 +190,7 @@ export function parseType(
         const element_type = parseType(ctx, _type.elementType);
         return {
             classification: "array",
-            name: _type.length
-                ? `[${element_type.name}; ${_type.length}]`
-                : `[${element_type.name}]`,
+            name: `[${element_type.name}]`,
             element_type,
             length: _type.length,
             sizeof: _type.length ? element_type.sizeof * _type.length + 4 : 0,
@@ -247,7 +245,7 @@ export function constructArray(ctx: Context, type: InstanceArrayTypeInformation)
     ctx.current_block.push(
         new TransientPrimitive(
             ctx,
-            ctx.types.i32,
+            Pointer.type,
             ctx.mod.i32.store(
                 0,
                 0,

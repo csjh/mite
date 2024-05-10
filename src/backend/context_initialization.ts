@@ -2,7 +2,7 @@
 
 import { Context, PrimitiveTypeInformation, StructTypeInformation } from "../types/code_gen.js";
 import { Program, StructDeclaration } from "../types/nodes.js";
-import { MiteType, Primitive, TransientPrimitive } from "./type_classes.js";
+import { MiteType, Pointer, Primitive, TransientPrimitive } from "./type_classes.js";
 import binaryen from "binaryen";
 import { bigintToLowAndHigh, parseType } from "./utils.js";
 
@@ -612,7 +612,7 @@ export function identifyStructs(program: Program): StructTypeInformation[] {
             id,
             new Set(
                 fields
-                    .filter((x) => x.typeAnnotation._type.type === "identifier")
+                    .filter((x) => x.typeAnnotation._type.type === "Identifier")
                     // @ts-expect-error we know this is an identifier
                     .map(({ typeAnnotation }) => typeAnnotation._type.name)
                     .filter((x) => !Primitive.primitives.has(x))
@@ -701,13 +701,9 @@ function structDeclarationToTypeInformation(
             typeAnnotation
         );
 
-        type.fields.set(name.name, {
-            type: field_type,
-            offset,
-            is_ref: typeAnnotation.isRef ?? false
-        });
+        type.fields.set(name.name, { type: field_type, offset });
         // TODO: alignment
-        offset += field_type.sizeof;
+        offset += field_type.is_ref ? Pointer.type.sizeof : field_type.sizeof;
     }
 
     return { ...type, sizeof: offset };

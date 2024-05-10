@@ -957,7 +957,7 @@ export abstract class AggregateType<T extends InstanceTypeInformation> implement
             throw new Error(`Unable to assign ${value_type.name} to ${this.type.name}`);
         }
 
-        if (this.type.is_ref && value_type.is_ref) {
+        if (this.type.is_ref) {
             return this.address.set((value as typeof this).address);
         } else {
             this.ctx.current_block.push(
@@ -1005,18 +1005,15 @@ export class Struct extends AggregateType<InstanceStructTypeInformation> {
         }
 
         if (this.type.fields.has(accessor)) {
-            const field = this.type.fields.get(accessor)!;
-            const type = { ...field.type, is_ref: field.is_ref };
+            const { type, offset } = this.type.fields.get(accessor)!;
 
             const addr = new TransientPrimitive(
                 this.ctx,
                 this.ctx.types.u32,
-                this.ctx.mod.i32.add(
-                    this.get_expression_ref(),
-                    this.ctx.mod.i32.const(field.offset)
-                )
+                this.ctx.mod.i32.add(this.get_expression_ref(), this.ctx.mod.i32.const(offset))
             );
 
+            // refs are stored as an address, non-refs are stored contiguously
             if (type.is_ref) {
                 return createMiteType(
                     this.ctx,
@@ -1048,8 +1045,11 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
     }
 
     index(index: MiteType): MiteType {
-        if (index.type.name !== "i32")
-            throw new Error(`Array index must be an i32, not whatever this is: ${index.type.name}`);
+        if (index.type.name !== Pointer.type.name) {
+            throw new Error(
+                `Array index must be an ${Pointer.type.name}, not whatever this is: ${index.type.name}`
+            );
+        }
 
         const offset = this.address.sizeof();
 
@@ -1062,12 +1062,15 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
                     this.get_expression_ref(),
                     this.ctx.mod.i32.mul(
                         index.get_expression_ref(),
-                        this.ctx.mod.i32.const(this.type.element_type.sizeof)
+                        this.type.element_type.is_ref
+                            ? this.ctx.mod.i32.const(Pointer.type.sizeof)
+                            : this.ctx.mod.i32.const(this.type.element_type.sizeof)
                     )
                 )
             )
         );
 
+        // refs are stored as an address, non-refs are stored contiguously
         if (this.type.element_type.is_ref) {
             return createMiteType(
                 this.ctx,

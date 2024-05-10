@@ -299,11 +299,8 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
         let expr: MiteType | undefined = undefined;
         let type: InstanceTypeInformation;
         if (typeAnnotation && init) {
-            expr = expressionToExpression(
-                updateExpected(ctx, parseType(ctx, typeAnnotation)),
-                init
-            );
-            type = expr.type;
+            type = parseType(ctx, typeAnnotation);
+            expr = expressionToExpression(updateExpected(ctx, type), init);
         } else if (typeAnnotation) {
             type = parseType(ctx, typeAnnotation);
         } else if (init) {
@@ -674,7 +671,7 @@ function doWhileExpressionToExpression(ctx: Context, value: DoWhileExpression): 
               () => expressionToExpression(updateExpected(ctx, ctx.types.bool), value.test),
               { type: binaryen.i32 }
           )
-        : new TransientPrimitive(ctx, ctx.types.i32, ctx.mod.i32.const(0));
+        : new TransientPrimitive(ctx, ctx.types.bool, ctx.mod.i32.const(0));
 
     const ref = ctx.mod.loop(
         do_while_loop_body_block,
@@ -782,13 +779,13 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
 
     ctx.current_block.push(
         array
-            .index(new TransientPrimitive(ctx, ctx.types.i32, ctx.mod.i32.const(0)))
+            .index(new TransientPrimitive(ctx, Pointer.type, ctx.mod.i32.const(0)))
             .set(first_element)
     );
     for (let i = 1; i < value.elements.length; i++) {
         const expr = expressionToExpression(updateExpected(ctx, element_type), value.elements[i]);
         ctx.current_block.push(
-            array.index(new TransientPrimitive(ctx, ctx.types.i32, ctx.mod.i32.const(i))).set(expr)
+            array.index(new TransientPrimitive(ctx, Pointer.type, ctx.mod.i32.const(i))).set(expr)
         );
     }
 
@@ -800,7 +797,7 @@ function indexExpressionToExpression(ctx: Context, value: IndexExpression): Mite
     if (array.type.classification !== "array") {
         throw new Error(`Cannot index non-array type ${array.type.name}`);
     }
-    const index = expressionToExpression(updateExpected(ctx, ctx.types.i32), value.index);
+    const index = expressionToExpression(updateExpected(ctx, Pointer.type), value.index);
 
     return array.index(index);
 }
@@ -854,7 +851,7 @@ function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): M
         const mite_type = unwrapVariable(ctx, inner);
         if (mite_type.type.classification !== "array") throw new Error("Cannot unwrap non-array");
         return mite_type.index(
-            expressionToExpression(updateExpected(ctx, ctx.types.bool), variable.index)
+            expressionToExpression(updateExpected(ctx, Pointer.type), variable.index)
         );
     } else {
         throw new Error(`Unknown variable type: ${variable}`);

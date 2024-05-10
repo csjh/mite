@@ -131,12 +131,8 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
 type ValueOf<T> = T extends Map<unknown, infer V> ? V : never;
 
-function typeToAccessors({
-    type,
-    offset,
-    is_ref
-}: ValueOf<StructTypeInformation["fields"]>): Accessors {
-    const ptr = is_ref ? `$GetUint32(this._ + ${offset}, true)` : `this._ + ${offset}`;
+function typeToAccessors({ type, offset }: ValueOf<StructTypeInformation["fields"]>): Accessors {
+    const ptr = type.is_ref ? `$GetUint32(this._ + ${offset}, true)` : `this._ + ${offset}`;
 
     if (type.classification === "primitive") {
         if (type.name === "void") return { getter: "return undefined", setter: "" };
@@ -157,14 +153,14 @@ function typeToAccessors({
         const getter = structToJavascript(ptr, type);
         return {
             getter: `${getter.setup}; return ${getter.expression};`,
-            setter: is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
+            setter: type.is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
         };
     } else if (type.classification === "array") {
         // TODO: handle non-ref setters
         const getter = arrayToJavascript(ptr, type);
         return {
             getter: `${getter.setup}; return ${getter.expression};`,
-            setter: is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
+            setter: type.is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
         };
     } else if (type.classification === "function") {
         const getter = functionToJavascript(ptr);
