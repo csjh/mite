@@ -10,6 +10,16 @@ import { Primitive } from "../backend/type_classes.js";
 import { parseType } from "../backend/utils.js";
 import dedent from "dedent";
 
+interface Accessors {
+    getter: string;
+    setter: string;
+}
+
+interface Conversion {
+    setup?: string;
+    expression: string;
+}
+
 type Capitalize<S extends string> = S extends `${infer F}${infer R}` ? `${Uppercase<F>}${R}` : S;
 
 type DataViewGetterTypes =
@@ -121,11 +131,12 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
 type ValueOf<T> = T extends Map<unknown, infer V> ? V : never;
 
-function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation["fields"]>): {
-    getter: string;
-    setter: string;
-} {
-    const ptr = is_ref ? `$GetUint32(this._ + ${offset}, true)` : `(this._ + ${offset})`;
+function typeToAccessors({
+    type,
+    offset,
+    is_ref
+}: ValueOf<StructTypeInformation["fields"]>): Accessors {
+    const ptr = is_ref ? `$GetUint32(this._ + ${offset}, true)` : `this._ + ${offset}`;
 
     if (type.classification === "primitive") {
         if (type.name === "void") return { getter: "return undefined", setter: "" };
@@ -143,19 +154,22 @@ function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation
         };
     } else if (type.classification === "struct") {
         // TODO: handle non-ref setters
+        const getter = structToJavascript(ptr, type);
         return {
-            getter: structToJavascript(ptr, type, true),
+            getter: `${getter.setup}; return ${getter.expression};`,
             setter: is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
         };
     } else if (type.classification === "array") {
         // TODO: handle non-ref setters
+        const getter = arrayToJavascript(ptr, type);
         return {
-            getter: arrayToJavascript(ptr, type, true),
+            getter: `${getter.setup}; return ${getter.expression};`,
             setter: is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
         };
     } else if (type.classification === "function") {
+        const getter = functionToJavascript(ptr);
         return {
-            getter: functionToJavascript(ptr, true),
+            getter: `${getter.setup}; return ${getter.expression};`,
             setter: ""
         };
     } else {
@@ -164,33 +178,35 @@ function typeToAccessors({ type, offset, is_ref }: ValueOf<StructTypeInformation
     }
 }
 
-function arrayToJavascript(ptr: string, type: ArrayTypeInformation, isReturn: boolean = false) {
+function arrayToJavascript(ptr: string, type: ArrayTypeInformation): Conversion {
     if (type.element_type.classification === "primitive") {
         const typed_name = primitiveToTypedName(type.element_type.name);
-        return `const $base = ${ptr}; ${
-            isReturn ? "return" : ""
-        } new ${typed_name}Array($memory.buffer, $base + 4, $GetUint32($base, true));`;
+        return {
+            setup: `const $ptr = ${ptr};`,
+            expression: `new ${typed_name}Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true))`
+        };
     } else if (type.element_type.classification === "struct") {
-        let array;
-        if (type.element_type.is_ref) {
-            array = `Array.from(new Uint32Array($memory.buffer, $base + 4, $GetUint32($base, true)), ($ptr) => new ${type.element_type.name}($ptr))`;
-        } else {
-            array = `Array.from({ length: $GetUint32($base, true) }, (_, i) => new ${type.element_type.name}($base + 4 + i * ${type.element_type.sizeof}))`;
-        }
-
-        return `const $base = ${ptr}; ${isReturn ? "return" : ""} ${array}`;
+        return {
+            setup: `const $ptr = ${ptr};`,
+            expression: type.element_type.is_ref
+                ? `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => new ${type.element_type.name}($el))`
+                : `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => new ${type.element_type.name}($ptr + 4 + i * ${type.element_type.sizeof}))`
+        };
     } else if (type.element_type.classification === "array") {
         throw new Error("Nested arrays are not supported");
     } else if (type.element_type.classification === "function") {
-        return `const $base = ${ptr}; ${isReturn ? "return" : ""} Array.from({ length: $GetUint32($base, true) }, (_, i) => ${functionToJavascript("$base + i * 4")})`;
+        return {
+            setup: `const $ptr = ${ptr};`,
+            expression: `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4")})`
+        };
     } else {
         // @ts-expect-error unreachable probably
         throw new Error(`Unknown type: ${type.element_type.classification}`);
     }
 }
 
-function structToJavascript(ptr: string, type: StructTypeInformation, isReturn: boolean = false) {
-    return `${isReturn ? "return" : ""} new ${type.name}(${ptr})`;
+function structToJavascript(ptr: string, type: StructTypeInformation): Conversion {
+    return { expression: `new ${type.name}(${ptr})` };
 }
 
 function primitiveToTypedName(primitive: string): DataViewGetterTypes {
@@ -233,8 +249,11 @@ function primitiveToTypedName(primitive: string): DataViewGetterTypes {
     }
 }
 
-function functionToJavascript(ptr: string, isReturn: boolean = false) {
-    return `${isReturn ? "return " : ""}$toJavascriptFunction(${ptr})`;
+function functionToJavascript(ptr: string): Conversion {
+    return {
+        setup: `const $ptr = ${ptr}; const $func = $toJavascriptFunction($ptr); $func._ = $ptr;`,
+        expression: `$func`
+    };
 }
 
 function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, indentation: number) {
@@ -244,15 +263,17 @@ function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, in
 
     return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {
 \t    const $result = $wasm_export_${id.name}(${params
-        .map(({ name: { name: n } }) => (Primitive.primitives.has(n) ? n : `${n}._`))
+        .map(({ typeAnnotation, name: { name } }) =>
+            Primitive.primitives.has(typeAnnotation.name) ? name : `${name}._`
+        )
         .join(", ")});
 \t
 \t    ${
         // prettier-ignore
         returnTypeType.classification === "primitive" ? "return $result"
-        : returnTypeType.classification === "struct"    ? structToJavascript("$result", returnTypeType, true)
-        : returnTypeType.classification === "array"     ? arrayToJavascript("$result", returnTypeType, true)
-        : returnTypeType.classification === "function"  ? functionToJavascript("$result", true)
+        : returnTypeType.classification === "struct"    ? structToJavascript("$result", returnTypeType)
+        : returnTypeType.classification === "array"     ? arrayToJavascript("$result", returnTypeType)
+        : returnTypeType.classification === "function"  ? functionToJavascript("$result")
         // @ts-expect-error unreachable
         : returnTypeType.classification
     };
