@@ -333,7 +333,7 @@ function returnStatementToExpression(ctx: Context, value: ReturnStatement): void
     );
 }
 
-function expressionToExpression(ctx: Context, value: Expression): MiteType {
+function expressionToExpression(ctx: Context, value: Expression | Statement): MiteType {
     if (value.type === "Literal") {
         return literalToExpression(ctx, value);
     } else if (value.type === "Identifier") {
@@ -387,8 +387,8 @@ function expressionToExpression(ctx: Context, value: Expression): MiteType {
             case "YieldExpression":
                 throw new Error(`Currently unsupported statement type: ${value.type}`);
             default:
-                // @ts-expect-error value should be `never` here
-                throw new Error(`Unknown statement type: ${value.type}`);
+                statementToExpression(ctx, value);
+                return new TransientPrimitive(ctx, ctx.types.void, ctx.mod.nop());
         }
     }
 }

@@ -29,6 +29,42 @@ import { compileAndRun } from "./utils.js";
 //     });
 // });
 
+describe("array initialization", () => {
+    it("should work with static sized arrays", () => {
+        const program = `
+        export fn main(): i32 {
+            let x: [i32; 3] = [1, 2, 3];
+            return x[0] + x[1] + x[2];
+        }
+        `;
+
+        compileAndRun(program, 6);
+    });
+
+    it("should work with dynamic sized arrays", () => {
+        const program = `
+        export fn main(): i32 {
+            let x: [i32] = [1, 2, 3];
+            return x[0] + x[1] + x[2];
+        }
+        `;
+
+        compileAndRun(program, 6);
+
+        const program2 = `
+        export fn main(): i32 {
+            let x: [i32];
+            x = [1, 2, 3];
+            if (0 == (x[0] + x[1] + x[2] == 6)) return 0;
+            x = [4, 5, 6];
+            return x[0] + x[1] + x[2] == 15;
+        }
+        `;
+
+        compileAndRun(program2, 1);
+    });
+});
+
 describe("arena array functions", () => {
     it("should work with return values", () => {
         const program = `

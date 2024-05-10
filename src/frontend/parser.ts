@@ -469,6 +469,17 @@ export class Parser {
             | LogicalOperator
         )[] = [];
 
+        if (
+            this.token.type === TokenType.RETURN ||
+            this.token.type === TokenType.LET ||
+            this.token.type === TokenType.CONST
+        ) {
+            const stmt = this.parseStatement();
+            // go back to the semicolon
+            this.idx--;
+            return { type: "BlockExpression", body: [stmt] };
+        }
+
         expressions: while (true) {
             switch (this.token.type) {
                 case TokenType.SEMICOLON:
@@ -1015,11 +1026,11 @@ export class Parser {
         } else if (token.type === TokenType.LEFT_BRACKET) {
             this.eatToken(TokenType.LEFT_BRACKET);
             const elementType = this.parseType();
-            this.eatToken(TokenType.SEMICOLON);
 
             const _type: TypeIdentifier["_type"] = { type: "Array", elementType };
 
-            if (this.token.type === TokenType.NUMBER) {
+            if (this.token.type === TokenType.SEMICOLON) {
+                this.eatToken(TokenType.SEMICOLON);
                 _type.length = Number(this.getNumberLiteral().value);
             }
 
