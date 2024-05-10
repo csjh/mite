@@ -1,5 +1,10 @@
 import { ArrayTypeInformation, Context, StructTypeInformation } from "../types/code_gen.js";
-import { ExportNamedDeclaration, FunctionDeclaration, Program } from "../types/nodes.js";
+import {
+    ExportNamedDeclaration,
+    FunctionDeclaration,
+    Program,
+    StructDeclaration
+} from "../types/nodes.js";
 import { identifyStructs } from "../backend/context_initialization.js";
 import { Primitive } from "../backend/type_classes.js";
 import { parseType } from "../backend/utils.js";
@@ -30,7 +35,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         .map((x) => x.declaration as FunctionDeclaration);
     const methods = Object.fromEntries(
         program.body
-            .filter((x) => x.type === "StructDeclaration")
+            .filter((x): x is StructDeclaration => x.type === "StructDeclaration")
             .map((x) => [x.id.name, x.methods])
     );
 

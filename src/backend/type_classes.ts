@@ -1107,7 +1107,10 @@ export class DirectFunction implements MiteType {
                 this.ctx,
                 {
                     // dummy parameter for ctx
-                    params: [Primitive.primitives.get("i32")!, ...this.type.implementation.params],
+                    params: [
+                        { name: "this", type: Pointer.type },
+                        ...this.type.implementation.params
+                    ],
                     results: this.type.implementation.results
                 },
                 captured_name,
@@ -1115,7 +1118,7 @@ export class DirectFunction implements MiteType {
                 this.ctx.mod.block(null, [
                     this.ctx.mod.call(
                         this.type.name,
-                        this.type.implementation.params.map((type, i) =>
+                        this.type.implementation.params.map(({ type }, i) =>
                             this.ctx.mod.local.get(i + 1, typeInformationToBinaryen(type))
                         ),
                         typeInformationToBinaryen(this.type.implementation.results)
@@ -1219,7 +1222,7 @@ export class IndirectFunction extends AggregateType<InstanceFunctionInformation>
                 [ctx, ...args.map((arg) => arg.get_expression_ref())],
                 binaryen.createType([
                     binaryen.i32,
-                    ...this.type.implementation.params.map(typeInformationToBinaryen)
+                    ...this.type.implementation.params.map((x) => typeInformationToBinaryen(x.type))
                 ]),
                 typeInformationToBinaryen(this.type.implementation.results)
             )

@@ -48,11 +48,7 @@ export function createMiteType(
         if (type.classification === "primitive") {
             return new LocalPrimitive(ctx, type, address_or_local);
         } else {
-            const local = new LocalPrimitive(
-                ctx,
-                Primitive.primitives.get("u32")!,
-                address_or_local
-            );
+            const local = new LocalPrimitive(ctx, Pointer.type, address_or_local);
             if (type.classification === "array") {
                 return new Array_(ctx, type, new Pointer(local));
             } else if (type.classification === "struct") {

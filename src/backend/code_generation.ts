@@ -48,7 +48,8 @@ import type {
     Declaration,
     ArrayExpression,
     IndexExpression,
-    ObjectExpression
+    ObjectExpression,
+    StructDeclaration
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import {
@@ -120,7 +121,9 @@ export function programToModule(
         );
     }
 
-    for (const struct of program.body.filter((x) => x.type === "StructDeclaration")) {
+    for (const struct of program.body.filter(
+        (x): x is StructDeclaration => x.type === "StructDeclaration"
+    )) {
         for (const { id, params, returnType } of struct.methods) {
             (ctx.types[struct.id.name] as InstanceStructTypeInformation).methods.set(id.name, {
                 classification: "function",
@@ -229,7 +232,7 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
             const type = parseType(ctx, typeAnnotation);
             const local = new LocalPrimitive(
                 ctx,
-                type.classification === "primitive" ? type : Primitive.primitives.get("u32")!,
+                type.classification === "primitive" ? type : Pointer.type,
                 local_index
             );
             let obj: MiteType;
