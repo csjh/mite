@@ -72,11 +72,5 @@ export function addBuiltins(ctx: Context) {
     );
 
     const arena_heap_reset = ctx.mod.block(null, [ARENA_HEAP_OFFSET.set(i32.const(0))]);
-    ctx.mod.addFunction(
-        "arena_heap_reset",
-        binaryen.createType([]),
-        binaryen.none,
-        [],
-        arena_heap_reset
-    );
+    ctx.mod.addFunction("arena_heap_reset", binaryen.none, binaryen.none, [], arena_heap_reset);
 }
