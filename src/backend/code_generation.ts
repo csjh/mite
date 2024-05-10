@@ -315,7 +315,7 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
 
         const local = createMiteType(ctx, type, ctx.current_function.local_count++);
 
-        if (type.classification === "struct") {
+        if (type.classification === "struct" || type.classification === "function") {
             ctx.current_block.push(local.set(allocate(ctx, type, type.sizeof)));
         } else if (type.classification === "array") {
             ctx.current_block.push(local.set(constructArray(ctx, type)));

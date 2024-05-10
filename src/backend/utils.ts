@@ -73,7 +73,7 @@ export function createMiteType(
 
     // @ts-expect-error unreachable probably
     type.classification;
-    return undefined as never;
+    throw new Error(`Unknown type: ${type}`);
 }
 
 // converts a mite type to binaryen type (for parameter or return type)
@@ -253,7 +253,9 @@ export function fromExpressionRef(
     } else if (result.classification === "function") {
         return new IndirectFunction(ctx, result, new Pointer(ptr));
     } else {
-        return result;
+        // @ts-expect-error unreachable
+        result.classification;
+        throw new Error(`Unknown type: ${result}`);
     }
 }
 
