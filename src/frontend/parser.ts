@@ -39,7 +39,8 @@ import type {
     ArrayExpression,
     IndexExpression,
     TypeIdentifier,
-    ObjectExpression
+    ObjectExpression,
+    StringLiteral
 } from "../types/nodes.js";
 
 const precedence = [
@@ -520,6 +521,9 @@ export class Parser {
                 case TokenType.NUMBER:
                     expression_stack.push(this.getNumberLiteral());
                     break;
+                case TokenType.STRING:
+                    expression_stack.push(this.getStringLiteral());
+                    break;
                 // case TokenType.BOOLEAN:
                 //     expression_stack.push(this.getBooleanLiteral());
                 //     break;
@@ -886,6 +890,16 @@ export class Parser {
             type: "Literal",
             literalType,
             value: Array.from(new Uint8Array(bytes.buffer))
+        };
+    }
+
+    private getStringLiteral(): StringLiteral {
+        const value = this.takeToken(TokenType.STRING);
+
+        return {
+            type: "Literal",
+            literalType: "string",
+            value
         };
     }
 

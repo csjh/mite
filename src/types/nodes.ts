@@ -437,7 +437,7 @@ export interface Literal extends BaseNode, BaseExpression {
     type: "Literal";
     raw?: string | undefined;
     literalType: string;
-    value: number | boolean | bigint | number[];
+    value: string | number | boolean | bigint | number[];
 }
 
 export interface NumberLiteral extends Literal {
@@ -465,14 +465,9 @@ export interface SIMDLiteral extends Literal {
     value: number[];
 }
 
-export interface RegExpLiteral extends BaseNode, BaseExpression {
-    type: "Literal";
-    value?: RegExp | null | undefined;
-    regex: {
-        pattern: string;
-        flags: string;
-    };
-    raw?: string | undefined;
+export interface StringLiteral extends Literal {
+    literalType: "string";
+    value: string;
 }
 
 export type UnaryOperator = "-" | "+" | "!" | "~"; // | "typeof" | "void" | "delete";

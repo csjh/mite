@@ -139,6 +139,42 @@ export function tokenize(input: string): Token[] {
                 }
                 break;
             }
+            case '"': {
+                let value = "";
+                i++;
+                while (i < input.length && input[i] !== '"') {
+                    if (input[i] === "\\") {
+                        i++;
+                        switch (input[i]) {
+                            case '"':
+                                value += '"';
+                                break;
+                            case "\\":
+                                value += "\\";
+                                break;
+                            case "n":
+                                value += "\n";
+                                break;
+                            case "r":
+                                value += "\r";
+                                break;
+                            case "t":
+                                value += "\t";
+                                break;
+                            default:
+                                throw new Error(
+                                    `Unexpected escape sequence \\${input[i]} at index ${i}`
+                                );
+                        }
+                    } else {
+                        value += input[i];
+                    }
+                    i++;
+                }
+                i++;
+                token = { type: TokenType.STRING, value };
+                break;
+            }
             default:
                 if (!/[a-zA-Z_]/.test(input[i]))
                     throw new Error(`Unexpected character ${input[i]} at index ${i}`);
