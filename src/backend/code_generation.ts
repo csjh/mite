@@ -399,7 +399,7 @@ function expressionToExpression(ctx: Context, value: Expression | Statement): Mi
 
 const encoder = new TextEncoder();
 function literalToExpression(ctx: Context, value: Literal): MiteType {
-    if (ctx.expected?.classification && ctx.expected.classification !== "primitive")
+    if (ctx.expected?.classification && ctx.expected.classification !== "primitive" && ctx.expected.classification !== "string")
         throw new Error(`Expected primitive type, got ${ctx.expected?.classification}`);
 
     const type = ctx.expected ?? (ctx.types[value.literalType] as InstancePrimitiveTypeInformation);
