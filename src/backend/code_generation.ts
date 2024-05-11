@@ -20,7 +20,6 @@ import {
     InstancePrimitiveTypeInformation,
     InstanceStructTypeInformation,
     InstanceTypeInformation,
-    ProgramToModuleOptions,
     intrinsic_names
 } from "../types/code_gen.js";
 import type {
@@ -60,6 +59,7 @@ import {
     MiteType,
     Pointer,
     Primitive,
+    String_,
     Struct,
     StructMethod,
     TransientPrimitive
@@ -83,9 +83,14 @@ export function programToModule(program: Program, _options: unknown = {}): binar
         current_block: [],
         captured_functions: [],
         local_count: 0,
+        string: {
+            literals: new Map(),
+            end: memory_position
+        },
         // @ts-expect-error initially we're not in a function
         current_function: null
     };
+    ctx.types.string = String_.type;
     ctx.intrinsics = createIntrinsics(ctx);
     ctx.conversions = createConversions(ctx);
     addBuiltins(ctx);
@@ -240,6 +245,8 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
                 obj = new Struct(ctx, type, new Pointer(local));
             } else if (type.classification === "function") {
                 obj = new IndirectFunction(ctx, type, new Pointer(local));
+            } else if (type.classification === "string") {
+                obj = new String_(ctx, new Pointer(local));
             } else {
                 // @ts-expect-error unreachable
                 type.classification;
@@ -390,6 +397,7 @@ function expressionToExpression(ctx: Context, value: Expression | Statement): Mi
     }
 }
 
+const encoder = new TextEncoder();
 function literalToExpression(ctx: Context, value: Literal): MiteType {
     if (ctx.expected?.classification && ctx.expected.classification !== "primitive")
         throw new Error(`Expected primitive type, got ${ctx.expected?.classification}`);
@@ -397,6 +405,24 @@ function literalToExpression(ctx: Context, value: Literal): MiteType {
     const type = ctx.expected ?? (ctx.types[value.literalType] as InstancePrimitiveTypeInformation);
     let ref;
     switch (type.name) {
+        case "string":
+            if (typeof value.value !== "string") throw new Error("Expected string literal");
+            const str = value.value;
+            if (!ctx.string.literals.has(str)) {
+                ctx.string.literals.set(str, ctx.string.end);
+                // +4 for size
+                ctx.string.end += encoder.encode(str).length + 4;
+            }
+            return new String_(
+                ctx,
+                new Pointer(
+                    new TransientPrimitive(
+                        ctx,
+                        Pointer.type,
+                        ctx.mod.i32.const(ctx.string.literals.get(str)!)
+                    )
+                )
+            );
         // case "bool":
         //     if (typeof value.value !== "boolean") throw new Error("Expected boolean literal");
         //     ref = ctx.mod.i32.const(value.value ? 1 : 0);
@@ -791,9 +817,6 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
 
 function indexExpressionToExpression(ctx: Context, value: IndexExpression): MiteType {
     const array = expressionToExpression(ctx, value.object);
-    if (array.type.classification !== "array") {
-        throw new Error(`Cannot index non-array type ${array.type.name}`);
-    }
     const index = expressionToExpression(updateExpected(ctx, Pointer.type), value.index);
 
     return array.index(index);
