@@ -95,7 +95,9 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         const $SetUint8 =     /*#__PURE__*/ $DataViewPrototype.setUint8    .bind($buffer);
         ${/* function bindings actually don't really care about types */ ""}
         function $toJavascriptFunction($ptr) {
-            return $virtualized_functions[$GetUint32($ptr, true)].bind(null, $GetUint32($ptr + 4, true));
+            const $fn = $virtualized_functions[$GetUint32($ptr, true)].bind(null, $GetUint32($ptr + 4, true));
+            $fn._ = $ptr;
+            return $fn;
         }
 
         function $toJavascriptString($ptr) {
@@ -314,10 +316,7 @@ function primitiveToTypedName(primitive: string): DataViewGetterTypes {
 }
 
 function functionToJavascript(ptr: string): Conversion {
-    return {
-        setup: `const $ptr = ${ptr}; const $func = $toJavascriptFunction($ptr); $func._ = $ptr;`,
-        expression: `$func`
-    };
+    return { expression: `$toJavascriptFunction(${ptr})` };
 }
 
 function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, indentation: number) {
