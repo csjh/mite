@@ -1,4 +1,9 @@
-import { ArrayTypeInformation, Context, StructTypeInformation } from "../types/code_gen.js";
+import {
+    ArrayTypeInformation,
+    Context,
+    PrimitiveTypeInformation,
+    StructTypeInformation
+} from "../types/code_gen.js";
 import {
     ExportNamedDeclaration,
     FunctionDeclaration,
@@ -6,7 +11,7 @@ import {
     StructDeclaration
 } from "../types/nodes.js";
 import { identifyStructs } from "../backend/context_initialization.js";
-import { Primitive } from "../backend/type_classes.js";
+import { Primitive, String_ } from "../backend/type_classes.js";
 import { parseType } from "../backend/utils.js";
 import dedent from "dedent";
 
@@ -34,7 +39,8 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
     const ctx = {
         types: Object.fromEntries([
             ...Primitive.primitives.entries(),
-            ...structs.map((x) => [x.name, x])
+            ...structs.map((x) => [x.name, x]),
+            ["string", String_.type]
         ])
     } as Context;
     const exports = program.body
@@ -49,16 +55,22 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
             .map((x) => [x.id.name, x.methods])
     );
 
-    const { setup = "", instantiation } = createInstance("{}");
+    const { setup = "", instantiation } = createInstance("{ console }");
 
     let code = dedent`
         ${setup ? setup + "\n" : ""}
         const $wasm = await ${instantiation};
-        const { $memory, $table, ${exports
+        const { $memory, $table, $arena_heap_malloc, ${exports
             .map((x) => `${x.id.name}: $wasm_export_${x.id.name}, `)
             .join("")}} = $wasm.instance.exports;
         const $buffer = new DataView($memory.buffer);
+
         const $virtualized_functions =  /*#__PURE__*/ Array.from($table, (_, i) => $table.get(i));
+
+        const $encoder = /*#__PURE__*/ new TextEncoder();
+        const $decoder = /*#__PURE__*/ new TextDecoder();
+        const $stringToPointer = /*#__PURE__*/ new Map();
+        const $pointerToString = /*#__PURE__*/ new Map();
 
         const $DataViewPrototype = DataView.prototype;
         const $GetBigInt64 =  /*#__PURE__*/ $DataViewPrototype.getBigInt64 .bind($buffer);
@@ -84,6 +96,51 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         ${/* function bindings actually don't really care about types */ ""}
         function $toJavascriptFunction($ptr) {
             return $virtualized_functions[$GetUint32($ptr, true)].bind(null, $GetUint32($ptr + 4, true));
+        }
+
+        function $toJavascriptString($ptr) {
+            if ($pointerToString.has($ptr)) return $pointerToString.get($ptr);
+
+            const $str = $decoder.decode(new Uint8Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)));
+
+            $pointerToString.set($ptr, $str);
+            $stringToPointer.set($str, $ptr);
+
+            return $str;
+        }
+        ${/* Courtesy of emscripten */ ""}
+        function $utf8Length($str) {
+            var $len = 0;
+            for (var $i = 0; $i < $str.length; ++$i) {
+                var $c = $str.charCodeAt($i);
+                if ($c <= 127) {
+                    ++$len;
+                } else if ($c <= 2047) {
+                    $len += 2;
+                } else if ($c >= 55296 && $c <= 57343) {
+                    $len += 4;
+                    ++$i;
+                } else {
+                    $len += 3;
+                }
+            }
+            return $len;
+        }
+
+        function $fromJavascriptString($str) {
+            if ($stringToPointer.has($str)) return $stringToPointer.get($str);
+
+            const $len = $utf8Length($str);
+            const $ptr = $arena_heap_malloc(4 + $len);
+            $SetUint32($ptr, $len, true);
+
+            const $output = new Uint8Array($memory.buffer, $ptr + 4, $len);
+            $encoder.encodeInto($str, $output);
+
+            $pointerToString.set($ptr, $str);
+            $stringToPointer.set($str, $ptr);
+
+            return $ptr;
         }
     `;
 
@@ -168,6 +225,12 @@ function typeToAccessors({ type, offset }: ValueOf<StructTypeInformation["fields
             getter: `${getter.setup}; return ${getter.expression};`,
             setter: ""
         };
+    } else if (type.classification === "string") {
+        const getter = stringToJavascript(ptr);
+        return {
+            getter: `${getter.setup}; return ${getter.expression};`,
+            setter: `$SetUint32(${ptr}, $fromJavascriptString($val), true);`
+        };
     } else {
         // @ts-expect-error unreachable probably
         throw new Error(`Unknown type: ${type.classification}`);
@@ -193,7 +256,12 @@ function arrayToJavascript(ptr: string, type: ArrayTypeInformation): Conversion 
     } else if (type.element_type.classification === "function") {
         return {
             setup: `const $ptr = ${ptr};`,
-            expression: `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4")})`
+            expression: `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4").expression})`
+        };
+    } else if (type.element_type.classification === "string") {
+        return {
+            setup: `const $ptr = ${ptr};`,
+            expression: `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => ${stringToJavascript("$el").expression})`
         };
     } else {
         // @ts-expect-error unreachable probably
@@ -257,23 +325,41 @@ function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, in
     if (params[0]?.name.name === "this") params.shift();
     const returnTypeType = parseType(ctx, returnType);
 
+    const args = params
+        .map(({ typeAnnotation, name: { name } }) => {
+            if (typeAnnotation._type.type === "Identifier") {
+                if (Primitive.primitives.has(typeAnnotation._type.name)) {
+                    return name;
+                } else if (typeAnnotation._type.name === "string") {
+                    return `$fromJavascriptString(${name})`;
+                }
+            }
+            return `${name}._`;
+        })
+        .join(", ");
+
+    // prettier-ignore
+    const { setup, expression } =
+        returnTypeType.classification === "primitive" ? primitiveToJavascript("$result", returnTypeType)
+        : returnTypeType.classification === "struct" ? structToJavascript("$result", returnTypeType)
+        : returnTypeType.classification === "array" ? arrayToJavascript("$result", returnTypeType)
+        : returnTypeType.classification === "function" ? functionToJavascript("$result")
+        : returnTypeType.classification === "string" ? stringToJavascript("$result")
+        : // @ts-expect-error unreachable
+        returnTypeType.classification;
+
     return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {
-\t    const $result = $wasm_export_${id.name}(${params
-        .map(({ typeAnnotation, name: { name } }) =>
-            "name" in typeAnnotation._type && Primitive.primitives.has(typeAnnotation._type.name)
-                ? name
-                : `${name}._`
-        )
-        .join(", ")});
-\t
-\t    ${
-        // prettier-ignore
-        returnTypeType.classification === "primitive" ? "return $result"
-        : returnTypeType.classification === "struct"    ? structToJavascript("$result", returnTypeType)
-        : returnTypeType.classification === "array"     ? arrayToJavascript("$result", returnTypeType)
-        : returnTypeType.classification === "function"  ? functionToJavascript("$result")
-        // @ts-expect-error unreachable
-        : returnTypeType.classification
-    };
+\t    const $result = $wasm_export_${id.name}(${args});
+\t${setup ? `\n\t    ${setup}` : ""}
+\t    return ${expression};
 \t}`.replaceAll("\t", " ".repeat(indentation));
+}
+
+function stringToJavascript(ptr: string): Conversion {
+    return { expression: `$toJavascriptString(${ptr})` };
+}
+
+function primitiveToJavascript(ptr: string, type: PrimitiveTypeInformation): Conversion {
+    if (type.name === "bool") return { expression: `!!(${ptr})` };
+    return { expression: ptr };
 }
