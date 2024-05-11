@@ -1,9 +1,7 @@
 import binaryen from "binaryen";
 import { MiteType } from "../backend/type_classes.js";
 
-export type ProgramToModuleOptions = {
-    stack_size?: number;
-};
+export type ProgramToModuleOptions = unknown;
 
 type SharedTypeInformation = {
     classification: string;
@@ -37,7 +35,8 @@ export type TypeInformation =
     | PrimitiveTypeInformation
     | StructTypeInformation
     | ArrayTypeInformation
-    | FunctionTypeInformation;
+    | FunctionTypeInformation
+    | StringTypeInformation;
 
 type SharedInstanceTypeInformation = {
     is_ref: boolean;
@@ -55,7 +54,8 @@ export type InstanceTypeInformation =
     | InstancePrimitiveTypeInformation
     | InstanceStructTypeInformation
     | InstanceArrayTypeInformation
-    | InstanceFunctionTypeInformation;
+    | InstanceFunctionTypeInformation
+    | InstanceStringTypeInformation;
 
 type Parameter = {
     name: string;
@@ -103,6 +103,7 @@ export type Context = {
         i64x2: PrimitiveTypeInformation;
         u64x2: PrimitiveTypeInformation;
         f64x2: PrimitiveTypeInformation;
+        string: StringTypeInformation;
     } & Record<string, TypeInformation>;
     /** Depth stacks for use in nested blocks and such */
     stacks: {
@@ -116,6 +117,11 @@ export type Context = {
     current_block: MiteType[];
     /** All captured functions that will go into the virtualized_functions table */
     captured_functions: string[];
+    /** All string literals */
+    string: {
+        literals: Map<string, number>;
+        end: number;
+    };
     /** Data about current function */
     current_function: FunctionInformation & {
         stack_frame_size: number;

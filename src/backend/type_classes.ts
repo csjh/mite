@@ -18,7 +18,8 @@ import {
     BinaryOperator as BinaryOperatorHandler,
     PrimitiveTypeInformation,
     InstancePrimitiveTypeInformation,
-    InstanceFunctionTypeInformation
+    InstanceFunctionTypeInformation,
+    InstanceStringTypeInformation
 } from "../types/code_gen.js";
 import {
     allocate,
@@ -1316,6 +1317,39 @@ export class StructMethod implements MiteType {
 
     operator(operator: BinaryOperator): BinaryOperatorHandler {
         throw new Error(`Invalid operator ${operator} for function`);
+    }
+}
+
+export class String_ extends AggregateType<InstanceStringTypeInformation> {
+    array: Array_;
+    static type = { classification: "string", name: "string", sizeof: 0, is_ref: true } as const;
+    type = String_.type;
+
+    constructor(ctx: Context, address: Pointer) {
+        super(ctx, String_.type, address);
+        this.array = new Array_(
+            ctx,
+            {
+                classification: "array",
+                name: "[u8]",
+                sizeof: 0,
+                element_type: Primitive.primitives.get("u8")!,
+                is_ref: true
+            },
+            address
+        );
+    }
+
+    access(_: string): MiteType {
+        throw new Error("Unable to access properties of a string.");
+    }
+
+    index(index: MiteType): MiteType {
+        return this.array.index(index);
+    }
+
+    sizeof(): number {
+        return this.array.sizeof();
     }
 }
 

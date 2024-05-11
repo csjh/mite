@@ -14,6 +14,7 @@ import {
     MiteType,
     Pointer,
     Primitive,
+    String_,
     Struct,
     TransientPrimitive
 } from "./type_classes.js";
@@ -55,6 +56,8 @@ export function createMiteType(
                 return new Struct(ctx, type, new Pointer(local));
             } else if (type.classification === "function") {
                 return new IndirectFunction(ctx, type, new Pointer(local));
+            } else if (type.classification === "string") {
+                return new String_(ctx, new Pointer(local));
             }
         }
     } else {
@@ -70,6 +73,8 @@ export function createMiteType(
                 return new Struct(ctx, type, new Pointer(primitive));
             } else if (type.classification === "function") {
                 return new IndirectFunction(ctx, type, new Pointer(primitive));
+            } else if (type.classification === "string") {
+                return new String_(ctx, new Pointer(primitive));
             }
         }
     }
@@ -177,7 +182,9 @@ export function parseType(
         };
     } else if (_type.type === "Identifier") {
         const base_type = ctx[_type.name];
-        if (base_type.classification === "primitive") {
+        if (base_type.classification === "string") {
+            return String_.type;
+        } else if (base_type.classification === "primitive") {
             if (type.isRef) throw new Error(`Cannot make primitive ${type} a ref`);
             return {
                 ...base_type,
@@ -235,6 +242,8 @@ export function fromExpressionRef(
         return new Array_(ctx, result, new Pointer(ptr));
     } else if (result.classification === "function") {
         return new IndirectFunction(ctx, result, new Pointer(ptr));
+    } else if (result.classification === "string") {
+        return new String_(ctx, new Pointer(ptr));
     } else {
         // @ts-expect-error unreachable
         result.classification;
