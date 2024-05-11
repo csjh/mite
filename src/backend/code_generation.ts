@@ -67,10 +67,10 @@ import {
 import { createConversions, createIntrinsics, identifyStructs } from "./context_initialization.js";
 import { addBuiltins } from "./builtin_functions.js";
 
-export function programToModule(
-    program: Program,
-    { stack_size = 64 * 1024 }: ProgramToModuleOptions = {}
-): binaryen.Module {
+export function programToModule(program: Program, _options: unknown = {}): binaryen.Module {
+    let memory_position = 0;
+    memory_position += 1024; // reserve 1kb for no real reason
+
     const structs = Object.fromEntries(identifyStructs(program).map((x) => [x.name, x]));
     const primitives = Object.fromEntries(Primitive.primitives.entries());
 
@@ -89,17 +89,6 @@ export function programToModule(
     ctx.intrinsics = createIntrinsics(ctx);
     ctx.conversions = createConversions(ctx);
     addBuiltins(ctx);
-
-    const js_heap_size = 65536;
-
-    ctx.mod.setMemory(256, -1, "$memory", [], false, false, "main_memory");
-    ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
-    ctx.mod.addGlobal(
-        ARENA_HEAP_POINTER,
-        binaryen.i32,
-        false,
-        ctx.mod.i32.const(stack_size + 4 + js_heap_size)
-    );
 
     for (const { id, params, returnType } of program.body
         .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
@@ -177,6 +166,19 @@ export function programToModule(
                 throw new Error(`Unknown node type: ${node.type}`);
         }
     }
+
+    const encoder = new TextEncoder();
+    // prettier-ignore
+    ctx.mod.setMemory(256, -1, "$memory", Array.from(ctx.string.literals.entries(), ([literal, start]) => {
+        const bytes = encoder.encode(literal);
+        const x = bytes.length;
+        return { offset: mod.i32.const(start), data: new Uint8Array([(x >>> 0) & 0xFF, (x >>> 8) & 0xFF, (x >>> 16) & 0xFF, (x >>> 24) & 0xFF, ...bytes]) };
+    }), false, false, "main_memory");
+
+    memory_position = ctx.string.end;
+
+    ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
+    ctx.mod.addGlobal(ARENA_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(memory_position));
 
     const fns = ctx.captured_functions;
     mod.addTable(VIRTUALIZED_FUNCTIONS, fns.length, fns.length);
