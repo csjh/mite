@@ -6,7 +6,7 @@ import {
     StructDeclaration
 } from "../types/nodes.js";
 import { identifyStructs } from "../backend/context_initialization.js";
-import { Primitive } from "../backend/type_classes.js";
+import { Primitive, String_ } from "../backend/type_classes.js";
 import { parseType } from "../backend/utils.js";
 import dedent from "dedent";
 
@@ -17,7 +17,8 @@ export function programToBoilerplate(program: Program, _: Options) {
     const ctx = {
         types: Object.fromEntries([
             ...Primitive.primitives.entries(),
-            ...structs.map((x) => [x.name, x])
+            ...structs.map((x) => [x.name, x]),
+            ["string", String_.type]
         ])
     } as Context;
 
@@ -109,6 +110,8 @@ function typeToIdentifier(type: TypeInformation): string {
         return `(${type.implementation.params.map((x) => `${x.name}: ${typeToIdentifier(x.type)}`).join(", ")}) => ${typeToIdentifier(
             type.implementation.results
         )}`;
+    } else if (type.classification === "string") {
+        return "string";
     }
 
     // @ts-expect-error unreachable probably
