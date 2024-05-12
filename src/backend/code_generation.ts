@@ -174,11 +174,14 @@ export function programToModule(program: Program, _options: unknown = {}): binar
 
     const encoder = new TextEncoder();
     // prettier-ignore
-    ctx.mod.setMemory(256, -1, "$memory", Array.from(ctx.string.literals.entries(), ([literal, start]) => {
-        const bytes = encoder.encode(literal);
-        const x = bytes.length;
-        return { offset: mod.i32.const(start), data: new Uint8Array([(x >>> 0) & 0xFF, (x >>> 8) & 0xFF, (x >>> 16) & 0xFF, (x >>> 24) & 0xFF, ...bytes]) };
-    }), false, false, "main_memory");
+    ctx.mod.setMemory(256, -1, "$memory", [{
+        offset: mod.i32.const(memory_position),
+        data: new Uint8Array(Array.from(ctx.string.literals.keys(), (literal) => {
+            const bytes = encoder.encode(literal);
+            const x = bytes.length;
+            return [(x >>> 0) & 0xFF, (x >>> 8) & 0xFF, (x >>> 16) & 0xFF, (x >>> 24) & 0xFF, ...bytes];
+        }).flat())
+    }], false, false, "main_memory");
 
     memory_position = ctx.string.end;
 
@@ -399,7 +402,11 @@ function expressionToExpression(ctx: Context, value: Expression | Statement): Mi
 
 const encoder = new TextEncoder();
 function literalToExpression(ctx: Context, value: Literal): MiteType {
-    if (ctx.expected?.classification && ctx.expected.classification !== "primitive" && ctx.expected.classification !== "string")
+    if (
+        ctx.expected?.classification &&
+        ctx.expected.classification !== "primitive" &&
+        ctx.expected.classification !== "string"
+    )
         throw new Error(`Expected primitive type, got ${ctx.expected?.classification}`);
 
     const type = ctx.expected ?? (ctx.types[value.literalType] as InstancePrimitiveTypeInformation);
