@@ -173,17 +173,20 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     }
 
     const encoder = new TextEncoder();
+    const string_data = new Uint8Array(ctx.string.end - memory_position);
+    let position = 0;
+    for (const [literal] of Array.from(ctx.string.literals.entries()).sort((a, b) => a[1] - b[1])) {
+        const string_length = encoder.encodeInto(literal, string_data.subarray(position + 4));
+        const view = new DataView(string_data.buffer);
+        view.setUint32(position, string_length.written, true);
+        position += 4 + string_length.written;
+    }
     // prettier-ignore
     ctx.mod.setMemory(256, -1, "$memory", [{
         offset: mod.i32.const(memory_position),
-        data: new Uint8Array(Array.from(ctx.string.literals.keys(), (literal) => {
-            const bytes = encoder.encode(literal);
-            const x = bytes.length;
-            return [(x >>> 0) & 0xFF, (x >>> 8) & 0xFF, (x >>> 16) & 0xFF, (x >>> 24) & 0xFF, ...bytes];
-        }).flat())
+        data: string_data
     }], false, false, "main_memory");
-
-    memory_position = ctx.string.end;
+    memory_position += position;
 
     ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
     ctx.mod.addGlobal(ARENA_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(memory_position));
