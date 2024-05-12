@@ -239,42 +239,6 @@ function typeToAccessors({ type, offset }: ValueOf<StructTypeInformation["fields
     }
 }
 
-function arrayToJavascript(ptr: string, type: ArrayTypeInformation): Conversion {
-    if (type.element_type.classification === "primitive") {
-        const typed_name = primitiveToTypedName(type.element_type.name);
-        return {
-            setup: `const $ptr = ${ptr};`,
-            expression: `new ${typed_name}Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true))`
-        };
-    } else if (type.element_type.classification === "struct") {
-        return {
-            setup: `const $ptr = ${ptr};`,
-            expression: type.element_type.is_ref
-                ? `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => new ${type.element_type.name}($el))`
-                : `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => new ${type.element_type.name}($ptr + 4 + i * ${type.element_type.sizeof}))`
-        };
-    } else if (type.element_type.classification === "array") {
-        throw new Error("Nested arrays are not supported");
-    } else if (type.element_type.classification === "function") {
-        return {
-            setup: `const $ptr = ${ptr};`,
-            expression: `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4").expression})`
-        };
-    } else if (type.element_type.classification === "string") {
-        return {
-            setup: `const $ptr = ${ptr};`,
-            expression: `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => ${stringToJavascript("$el").expression})`
-        };
-    } else {
-        // @ts-expect-error unreachable probably
-        throw new Error(`Unknown type: ${type.element_type.classification}`);
-    }
-}
-
-function structToJavascript(ptr: string, type: StructTypeInformation): Conversion {
-    return { expression: `new ${type.name}(${ptr})` };
-}
-
 function primitiveToTypedName(primitive: string): DataViewGetterTypes {
     switch (primitive) {
         case "i8":
@@ -315,10 +279,6 @@ function primitiveToTypedName(primitive: string): DataViewGetterTypes {
     }
 }
 
-function functionToJavascript(ptr: string): Conversion {
-    return { expression: `$toJavascriptFunction(${ptr})` };
-}
-
 function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, indentation: number) {
     const { id, params, returnType } = func;
     if (params[0]?.name.name === "this") params.shift();
@@ -354,11 +314,51 @@ function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, in
 \t}`.replaceAll("\t", " ".repeat(indentation));
 }
 
-function stringToJavascript(ptr: string): Conversion {
-    return { expression: `$toJavascriptString(${ptr})` };
-}
-
 function primitiveToJavascript(ptr: string, type: PrimitiveTypeInformation): Conversion {
     if (type.name === "bool") return { expression: `!!(${ptr})` };
     return { expression: ptr };
+}
+
+function structToJavascript(ptr: string, type: StructTypeInformation): Conversion {
+    return { expression: `new ${type.name}(${ptr})` };
+}
+
+function arrayToJavascript(ptr: string, type: ArrayTypeInformation): Conversion {
+    if (type.element_type.classification === "primitive") {
+        const typed_name = primitiveToTypedName(type.element_type.name);
+        return {
+            setup: `const $ptr = ${ptr};`,
+            expression: `new ${typed_name}Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true))`
+        };
+    } else if (type.element_type.classification === "struct") {
+        return {
+            setup: `const $ptr = ${ptr};`,
+            expression: type.element_type.is_ref
+                ? `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => new ${type.element_type.name}($el))`
+                : `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => new ${type.element_type.name}($ptr + 4 + i * ${type.element_type.sizeof}))`
+        };
+    } else if (type.element_type.classification === "array") {
+        throw new Error("Nested arrays are not supported");
+    } else if (type.element_type.classification === "function") {
+        return {
+            setup: `const $ptr = ${ptr};`,
+            expression: `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4").expression})`
+        };
+    } else if (type.element_type.classification === "string") {
+        return {
+            setup: `const $ptr = ${ptr};`,
+            expression: `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => ${stringToJavascript("$el").expression})`
+        };
+    } else {
+        // @ts-expect-error unreachable probably
+        throw new Error(`Unknown type: ${type.element_type.classification}`);
+    }
+}
+
+function functionToJavascript(ptr: string): Conversion {
+    return { expression: `$toJavascriptFunction(${ptr})` };
+}
+
+function stringToJavascript(ptr: string): Conversion {
+    return { expression: `$toJavascriptString(${ptr})` };
 }
