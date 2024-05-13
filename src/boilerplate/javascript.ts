@@ -1,8 +1,11 @@
 import {
     ArrayTypeInformation,
     Context,
+    FunctionTypeInformation,
     PrimitiveTypeInformation,
-    StructTypeInformation
+    StringTypeInformation,
+    StructTypeInformation,
+    TypeInformation
 } from "../types/code_gen.js";
 import {
     ExportNamedDeclaration,
@@ -222,13 +225,13 @@ function typeToAccessors({ type, offset }: ValueOf<StructTypeInformation["fields
             setter: type.is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
         };
     } else if (type.classification === "function") {
-        const getter = functionToJavascript(ptr);
+        const getter = functionToJavascript(ptr, type);
         return {
             getter: `${getter.setup}; return ${getter.expression};`,
             setter: ""
         };
     } else if (type.classification === "string") {
-        const getter = stringToJavascript(ptr);
+        const getter = stringToJavascript(ptr, type);
         return {
             getter: `${getter.setup}; return ${getter.expression};`,
             setter: `$SetUint32(${ptr}, $fromJavascriptString($val), true);`
@@ -285,33 +288,70 @@ function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, in
     const returnTypeType = parseType(ctx, returnType);
 
     const args = params
-        .map(({ typeAnnotation, name: { name } }) => {
-            if (typeAnnotation._type.type === "Identifier") {
-                if (Primitive.primitives.has(typeAnnotation._type.name)) {
-                    return name;
-                } else if (typeAnnotation._type.name === "string") {
-                    return `$fromJavascriptString(${name})`;
-                }
-            }
-            return `${name}._`;
-        })
+        .map((x) => javascriptToMite(x.name.name, parseType(ctx, x.typeAnnotation)))
         .join(", ");
 
-    // prettier-ignore
-    const { setup, expression } =
-        returnTypeType.classification === "primitive" ? primitiveToJavascript("$result", returnTypeType)
-        : returnTypeType.classification === "struct" ? structToJavascript("$result", returnTypeType)
-        : returnTypeType.classification === "array" ? arrayToJavascript("$result", returnTypeType)
-        : returnTypeType.classification === "function" ? functionToJavascript("$result")
-        : returnTypeType.classification === "string" ? stringToJavascript("$result")
-        : // @ts-expect-error unreachable
-        returnTypeType.classification;
+    const { setup, expression } = miteToJavascript("$result", returnTypeType);
 
     return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {
 \t    const $result = $wasm_export_${id.name}(${args});
 \t${setup ? `\n\t    ${setup}` : ""}
 \t    return ${expression};
 \t}`.replaceAll("\t", " ".repeat(indentation));
+}
+
+function javascriptToMite(ptr: string, type: TypeInformation): string {
+    if (type.classification === "primitive") {
+        return primitiveToMite(ptr, type);
+    } else if (type.classification === "struct") {
+        return structToMite(ptr, type);
+    } else if (type.classification === "array") {
+        return arrayToMite(ptr, type);
+    } else if (type.classification === "function") {
+        return functionToMite(ptr, type);
+    } else if (type.classification === "string") {
+        return stringToMite(ptr, type);
+    } else {
+        // @ts-expect-error unreachable probably
+        throw new Error(`Unknown type: ${type.classification}`);
+    }
+}
+
+function primitiveToMite(ptr: string, _type: PrimitiveTypeInformation): string {
+    return ptr;
+}
+
+function structToMite(ptr: string, _type: StructTypeInformation): string {
+    return `${ptr}._`;
+}
+
+function arrayToMite(ptr: string, _type: ArrayTypeInformation): string {
+    return `${ptr}._`;
+}
+
+function functionToMite(ptr: string, _type: FunctionTypeInformation): string {
+    return `${ptr}._`;
+}
+
+function stringToMite(ptr: string, _type: StringTypeInformation): string {
+    return `$fromJavascriptString(${ptr})`;
+}
+
+function miteToJavascript(ptr: string, type: TypeInformation): Conversion {
+    if (type.classification === "primitive") {
+        return primitiveToJavascript(ptr, type);
+    } else if (type.classification === "struct") {
+        return structToJavascript(ptr, type);
+    } else if (type.classification === "array") {
+        return arrayToJavascript(ptr, type);
+    } else if (type.classification === "function") {
+        return functionToJavascript(ptr, type);
+    } else if (type.classification === "string") {
+        return stringToJavascript(ptr, type);
+    } else {
+        // @ts-expect-error unreachable probably
+        throw new Error(`Unknown type: ${type.classification}`);
+    }
 }
 
 function primitiveToJavascript(ptr: string, type: PrimitiveTypeInformation): Conversion {
@@ -342,12 +382,12 @@ function arrayToJavascript(ptr: string, type: ArrayTypeInformation): Conversion 
     } else if (type.element_type.classification === "function") {
         return {
             setup: `const $ptr = ${ptr};`,
-            expression: `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4").expression})`
+            expression: `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4", type.element_type).expression})`
         };
     } else if (type.element_type.classification === "string") {
         return {
             setup: `const $ptr = ${ptr};`,
-            expression: `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => ${stringToJavascript("$el").expression})`
+            expression: `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => ${stringToJavascript("$el", type.element_type).expression})`
         };
     } else {
         // @ts-expect-error unreachable probably
@@ -355,10 +395,10 @@ function arrayToJavascript(ptr: string, type: ArrayTypeInformation): Conversion 
     }
 }
 
-function functionToJavascript(ptr: string): Conversion {
+function functionToJavascript(ptr: string, _type: FunctionTypeInformation): Conversion {
     return { expression: `$toJavascriptFunction(${ptr})` };
 }
 
-function stringToJavascript(ptr: string): Conversion {
+function stringToJavascript(ptr: string, _type: StringTypeInformation): Conversion {
     return { expression: `$toJavascriptString(${ptr})` };
 }
