@@ -69,22 +69,20 @@ import { addBuiltins } from "./builtin_functions.js";
 
 // static sized memory regions
 export const START_OF_MEMORY = 0;
-// reserve 10 function pointers for non-mite function parameters
-export const RESERVED_FN_PTRS = 10;
 export const START_OF_FN_PTRS = START_OF_MEMORY + 1024;
-export const START_OF_STRING_SECTION =
-    START_OF_FN_PTRS + IndirectFunction.struct_type.sizeof * RESERVED_FN_PTRS;
 
 export function programToModule(program: Program, _options: unknown = {}): binaryen.Module {
     const structs = Object.fromEntries(identifyStructs(program).map((x) => [x.name, x]));
     const primitives = Object.fromEntries(Primitive.primitives.entries());
+
+    const types = { ...primitives, ...structs, string: String_.type } as Context["types"];
 
     const mod = new binaryen.Module();
     const ctx: Context = {
         mod,
         variables: new Map(),
         stacks: { continue: [], break: [], depth: 0 },
-        types: { ...primitives, ...structs } as Context["types"],
+        types,
         current_block: [],
         captured_functions: [],
         local_count: 0,
@@ -92,10 +90,12 @@ export function programToModule(program: Program, _options: unknown = {}): binar
             literals: new Map(),
             end: START_OF_STRING_SECTION
         },
+        constants: {
+            RESERVED_FN_PTRS
+        },
         // @ts-expect-error initially we're not in a function
         current_function: null
     };
-    ctx.types.string = String_.type;
     ctx.intrinsics = createIntrinsics(ctx);
     ctx.conversions = createConversions(ctx);
     addBuiltins(ctx);

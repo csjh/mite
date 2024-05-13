@@ -103,7 +103,7 @@ export type Context = {
         i64x2: PrimitiveTypeInformation;
         u64x2: PrimitiveTypeInformation;
         f64x2: PrimitiveTypeInformation;
-        string: StringTypeInformation;
+        string: InstanceStringTypeInformation;
     } & Record<string, TypeInformation>;
     /** Depth stacks for use in nested blocks and such */
     stacks: {
@@ -121,6 +121,10 @@ export type Context = {
     string: {
         literals: Map<string, number>;
         end: number;
+    };
+    /** constants that don't fit elsewhere */
+    constants: {
+        RESERVED_FN_PTRS: number;
     };
     /** Data about current function */
     current_function: FunctionInformation & {

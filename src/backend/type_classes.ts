@@ -30,7 +30,6 @@ import {
     VIRTUALIZED_FUNCTIONS
 } from "./utils.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
-import { RESERVED_FN_PTRS } from "./code_generation.js";
 
 export abstract class MiteType {
     // get the value as a primitive (pointer for structs and arrays, value for locals)
@@ -1149,7 +1148,8 @@ export class DirectFunction implements MiteType {
                         this.ctx,
                         Pointer.type,
                         this.ctx.mod.i32.const(
-                            RESERVED_FN_PTRS + this.ctx.captured_functions.indexOf(captured_name)
+                            this.ctx.constants.RESERVED_FN_PTRS +
+                                this.ctx.captured_functions.indexOf(captured_name)
                         )
                     )
                 )
