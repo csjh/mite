@@ -69,7 +69,11 @@ import { addBuiltins } from "./builtin_functions.js";
 
 // static sized memory regions
 export const START_OF_MEMORY = 0;
-export const START_OF_STRING_SECTION = 1024 + START_OF_MEMORY;
+// reserve 10 function pointers for non-mite function parameters
+export const RESERVED_FN_PTRS = 10;
+export const START_OF_FN_PTRS = START_OF_MEMORY + 1024;
+export const START_OF_STRING_SECTION =
+    START_OF_FN_PTRS + IndirectFunction.struct_type.sizeof * RESERVED_FN_PTRS;
 
 export function programToModule(program: Program, _options: unknown = {}): binaryen.Module {
     const structs = Object.fromEntries(identifyStructs(program).map((x) => [x.name, x]));
@@ -184,6 +188,9 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     }
     // prettier-ignore
     ctx.mod.setMemory(256, -1, "$memory", [{
+        offset: mod.i32.const(START_OF_FN_PTRS),
+        data: new Uint8Array(Array.from({ length: RESERVED_FN_PTRS }, (_, i) => [i, 0, 0, 0, 0, 0, 0, 0]).flat())
+    }, {
         offset: mod.i32.const(START_OF_STRING_SECTION),
         data: string_data
     }], false, false, "main_memory");
@@ -193,8 +200,12 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
     ctx.mod.addGlobal(ARENA_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(START_OF_HEAP));
 
-    const fns = ctx.captured_functions;
-    mod.addTable(VIRTUALIZED_FUNCTIONS, fns.length, fns.length);
+    const fns = [
+        ...Array.from({ length: RESERVED_FN_PTRS }, () => "noop"),
+        ...ctx.captured_functions
+    ];
+    const table_size = fns.length + RESERVED_FN_PTRS;
+    mod.addTable(VIRTUALIZED_FUNCTIONS, table_size, table_size);
     mod.addActiveElementSegment(VIRTUALIZED_FUNCTIONS, "initializer", fns, mod.i32.const(0));
     mod.addTableExport(VIRTUALIZED_FUNCTIONS, "$table");
 
