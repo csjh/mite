@@ -70,7 +70,4 @@ export function addBuiltins(ctx: Context) {
     const arena_heap_reset = mod.block(null, [ARENA_HEAP_OFFSET.set(i32.const(0))]);
     mod.addFunction("arena_heap_reset", binaryen.none, binaryen.none, [], arena_heap_reset);
     mod.addFunctionExport("arena_heap_reset", "$arena_heap_reset");
-
-    mod.addFunction("noop", binaryen.i32, binaryen.none, [], mod.block(null, []));
-    mod.addFunctionExport("noop", "$noop");
 }
