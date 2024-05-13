@@ -67,10 +67,11 @@ import {
 import { createConversions, createIntrinsics, identifyStructs } from "./context_initialization.js";
 import { addBuiltins } from "./builtin_functions.js";
 
-export function programToModule(program: Program, _options: unknown = {}): binaryen.Module {
-    let memory_position = 0;
-    memory_position += 1024; // reserve 1kb for no real reason
+// static sized memory regions
+export const START_OF_MEMORY = 0;
+export const START_OF_STRING_SECTION = 1024 + START_OF_MEMORY;
 
+export function programToModule(program: Program, _options: unknown = {}): binaryen.Module {
     const structs = Object.fromEntries(identifyStructs(program).map((x) => [x.name, x]));
     const primitives = Object.fromEntries(Primitive.primitives.entries());
 
@@ -85,7 +86,7 @@ export function programToModule(program: Program, _options: unknown = {}): binar
         local_count: 0,
         string: {
             literals: new Map(),
-            end: memory_position
+            end: START_OF_STRING_SECTION
         },
         // @ts-expect-error initially we're not in a function
         current_function: null
@@ -173,7 +174,7 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     }
 
     const encoder = new TextEncoder();
-    const string_data = new Uint8Array(ctx.string.end - memory_position);
+    const string_data = new Uint8Array(ctx.string.end - START_OF_STRING_SECTION);
     let position = 0;
     for (const [literal] of Array.from(ctx.string.literals.entries()).sort((a, b) => a[1] - b[1])) {
         const string_length = encoder.encodeInto(literal, string_data.subarray(position + 4));
@@ -183,13 +184,14 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     }
     // prettier-ignore
     ctx.mod.setMemory(256, -1, "$memory", [{
-        offset: mod.i32.const(memory_position),
+        offset: mod.i32.const(START_OF_STRING_SECTION),
         data: string_data
     }], false, false, "main_memory");
-    memory_position += position;
+
+    const START_OF_HEAP = START_OF_STRING_SECTION + string_data.length;
 
     ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
-    ctx.mod.addGlobal(ARENA_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(memory_position));
+    ctx.mod.addGlobal(ARENA_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(START_OF_HEAP));
 
     const fns = ctx.captured_functions;
     mod.addTable(VIRTUALIZED_FUNCTIONS, fns.length, fns.length);
