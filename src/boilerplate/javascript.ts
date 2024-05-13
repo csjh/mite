@@ -287,20 +287,25 @@ function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, in
     if (params[0]?.name.name === "this") params.shift();
     const returnTypeType = parseType(ctx, returnType);
 
-    const args = params
-        .map((x) => javascriptToMite(x.name.name, parseType(ctx, x.typeAnnotation)))
-        .join(", ");
+    const args = params.map((x) => javascriptToMite(x.name.name, parseType(ctx, x.typeAnnotation)));
+    const args_setup = args
+        .map((x) => x.setup)
+        .filter(Boolean)
+        .join("\n\t    ");
+    const args_setup_str = args_setup ? `\n\t    ${args_setup}` : "";
+    const args_expression = args.map((x) => x.expression).join(", ");
 
     const { setup, expression } = miteToJavascript("$result", returnTypeType);
+    const setup_str = setup ? `\n\t    ${setup}` : "";
 
-    return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {
-\t    const $result = $wasm_export_${id.name}(${args});
-\t${setup ? `\n\t    ${setup}` : ""}
+    return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {${args_setup_str}
+\t    const $result = $wasm_export_${id.name}(${args_expression});
+\t${setup_str}
 \t    return ${expression};
 \t}`.replaceAll("\t", " ".repeat(indentation));
 }
 
-function javascriptToMite(ptr: string, type: TypeInformation): string {
+function javascriptToMite(ptr: string, type: TypeInformation): Conversion {
     if (type.classification === "primitive") {
         return primitiveToMite(ptr, type);
     } else if (type.classification === "struct") {
@@ -317,24 +322,24 @@ function javascriptToMite(ptr: string, type: TypeInformation): string {
     }
 }
 
-function primitiveToMite(ptr: string, _type: PrimitiveTypeInformation): string {
-    return ptr;
+function primitiveToMite(ptr: string, _type: PrimitiveTypeInformation): Conversion {
+    return { expression: ptr };
 }
 
-function structToMite(ptr: string, _type: StructTypeInformation): string {
-    return `${ptr}._`;
+function structToMite(ptr: string, _type: StructTypeInformation): Conversion {
+    return { expression: `${ptr}._` };
 }
 
-function arrayToMite(ptr: string, _type: ArrayTypeInformation): string {
-    return `${ptr}._`;
+function arrayToMite(ptr: string, _type: ArrayTypeInformation): Conversion {
+    return { expression: `${ptr}._` };
 }
 
-function functionToMite(ptr: string, _type: FunctionTypeInformation): string {
-    return `${ptr}._`;
+function functionToMite(ptr: string, _type: FunctionTypeInformation): Conversion {
+    return { expression: `${ptr}._` };
 }
 
-function stringToMite(ptr: string, _type: StringTypeInformation): string {
-    return `$fromJavascriptString(${ptr})`;
+function stringToMite(ptr: string, _type: StringTypeInformation): Conversion {
+    return { expression: `$fromJavascriptString(${ptr})` };
 }
 
 function miteToJavascript(ptr: string, type: TypeInformation): Conversion {
