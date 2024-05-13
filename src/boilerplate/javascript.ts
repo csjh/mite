@@ -63,12 +63,13 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
     let code = dedent`
         ${setup ? setup + "\n" : ""}
         const $wasm = await ${instantiation};
-        const { $memory, $table, $arena_heap_malloc, ${exports
+        const { $memory, $table, $arena_heap_malloc, $noop, ${exports
             .map((x) => `${x.id.name}: $wasm_export_${x.id.name}, `)
             .join("")}} = $wasm.instance.exports;
         const $buffer = new DataView($memory.buffer);
 
         const $virtualized_functions =  /*#__PURE__*/ Array.from($table, (_, i) => $table.get(i));
+        const $TableSet = /*#__PURE__*/ $table.set.bind($table);
 
         const $encoder = /*#__PURE__*/ new TextEncoder();
         const $decoder = /*#__PURE__*/ new TextDecoder();
@@ -295,12 +296,18 @@ function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, in
     const args_setup_str = args_setup ? `\n\t    ${args_setup}` : "";
     const args_expression = args.map((x) => x.expression).join(", ");
 
+    const has_callbacks = params.some((x) => x.typeAnnotation._type.type === "Function");
+    const callbacks_setup_str = has_callbacks ? `\n\t    let $fns = 0;` : "";
+    const callbacks_cleanup_str = has_callbacks
+        ? `\n\t    for (let $i = 0; $i < $fns; $i++) $TableSet($i, $noop);`
+        : "";
+
     const { setup, expression } = miteToJavascript("$result", returnTypeType);
     const setup_str = setup ? `\n\t    ${setup}` : "";
 
-    return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {${args_setup_str}
+    return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {${args_setup_str}${callbacks_setup_str}
 \t    const $result = $wasm_export_${id.name}(${args_expression});
-\t${setup_str}
+\t${setup_str}${callbacks_cleanup_str}
 \t    return ${expression};
 \t}`.replaceAll("\t", " ".repeat(indentation));
 }
@@ -334,8 +341,37 @@ function arrayToMite(ptr: string, _type: ArrayTypeInformation): Conversion {
     return { expression: `${ptr}._` };
 }
 
-function functionToMite(ptr: string, _type: FunctionTypeInformation): Conversion {
-    return { expression: `${ptr}._` };
+function functionToMite(
+    ptr: string,
+    { implementation: { params, results } }: FunctionTypeInformation
+): Conversion {
+    const fn = `$mite_${ptr}`;
+    const fn_result = `${fn}_result`;
+
+    const args = params.map((x) => miteToJavascript(x.name, x.type));
+    const args_setup = args
+        .map((x) => x.setup)
+        .filter(Boolean)
+        .join("\n\t    ");
+    const args_setup_str = args_setup ? `\n\t            ${args_setup}` : "";
+    const args_expression = args.map((x) => x.expression).join(", ");
+
+    const { setup, expression } = miteToJavascript(fn_result, results);
+    const setup_str = setup ? `\n\t    ${setup}` : "";
+
+    return {
+        setup: `\t    let ${fn} = 0;
+\t    if (Object.hasOwn(${ptr}, '_')) {
+\t        ${fn} = ${ptr}._;
+\t    } else {
+\t        $TableSet(0, function (_${params.length ? ", " + params.map((x) => x.name).join(", ") : ""}) {${args_setup_str}
+\t            const ${fn_result} = ${ptr}(${args_expression});${setup_str}
+\t            return ${expression};
+\t        });
+\t        ${fn} = 1024 + ($fns++) * 8;
+\t    }`,
+        expression: fn
+    };
 }
 
 function stringToMite(ptr: string, _type: StringTypeInformation): Conversion {
