@@ -12,7 +12,8 @@ import {
     fromExpressionRef,
     createMiteType,
     constructArray,
-    VIRTUALIZED_FUNCTIONS
+    VIRTUALIZED_FUNCTIONS,
+    getParameterCallbackCounts
 } from "./utils.js";
 import {
     Context,
@@ -76,6 +77,12 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     const primitives = Object.fromEntries(Primitive.primitives.entries());
 
     const types = { ...primitives, ...structs, string: String_.type } as Context["types"];
+
+    const callback_counts = getParameterCallbackCounts({ types } as Context, program);
+    const RESERVED_FN_PTRS = callback_counts.map((x) => x[1]).reduce((acc, x) => acc + x, 0);
+
+    const START_OF_STRING_SECTION =
+        START_OF_FN_PTRS + IndirectFunction.struct_type.sizeof * RESERVED_FN_PTRS;
 
     const mod = new binaryen.Module();
     const ctx: Context = {
@@ -177,6 +184,19 @@ export function programToModule(program: Program, _options: unknown = {}): binar
         }
     }
 
+    for (const [fn] of callback_counts) {
+        const [params, result] = fn.split("|");
+        const param_types = params.split(",").map((x) => Number(x));
+        const result_type = Number(result);
+        mod.addFunctionImport(
+            fn,
+            "$mite",
+            `wrap_${fn}`,
+            binaryen.createType([binaryen.i32, ...param_types]),
+            result_type
+        );
+    }
+
     const encoder = new TextEncoder();
     const string_data = new Uint8Array(ctx.string.end - START_OF_STRING_SECTION);
     let position = 0;
@@ -189,7 +209,7 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     // prettier-ignore
     ctx.mod.setMemory(256, -1, "$memory", [{
         offset: mod.i32.const(START_OF_FN_PTRS),
-        data: new Uint8Array(Array.from({ length: RESERVED_FN_PTRS }, (_, i) => [i, 0, 0, 0, 0, 0, 0, 0]).flat())
+        data: new Uint8Array(Array.from({ length: RESERVED_FN_PTRS }, (_, i) => [i, 0, 0, 0, i, 0, 0, 0]).flat())
     }, {
         offset: mod.i32.const(START_OF_STRING_SECTION),
         data: string_data
@@ -201,7 +221,7 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     ctx.mod.addGlobal(ARENA_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(START_OF_HEAP));
 
     const fns = [
-        ...Array.from({ length: RESERVED_FN_PTRS }, () => "noop"),
+        ...callback_counts.flatMap(([fn, count]) => Array(count).fill(fn)),
         ...ctx.captured_functions
     ];
     const table_size = fns.length + RESERVED_FN_PTRS;

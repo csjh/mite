@@ -3,6 +3,7 @@ import {
     Context,
     FunctionInformation,
     InstanceArrayTypeInformation,
+    InstanceFunctionTypeInformation,
     InstanceTypeInformation,
     TypeInformation
 } from "../types/code_gen.js";
@@ -18,7 +19,13 @@ import {
     Struct,
     TransientPrimitive
 } from "./type_classes.js";
-import { TypeIdentifier } from "../types/nodes.js";
+import {
+    ExportNamedDeclaration,
+    FunctionDeclaration,
+    Program,
+    StructDeclaration,
+    TypeIdentifier
+} from "../types/nodes.js";
 
 export const ARENA_HEAP_POINTER = "__arena_heap_pointer";
 export const ARENA_HEAP_OFFSET = "__arena_heap_pointer_offset";
@@ -268,4 +275,51 @@ export function constructArray(ctx: Context, type: InstanceArrayTypeInformation)
     );
 
     return address;
+}
+
+export function functionToSignature({
+    implementation: fn
+}: InstanceFunctionTypeInformation): string {
+    return `${fn.params.map((y) => typeInformationToBinaryen(y.type)).join(",")}|${typeInformationToBinaryen(fn.results)}`;
+}
+
+function functionDeclarationToString(ctx: Context, func: FunctionDeclaration): string[] {
+    return func.params
+        .map((x) => parseType(ctx, x.typeAnnotation))
+        .filter((x): x is InstanceFunctionTypeInformation => x.classification === "function")
+        .map(
+            ({ implementation: x }) =>
+                `${x.params.map((y) => typeInformationToBinaryen(y.type)).join(",")}|${typeInformationToBinaryen(x.results)}`
+        );
+}
+
+export function getParameterCallbackCounts(ctx: Context, program: Program): [string, number][] {
+    const exports = program.body
+        .filter(
+            (x): x is ExportNamedDeclaration =>
+                x.type === "ExportNamedDeclaration" && x.declaration.type === "FunctionDeclaration"
+        )
+        .map((x) => x.declaration as FunctionDeclaration);
+    const methods = Object.fromEntries(
+        program.body
+            .filter((x): x is StructDeclaration => x.type === "StructDeclaration")
+            .map((x) => [x.id.name, x.methods])
+    );
+
+    const function_callbacks = exports
+        .map((x) => functionDeclarationToString(ctx, x))
+        .concat(
+            Object.values(methods).flatMap((x) =>
+                x.flatMap((y) => functionDeclarationToString(ctx, y))
+            )
+        );
+
+    const counts = Object.fromEntries(function_callbacks.flatMap((x) => x.map((y) => [y, 0])));
+    for (const type of function_callbacks) {
+        const local_counts = Object.fromEntries(type.map((x) => [x, 0]));
+        for (const v of type) local_counts[v]++;
+        for (const [k, v] of Object.entries(local_counts)) counts[k] = Math.max(counts[k], v);
+    }
+
+    return Object.entries(counts).sort((a, b) => a[1] - b[1]);
 }
