@@ -323,3 +323,30 @@ export function getParameterCallbackCounts(ctx: Context, program: Program): [str
 
     return Object.entries(counts).sort((a, b) => a[1] - b[1]);
 }
+
+export function addDataSegment(
+    ctx: Context,
+    segment_name: string,
+    memory_name: string,
+    offset: binaryen.ExpressionRef,
+    data: Uint8Array
+) {
+    // @ts-expect-error undocumented binaryen export
+    const data_ptr = binaryen._malloc(data.length);
+    // @ts-expect-error undocumented binaryen export
+    new Uint8Array(binaryen.HEAPU8.buffer, data_ptr, data.length).set(data);
+    // @ts-expect-error undocumented binaryen export
+    binaryen._BinaryenAddDataSegment(
+        ctx.mod.ptr,
+        // @ts-expect-error undocumented binaryen export
+        binaryen.stringToUTF8OnStack(segment_name),
+        // @ts-expect-error undocumented binaryen export
+        binaryen.stringToUTF8OnStack(memory_name),
+        false,
+        offset,
+        data_ptr,
+        data.length
+    );
+    // @ts-expect-error undocumented binaryen export
+    binaryen._free(data.byteOffset);
+}

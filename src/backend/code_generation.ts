@@ -13,7 +13,8 @@ import {
     createMiteType,
     constructArray,
     VIRTUALIZED_FUNCTIONS,
-    getParameterCallbackCounts
+    getParameterCallbackCounts,
+    addDataSegment
 } from "./utils.js";
 import {
     Context,
@@ -106,6 +107,8 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     ctx.intrinsics = createIntrinsics(ctx);
     ctx.conversions = createConversions(ctx);
     addBuiltins(ctx);
+
+    mod.setMemory(256, -1, "$memory", [], false, false, "main_memory");
 
     for (const { id, params, returnType } of program.body
         .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
@@ -206,14 +209,28 @@ export function programToModule(program: Program, _options: unknown = {}): binar
         view.setUint32(position, string_length.written, true);
         position += 4 + string_length.written;
     }
-    // prettier-ignore
-    ctx.mod.setMemory(256, -1, "$memory", [{
-        offset: mod.i32.const(START_OF_FN_PTRS),
-        data: new Uint8Array(Array.from({ length: RESERVED_FN_PTRS }, (_, i) => [i, 0, 0, 0, i, 0, 0, 0]).flat())
-    }, {
-        offset: mod.i32.const(START_OF_STRING_SECTION),
-        data: string_data
-    }], false, false, "main_memory");
+
+    if (RESERVED_FN_PTRS > 0) {
+        addDataSegment(
+            ctx,
+            "js_function_pointers",
+            "main_memory",
+            mod.i32.const(START_OF_FN_PTRS),
+            new Uint8Array(
+                Array.from({ length: RESERVED_FN_PTRS }, (_, i) => [i, 0, 0, 0, i, 0, 0, 0]).flat()
+            )
+        );
+    }
+
+    if (string_data.length > 0) {
+        addDataSegment(
+            ctx,
+            "string_data",
+            "main_memory",
+            mod.i32.const(START_OF_STRING_SECTION),
+            string_data
+        );
+    }
 
     const START_OF_HEAP = START_OF_STRING_SECTION + string_data.length;
 
