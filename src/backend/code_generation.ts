@@ -50,7 +50,8 @@ import type {
     ArrayExpression,
     IndexExpression,
     ObjectExpression,
-    StructDeclaration
+    StructDeclaration,
+    UnaryExpression
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import {
@@ -430,6 +431,8 @@ function expressionToExpression(ctx: Context, value: Expression | Statement): Mi
         return indexExpressionToExpression(ctx, value);
     } else if (value.type === "ObjectExpression") {
         return objectExpressionToExpression(ctx, value);
+    } else if (value.type === "UnaryExpression") {
+        return unaryExpressionToExpression(ctx, value);
     } else if (value.type === "SequenceExpression") {
         return expressionToExpression(ctx, value.expressions[0]);
     } else {
@@ -442,7 +445,6 @@ function expressionToExpression(ctx: Context, value: Expression | Statement): Mi
             case "TaggedTemplateExpression":
             case "TemplateLiteral":
             case "ThisExpression":
-            case "UnaryExpression":
             case "UpdateExpression":
             case "YieldExpression":
                 throw new Error(`Currently unsupported statement type: ${value.type}`);
@@ -514,6 +516,7 @@ function literalToExpression(ctx: Context, value: Literal): MiteType {
                 throw new Error("Expected numerical literal");
             ref = ctx.mod.f64.const(Number(value.value));
             break;
+        case "v128":
         case "f32x4":
         case "f64x2":
         case "i64x2":
@@ -936,4 +939,51 @@ function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): M
     } else {
         throw new Error(`Unknown variable type: ${variable}`);
     }
+}
+
+function unaryExpressionToExpression(ctx: Context, value: UnaryExpression): MiteType {
+    const expr = expressionToExpression(updateExpected(ctx, undefined), value.argument);
+    if (expr.type.classification !== "primitive") {
+        throw new Error(`Unary operator cannot be applied to non-primitive type`);
+    }
+    const empty =
+        expr.type.name === "v128" || expr.type.name.includes("x")
+            ? ({
+                  type: "Literal",
+                  literalType: expr.type.name,
+                  value: Array(16).fill(0x00)
+              } as const)
+            : ({ type: "Literal", literalType: "i32", value: 0 } as const);
+    const full =
+        expr.type.name === "v128" || expr.type.name.includes("x")
+            ? ({
+                  type: "Literal",
+                  literalType: expr.type.name,
+                  value: Array(16).fill(0xff)
+              } as const)
+            : ({ type: "Literal", literalType: "i32", value: -1 } as const);
+
+    if (value.operator === "-") {
+        return binaryExpressionToExpression(ctx, {
+            type: "BinaryExpression",
+            operator: TokenType.MINUS,
+            left: empty,
+            right: value.argument
+        });
+    } else if (value.operator === "+") {
+        return expressionToExpression(updateExpected(ctx, undefined), value.argument);
+    } else if (value.operator === "~") {
+        return binaryExpressionToExpression(ctx, {
+            type: "BinaryExpression",
+            operator: TokenType.BITWISE_XOR,
+            left: value.argument,
+            right: full
+        });
+    } else if (value.operator === "!") {
+        const expr = expressionToExpression(updateExpected(ctx, undefined), value.argument);
+
+        return expr.operator(TokenType.NOT)(expr);
+    }
+
+    throw new Error(`Unknown unary operator: ${value.operator}`);
 }

@@ -257,3 +257,59 @@ describe("literals", () => {
         compileAndRun(program5, 4);
     });
 });
+
+describe("unary operators", () => {
+    it("should work with numbers", () => {
+        const program1 = `
+        export fn main(): i32 {
+            return -5;
+        }
+        `;
+
+        compileAndRun(program1, -5);
+
+        const program2 = `
+        export fn main(): i32 {
+            return ~5;
+        }
+        `;
+
+        compileAndRun(program2, -6);
+
+        const program3 = `
+        export fn main(): i32 {
+            return !0;
+        }
+        `;
+
+        compileAndRun(program3, 1);
+
+        const program4 = `
+        export fn main(): i32 {
+            return !!0;
+        }
+        `;
+
+        compileAndRun(program4, 0);
+    });
+
+    it("should work with SIMD", () => {
+        const program1 = `
+        export fn main(): i32 {
+            let simd = { 1, 2, 3, 4 };
+            return extract(-simd, 0);
+        }
+        `;
+
+        compileAndRun(program1, -1);
+
+        const program2 = `
+        export fn main(): i64 {
+            let simd = { 1, 2 };
+            return extract(~simd, 1);
+        }
+        `;
+
+        compileAndRun(program2, -3n);
+    });
+});

@@ -75,6 +75,10 @@ export function tokenize(input: string): Token[] {
                 token = { type: TokenType.NOT, value: "!" };
                 i++;
                 break;
+            case "~":
+                token = { type: TokenType.BITWISE_NOT, value: "~" };
+                i++;
+                break;
             case "%":
                 token = { type: TokenType.MODULUS, value: "%" };
                 i++;
@@ -332,8 +336,6 @@ export function tokenize(input: string): Token[] {
                 if (input[i] === "=") {
                     token = { type: TokenType.NOT_EQUALS, value: "!=" };
                     i++;
-                } else {
-                    throw new Error("not is unsupported");
                 }
                 break;
         }

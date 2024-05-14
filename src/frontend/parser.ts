@@ -40,9 +40,17 @@ import type {
     IndexExpression,
     TypeIdentifier,
     ObjectExpression,
-    StringLiteral
+    StringLiteral,
+    UnaryExpression,
+    UnaryOperator
 } from "../types/nodes.js";
 
+const unary_operators = new Set([
+    TokenType.NOT,
+    TokenType.BITWISE_NOT,
+    TokenType.PLUS,
+    TokenType.MINUS
+]) as Set<UnaryOperator> & { has: (name: unknown) => name is UnaryOperator };
 const precedence = [
     new Set([TokenType.STAR, TokenType.SLASH, TokenType.MODULUS]),
     new Set([TokenType.PLUS, TokenType.MINUS]),
@@ -539,6 +547,12 @@ export class Parser {
                     } else {
                         expression_stack.push(next);
                     }
+                    break;
+                case TokenType.NOT:
+                case TokenType.BITWISE_NOT:
+                case TokenType.PLUS:
+                case TokenType.MINUS:
+                    expression_stack.push(this.parseUnaryExpression());
                     break;
                 default:
                     break;
@@ -1089,5 +1103,19 @@ export class Parser {
         this.eatToken(TokenType.RIGHT_BRACE);
 
         return object;
+    }
+
+    private parseUnaryExpression(): UnaryExpression {
+        if (!unary_operators.has(this.token.value)) {
+            throw new Error(`Expected unary operator, got ${this.token.value}`);
+        }
+        const operator = this.tokens[this.idx++].value as UnaryOperator;
+        const argument = this.parseExpression();
+
+        return {
+            type: "UnaryExpression",
+            operator,
+            argument
+        };
     }
 }

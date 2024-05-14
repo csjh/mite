@@ -35,6 +35,7 @@ export enum TokenType {
     LOGICAL_OR = "||",
 
     NOT = "!",
+    BITWISE_NOT = "~",
 
     ASSIGNMENT = "=",
     ASSIGNMENT_PLUS = "+=",
