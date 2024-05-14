@@ -1109,7 +1109,7 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
     }
 
     index(index: MiteType): MiteType {
-        if (index.type.name !== Pointer.type.name) {
+        if (index.type.name !== 'i32' && index.type.name !== 'u32') {
             throw new Error(
                 `Array index must be an ${Pointer.type.name}, not whatever this is: ${index.type.name}`
             );
