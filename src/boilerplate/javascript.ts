@@ -2,6 +2,7 @@ import {
     ArrayTypeInformation,
     Context,
     FunctionTypeInformation,
+    InstanceFunctionTypeInformation,
     PrimitiveTypeInformation,
     StringTypeInformation,
     StructTypeInformation,
@@ -14,9 +15,10 @@ import {
     StructDeclaration
 } from "../types/nodes.js";
 import { identifyStructs } from "../backend/context_initialization.js";
-import { Primitive, String_ } from "../backend/type_classes.js";
-import { parseType } from "../backend/utils.js";
+import { IndirectFunction, Primitive, String_ } from "../backend/type_classes.js";
+import { functionToSignature, getParameterCallbackCounts, parseType } from "../backend/utils.js";
 import dedent from "dedent";
+import { START_OF_FN_PTRS } from "../backend/code_generation.js";
 
 interface Accessors {
     getter: string;
@@ -37,6 +39,8 @@ export type Options = {
     createInstance(imports: string): { instantiation: string; setup?: string };
 };
 
+type JSContext = Context & { callbacks: string[] };
+
 export function programToBoilerplate(program: Program, { createInstance }: Options) {
     const structs = identifyStructs(program);
     const ctx = {
@@ -45,7 +49,12 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
             ...structs.map((x) => [x.name, x]),
             ["string", String_.type]
         ])
-    } as Context;
+    } as JSContext;
+
+    ctx.callbacks = getParameterCallbackCounts(ctx, program).flatMap(([fn, count]) =>
+        Array<string>(count).fill(fn)
+    );
+
     const exports = program.body
         .filter(
             (x): x is ExportNamedDeclaration =>
@@ -58,18 +67,28 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
             .map((x) => [x.id.name, x.methods])
     );
 
-    const { setup = "", instantiation } = createInstance("{ console }");
+    const { setup = "", instantiation } = createInstance(`{
+            console,
+            $mite: new Proxy({}, {
+                get(_, prop) {
+                    if (prop.startsWith("wrap_")) {
+                        return function (ptr, ...args) { return $funcs[ptr](...args); };
+                    }
+                }
+            })
+        }`);
 
     let code = dedent`
         ${setup ? setup + "\n" : ""}
         const $wasm = await ${instantiation};
-        const { $memory, $table, $arena_heap_malloc, $noop, ${exports
+        const { $memory, $table, $arena_heap_malloc, ${exports
             .map((x) => `${x.id.name}: $wasm_export_${x.id.name}, `)
             .join("")}} = $wasm.instance.exports;
         const $buffer = new DataView($memory.buffer);
 
+        const $noop = () => {};
         const $virtualized_functions =  /*#__PURE__*/ Array.from($table, (_, i) => $table.get(i));
-        const $TableSet = /*#__PURE__*/ $table.set.bind($table);
+        const $funcs = /*#__PURE__*/ Array(${ctx.callbacks.length}).fill($noop);
 
         const $encoder = /*#__PURE__*/ new TextEncoder();
         const $decoder = /*#__PURE__*/ new TextDecoder();
@@ -283,29 +302,45 @@ function primitiveToTypedName(primitive: string): DataViewGetterTypes {
     }
 }
 
-function functionDeclarationToString(ctx: Context, func: FunctionDeclaration, indentation: number) {
+function functionDeclarationToString(
+    ctx: JSContext,
+    func: FunctionDeclaration,
+    indentation: number
+) {
     const { id, params, returnType } = func;
     if (params[0]?.name.name === "this") params.shift();
     const returnTypeType = parseType(ctx, returnType);
 
-    const args = params.map((x) => javascriptToMite(x.name.name, parseType(ctx, x.typeAnnotation)));
+    const arg_types = params.map((x) => [x.name.name, parseType(ctx, x.typeAnnotation)] as const);
+    const callbacks = arg_types
+        .map((x) => x[1])
+        .filter((x): x is InstanceFunctionTypeInformation => x.classification === "function");
+    const counts: Record<string, number> = {};
+    for (const callback of callbacks) {
+        const sig = functionToSignature(callback);
+        counts[sig] ??= 0;
+        // @ts-expect-error adding extra property for ease of usage
+        callback.idx = ctx.callbacks.indexOf(sig) + counts[sig];
+        counts[sig]++;
+    }
+
+    const args = arg_types.map(([name, type]) => javascriptToMite(name, type));
     const args_setup = args
         .map((x) => x.setup)
         .filter(Boolean)
-        .join("\n\t    ");
-    const args_setup_str = args_setup ? `\n\t    ${args_setup}` : "";
+        .join("\n\n\t    ");
+    const args_setup_str = args_setup ? `\n\t    ${args_setup}\n` : "";
     const args_expression = args.map((x) => x.expression).join(", ");
 
-    const has_callbacks = params.some((x) => x.typeAnnotation._type.type === "Function");
-    const callbacks_setup_str = has_callbacks ? `\n\t    let $fns = 0;` : "";
-    const callbacks_cleanup_str = has_callbacks
-        ? `\n\t    for (let $i = 0; $i < $fns; $i++) $TableSet($i, $noop);`
+    const callbacks_cleanup_str = callbacks.length
+        ? // @ts-expect-error idx is added in functionDeclarationToString
+          `\n\t    ${callbacks.map((x) => `$funcs[${x.idx}] = $noop;`).join("\n\t    ")}\n`
         : "";
 
     const { setup, expression } = miteToJavascript("$result", returnTypeType);
     const setup_str = setup ? `\n\t    ${setup}` : "";
 
-    return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {${args_setup_str}${callbacks_setup_str}
+    return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {${args_setup_str}
 \t    const $result = $wasm_export_${id.name}(${args_expression});
 \t${setup_str}${callbacks_cleanup_str}
 \t    return ${expression};
@@ -343,7 +378,8 @@ function arrayToMite(ptr: string, _type: ArrayTypeInformation): Conversion {
 
 function functionToMite(
     ptr: string,
-    { implementation: { params, results } }: FunctionTypeInformation
+    // @ts-expect-error idx is added in functionDeclarationToString
+    { implementation: { params, results }, idx }: FunctionTypeInformation
 ): Conversion {
     const fn = `$mite_${ptr}`;
     const fn_result = `${fn}_result`;
@@ -360,15 +396,15 @@ function functionToMite(
     const setup_str = setup ? `\n\t    ${setup}` : "";
 
     return {
-        setup: `\t    let ${fn} = 0;
+        setup: `\tlet ${fn} = 0;
 \t    if (Object.hasOwn(${ptr}, '_')) {
 \t        ${fn} = ${ptr}._;
 \t    } else {
-\t        $TableSet(0, function (_${params.length ? ", " + params.map((x) => x.name).join(", ") : ""}) {${args_setup_str}
+\t        $funcs[${idx}] = function (${params.map((x) => x.name).join(", ")}) {${args_setup_str}
 \t            const ${fn_result} = ${ptr}(${args_expression});${setup_str}
 \t            return ${expression};
-\t        });
-\t        ${fn} = 1024 + ($fns++) * 8;
+\t        };
+\t        ${fn} = ${START_OF_FN_PTRS + IndirectFunction.struct_type.sizeof * idx};
 \t    }`,
         expression: fn
     };
