@@ -4,7 +4,6 @@ import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
 import { glob } from "glob";
-import { base64ToWasm } from "./runtime_functions.js";
 
 const dev = process.env.NODE_ENV === "development";
 
@@ -19,9 +18,16 @@ async function generateType(file: string) {
     await fs.writeFile(destination, dts);
 }
 
+type MiteFileData = {
+    code: string;
+    wasmReferenceId: string;
+};
+
 export async function mite(): Promise<Plugin<never>> {
     await fs.access(".mite").catch(() => fs.mkdir(".mite"));
     await fs.access(".mite/types").catch(() => fs.mkdir(".mite/types"));
+
+    const processed_mite_files = new Map<string, MiteFileData>();
 
     return {
         name: "vite-plugin-mite",
@@ -38,9 +44,9 @@ export async function mite(): Promise<Plugin<never>> {
         transform(code, id, opts = {}) {
             if (!id.endsWith(".mite")) return null;
 
-            const source = compile(code, { optimize: true });
-
             if (dev) {
+                const source = compile(code, { optimize: false });
+
                 return compile(code, {
                     as: "javascript",
                     createInstance(imports) {
@@ -52,17 +58,18 @@ export async function mite(): Promise<Plugin<never>> {
             } else {
                 const file = this.emitFile({
                     type: "asset",
-                    name: `${path.basename(id)}.wasm`,
-                    source
+                    // todo: add hash to file name derived from file and dependencies
+                    fileName: `${path.basename(id)}.wasm`
                 });
+                processed_mite_files.set(id, { code, wasmReferenceId: file });
 
                 return compile(code, {
                     as: "javascript",
                     createInstance(imports) {
                         if (opts.ssr) {
                             return {
-                                setup: base64ToWasm.toString(),
-                                instantiation: `${base64ToWasm.name}("${Buffer.from(source).toString("base64")}", ${imports})`
+                                setup: 'import { readFileSync } from "node:fs";',
+                                instantiation: `WebAssembly.instantiate(readFileSync(import.meta.ROLLUP_FILE_URL_${file}), ${imports})`
                             };
                         } else {
                             return {
@@ -71,6 +78,12 @@ export async function mite(): Promise<Plugin<never>> {
                         }
                     }
                 });
+            }
+        },
+        generateBundle(_options, _bundle) {
+            for (const [id, { code, wasmReferenceId }] of processed_mite_files.entries()) {
+                this.setAssetSource(wasmReferenceId, compile(code, { optimize: true }));
+                processed_mite_files.delete(id);
             }
         }
     };
