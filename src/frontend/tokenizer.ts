@@ -198,15 +198,15 @@ export function tokenize(input: string): Token[] {
                     case "ref":
                         token = { type: TokenType.REF, value: "ref" };
                         break;
-                    case "arena":
-                        token = { type: TokenType.ARENA, value: "arena" };
-                        break;
+                    // case "arena":
+                    //     token = { type: TokenType.ARENA, value: "arena" };
+                    //     break;
                     // case "stack":
                     //     token = { type: TokenType.STACK, value: "stack" };
                     //     break;
-                    case "js":
-                        token = { type: TokenType.JS, value: "js" };
-                        break;
+                    // case "js":
+                    //     token = { type: TokenType.JS, value: "js" };
+                    //     break;
                     case "const":
                         token = { type: TokenType.CONST, value: "const" };
                         break;
@@ -245,6 +245,15 @@ export function tokenize(input: string): Token[] {
                         break;
                     case "export":
                         token = { type: TokenType.EXPORT, value: "export" };
+                        break;
+                    case "import":
+                        token = { type: TokenType.IMPORT, value: "import" };
+                        break;
+                    case "as":
+                        token = { type: TokenType.AS, value: "as" };
+                        break;
+                    case "from":
+                        token = { type: TokenType.FROM, value: "from" };
                         break;
                     // case "true":
                     //     token = { type: TokenType.BOOLEAN, value: "true" };

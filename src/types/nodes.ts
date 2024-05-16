@@ -600,13 +600,14 @@ export interface BaseModuleSpecifier extends BaseNode {
 
 export interface ImportDeclaration extends BaseModuleDeclaration {
     type: "ImportDeclaration";
-    specifiers: Array<ImportSpecifier | ImportDefaultSpecifier | ImportNamespaceSpecifier>;
-    source: Literal;
+    specifiers: ImportSpecifier[];
+    source: StringLiteral;
 }
 
 export interface ImportSpecifier extends BaseModuleSpecifier {
     type: "ImportSpecifier";
     imported: Identifier;
+    typeAnnotation?: TypeIdentifier;
 }
 
 export interface ImportExpression extends BaseExpression {

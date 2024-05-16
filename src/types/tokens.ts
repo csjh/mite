@@ -50,9 +50,9 @@ export enum TokenType {
     ASSIGNMENT_BITWISE_AND = "&=",
 
     REF = "ref",
-    ARENA = "arena",
+    // ARENA = "arena",
     // STACK = "stack",
-    JS = "js",
+    // JS = "js",
     LET = "let",
     CONST = "const",
     FN = "fn",
@@ -66,6 +66,9 @@ export enum TokenType {
     WHILE = "while",
     CONTINUE = "continue",
     BREAK = "break",
+    IMPORT = "import",
+    AS = "as",
+    FROM = "from",
 
     EOF = "EOF"
 }

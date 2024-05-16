@@ -42,7 +42,9 @@ import type {
     ObjectExpression,
     StringLiteral,
     UnaryExpression,
-    UnaryOperator
+    UnaryOperator,
+    ImportDeclaration,
+    ImportSpecifier
 } from "../types/nodes.js";
 
 const unary_operators = new Set([
@@ -106,6 +108,9 @@ export class Parser {
                 case TokenType.EXPORT:
                     program.body.push(this.parseExport());
                     break;
+                case TokenType.IMPORT:
+                    program.body.push(this.parseImport());
+                    break;
                 case TokenType.FN:
                     program.body.push(this.parseFunction());
                     break;
@@ -140,6 +145,47 @@ export class Parser {
         return {
             type: "ExportNamedDeclaration",
             declaration
+        };
+    }
+
+    private parseImport(): ImportDeclaration {
+        this.eatToken(TokenType.IMPORT);
+        this.eatToken(TokenType.LEFT_BRACE);
+
+        const specifiers = [];
+        while (this.token.type !== TokenType.RIGHT_BRACE) {
+            const name = this.getIdentifier();
+
+            const import_specifier: ImportSpecifier = {
+                type: "ImportSpecifier",
+                local: name,
+                imported: name
+            };
+
+            if (this.token.type === TokenType.AS) {
+                this.eatToken(TokenType.AS);
+                const alias = this.getIdentifier();
+                import_specifier.imported = alias;
+            }
+
+            if (this.token.type === TokenType.COLON) {
+                this.eatToken(TokenType.COLON);
+                import_specifier.typeAnnotation = this.parseType();
+            }
+
+            specifiers.push(import_specifier);
+
+            if (this.token.type === TokenType.COMMA) this.eatToken(TokenType.COMMA);
+        }
+
+        this.eatToken(TokenType.FROM);
+
+        const source = this.getStringLiteral();
+
+        return {
+            type: "ImportDeclaration",
+            specifiers,
+            source
         };
     }
 
