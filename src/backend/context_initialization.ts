@@ -1,8 +1,15 @@
 // don't be offput by the fact this is 3000 lines, it's almost all boilerplate
 
-import { Context, PrimitiveTypeInformation, StructTypeInformation } from "../types/code_gen.js";
-import { Program, StructDeclaration } from "../types/nodes.js";
-import { MiteType, Pointer, Primitive, TransientPrimitive } from "./type_classes.js";
+import {
+    Context,
+    FunctionTypeInformation,
+    InstanceFunctionTypeInformation,
+    InstanceStructTypeInformation,
+    PrimitiveTypeInformation,
+    StructTypeInformation
+} from "../types/code_gen.js";
+import { ExportNamedDeclaration, Program, StructDeclaration } from "../types/nodes.js";
+import { MiteType, Pointer, Primitive, String_, TransientPrimitive } from "./type_classes.js";
 import binaryen from "binaryen";
 import { bigintToLowAndHigh, parseType } from "./utils.js";
 
@@ -741,3 +748,27 @@ export function buildTypes(program: Program) {
     return types;
 }
 
+export function getExportables(program: Program, types: Context["types"] = buildTypes(program)) {
+    const exports: Record<string, FunctionTypeInformation | StructTypeInformation> = {};
+    for (const export_ of program.body
+        .filter((x): x is ExportNamedDeclaration => x.type === "ExportNamedDeclaration")
+        .map((x) => x.declaration)) {
+        if (export_.type === "StructDeclaration") {
+            exports[export_.id.name] = types[export_.id.name] as StructTypeInformation;
+        } else if (export_.type === "FunctionDeclaration") {
+            exports[export_.id.name] = {
+                classification: "function",
+                name: export_.id.name,
+                sizeof: 0,
+                implementation: {
+                    params: export_.params.map(({ name, typeAnnotation }) => ({
+                        name: name.name,
+                        type: parseType(types, typeAnnotation)
+                    })),
+                    results: parseType(types, export_.returnType)
+                }
+            };
+        }
+    }
+    return exports;
+}

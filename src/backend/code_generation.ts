@@ -14,15 +14,16 @@ import {
     constructArray,
     VIRTUALIZED_FUNCTIONS,
     getParameterCallbackCounts,
-    addDataSegment
+    addDataSegment,
+    typeInformationToBinaryen
 } from "./utils.js";
 import {
     Context,
     InstanceFunctionTypeInformation,
     InstancePrimitiveTypeInformation,
-    InstanceStructTypeInformation,
     InstanceTypeInformation,
-    intrinsic_names
+    intrinsic_names,
+    StructTypeInformation
 } from "../types/code_gen.js";
 import type {
     Program,
@@ -50,8 +51,8 @@ import type {
     ArrayExpression,
     IndexExpression,
     ObjectExpression,
-    StructDeclaration,
-    UnaryExpression
+    UnaryExpression,
+    ImportDeclaration
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import {
@@ -61,22 +62,32 @@ import {
     LocalPrimitive,
     MiteType,
     Pointer,
-    Primitive,
     String_,
     Struct,
     StructMethod,
     TransientPrimitive
 } from "./type_classes.js";
-import { createConversions, createIntrinsics, identifyStructs } from "./context_initialization.js";
+import {
+    buildTypes,
+    createConversions,
+    createIntrinsics,
+    getExportables
+} from "./context_initialization.js";
 import { addBuiltins } from "./builtin_functions.js";
+import { Parser } from "../frontend/parser.js";
+import { tokenize } from "../frontend/tokenizer.js";
+
+export type Options = {
+    resolveImport: (path: string) => Promise<string>;
+};
 
 // static sized memory regions
 export const START_OF_MEMORY = 0;
 export const START_OF_FN_PTRS = START_OF_MEMORY + 1024;
 
-export function programToModule(program: Program, _options: unknown = {}): binaryen.Module {
+export async function programToModule(
     program: Program,
-    options: ProgramToModuleOptions
+    options: Options
 ): Promise<binaryen.Module> {
     const types = buildTypes(program);
 
@@ -111,6 +122,12 @@ export function programToModule(program: Program, _options: unknown = {}): binar
 
     mod.setMemory(256, -1, "$memory", [], false, false, "main_memory");
 
+    for (const node of program.body.filter(
+        (x): x is ImportDeclaration => x.type === "ImportDeclaration"
+    )) {
+        await handleDeclaration(ctx, node, options.resolveImport);
+    }
+
     for (const { id, params, returnType } of program.body
         .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
         .filter((x): x is FunctionDeclaration => x.type === "FunctionDeclaration")) {
@@ -132,31 +149,15 @@ export function programToModule(program: Program, _options: unknown = {}): binar
         );
     }
 
-    for (const struct of program.body.filter(
-        (x): x is StructDeclaration => x.type === "StructDeclaration"
+    for (const struct of Object.values(types).filter(
+        (x): x is StructTypeInformation => x.classification === "struct"
     )) {
-        for (const { id, params, returnType } of struct.methods) {
-            const method_type = {
-                classification: "function",
-                name: `${struct.id.name}.${id.name}`,
-                sizeof: 0,
-                implementation: {
-                    params: params.map(({ name, typeAnnotation }) => ({
-                        name: name.name,
-                        type: parseType(ctx, typeAnnotation)
-                    })),
-                    results: parseType(ctx, returnType)
-                },
-                is_ref: false
-            } satisfies InstanceFunctionTypeInformation;
-
-            (ctx.types[struct.id.name] as InstanceStructTypeInformation).methods.set(
-                id.name,
-                method_type
-            );
-
+        for (const [method_name, method_type] of struct.methods) {
             // TODO: this shouldn't be necessary
-            ctx.variables.set(`${struct.id.name}.${id.name}`, new DirectFunction(ctx, method_type));
+            ctx.variables.set(
+                `${struct.name}.${method_name}`,
+                new DirectFunction(ctx, method_type)
+            );
         }
     }
 
@@ -181,7 +182,9 @@ export function programToModule(program: Program, _options: unknown = {}): binar
             case "ExportNamedDeclaration":
             case "FunctionDeclaration":
             case "StructDeclaration":
-                handleDeclaration(ctx, node);
+                await handleDeclaration(ctx, node, options.resolveImport);
+                break;
+            case "ImportDeclaration":
                 break;
             default:
                 throw new Error(`Unknown node type: ${node.type}`);
@@ -250,10 +253,14 @@ export function programToModule(program: Program, _options: unknown = {}): binar
     return mod;
 }
 
-function handleDeclaration(ctx: Context, node: Declaration): void {
+async function handleDeclaration(
+    ctx: Context,
+    node: Declaration,
+    resolveImport: (file: string) => Promise<string>
+): Promise<void> {
     switch (node.type) {
         case "ExportNamedDeclaration":
-            handleDeclaration(ctx, node.declaration);
+            await handleDeclaration(ctx, node.declaration, resolveImport);
             const { declaration } = node;
             if (declaration.type === "FunctionDeclaration") {
                 ctx.mod.addFunctionExport(declaration.id.name, declaration.id.name);
@@ -264,6 +271,7 @@ function handleDeclaration(ctx: Context, node: Declaration): void {
             } else if (declaration.type === "StructDeclaration") {
                 // struct exports don't carry any runtime weight
             } else {
+                // @ts-expect-error unreachable
                 throw new Error(`Unknown export type: ${declaration.type}`);
             }
             break;
@@ -276,6 +284,91 @@ function handleDeclaration(ctx: Context, node: Declaration): void {
                 buildFunctionDeclaration(ctx, decl);
             }
             break;
+        case "ImportDeclaration": {
+            const import_file = node.source.value;
+            if (!import_file.endsWith(".mite")) {
+                for (const specifier of node.specifiers) {
+                    if (!specifier.typeAnnotation) {
+                        throw new Error("Non-Mite function imports must have type annotations");
+                    }
+                    const type = parseType(ctx, specifier.typeAnnotation);
+                    if (type.classification !== "function") {
+                        throw new Error("Only function imports are supported");
+                    }
+                    ctx.mod.addFunctionImport(
+                        specifier.local.name,
+                        import_file,
+                        specifier.imported.name,
+                        binaryen.createType(
+                            type.implementation.params.map((x) => typeInformationToBinaryen(x.type))
+                        ),
+                        typeInformationToBinaryen(type.implementation.results)
+                    );
+                    ctx.variables.set(
+                        specifier.local.name,
+                        new DirectFunction(ctx, {
+                            classification: "function",
+                            name: specifier.local.name,
+                            sizeof: 0,
+                            implementation: type.implementation,
+                            is_ref: false
+                        })
+                    );
+                }
+            } else {
+                const possible_exports = getExportables(
+                    Parser.parse(tokenize(await resolveImport(import_file)))
+                );
+
+                for (const specifier of node.specifiers) {
+                    const exportable = possible_exports[specifier.imported.name];
+                    if (!exportable) {
+                        throw new Error(
+                            `No exportable named ${specifier.imported.name} in ${import_file}`
+                        );
+                    }
+                    if (exportable.classification === "function") {
+                        ctx.mod.addFunctionImport(
+                            specifier.local.name,
+                            import_file,
+                            specifier.imported.name,
+                            binaryen.createType(
+                                exportable.implementation.params.map((x) =>
+                                    typeInformationToBinaryen(x.type)
+                                )
+                            ),
+                            typeInformationToBinaryen(exportable.implementation.results)
+                        );
+
+                        ctx.variables.set(
+                            specifier.local.name,
+                            new DirectFunction(ctx, { ...exportable, is_ref: false })
+                        );
+                    } else if (exportable.classification === "struct") {
+                        ctx.types[exportable.name] = exportable;
+                        for (const method of exportable.methods.values()) {
+                            ctx.mod.addFunctionImport(
+                                specifier.local.name,
+                                import_file,
+                                specifier.imported.name,
+                                binaryen.createType(
+                                    method.implementation.params.map((x) =>
+                                        typeInformationToBinaryen(x.type)
+                                    )
+                                ),
+                                typeInformationToBinaryen(method.implementation.results)
+                            );
+
+                            ctx.variables.set(
+                                `${exportable.name}.${method.name}`,
+                                new DirectFunction(ctx, method)
+                            );
+                        }
+                    }
+                }
+            }
+            break;
+        }
     }
 }
 

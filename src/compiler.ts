@@ -6,18 +6,30 @@ import { programToBoilerplate as toJavascript } from "./boilerplate/javascript.j
 import { programToBoilerplate as toDts } from "./boilerplate/dts.js";
 
 type CompileOptions =
-    | {
+    | ({
           as?: "wasm" | "wat";
           optimize?: boolean;
-      }
+      } & import("./backend/code_generation.js").Options)
     | ({ as: "javascript" } & import("./boilerplate/javascript.js").Options)
     | ({ as: "dts" } & import("./boilerplate/dts.js").Options);
 
-export function compile(source: string, options: CompileOptions & { as: "javascript" }): string;
-export function compile(source: string, options: CompileOptions & { as: "wat" }): string;
-export function compile(source: string, options: CompileOptions & { as: "wat" }): string;
-export function compile(source: string, options?: CompileOptions): Uint8Array;
-export function compile(source: string, options: CompileOptions = {}): string | Uint8Array {
+export async function compile(
+    source: string,
+    options: CompileOptions & { as: "javascript" }
+): Promise<string>;
+export async function compile(
+    source: string,
+    options: CompileOptions & { as: "wat" }
+): Promise<string>;
+export async function compile(
+    source: string,
+    options: CompileOptions & { as: "wat" }
+): Promise<string>;
+export async function compile(source: string, options: CompileOptions): Promise<Uint8Array>;
+export async function compile(
+    source: string,
+    options: CompileOptions
+): Promise<string | Uint8Array> {
     options.as ??= "wasm";
 
     const tokens = tokenize(source);
@@ -31,7 +43,7 @@ export function compile(source: string, options: CompileOptions = {}): string | 
         return toDts(program, options);
     }
 
-    const mod = programToModule(program);
+    const mod = await programToModule(program, options);
 
     mod.setFeatures(
         binaryen.Features.BulkMemory |
