@@ -179,9 +179,12 @@ export class Parser {
             if (this.token.type === TokenType.COMMA) this.eatToken(TokenType.COMMA);
         }
 
+        this.eatToken(TokenType.RIGHT_BRACE);
         this.eatToken(TokenType.FROM);
 
         const source = this.getStringLiteral();
+
+        this.eatToken(TokenType.SEMICOLON);
 
         return {
             type: "ImportDeclaration",
