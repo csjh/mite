@@ -189,7 +189,8 @@ export type Declaration =
     | FunctionDeclaration
     | VariableDeclaration
     | StructDeclaration
-    | ExportNamedDeclaration;
+    | ExportNamedDeclaration
+    | ImportDeclaration;
 
 export interface BaseDeclaration extends BaseStatement {}
 
@@ -625,7 +626,7 @@ export interface ImportNamespaceSpecifier extends BaseModuleSpecifier {
 
 export interface ExportNamedDeclaration extends BaseModuleDeclaration {
     type: "ExportNamedDeclaration";
-    declaration: Declaration;
+    declaration: Exclude<Declaration, ExportNamedDeclaration | ImportDeclaration>;
 }
 
 export interface ExportSpecifier extends BaseModuleSpecifier {

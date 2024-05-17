@@ -154,26 +154,27 @@ export class Parser {
 
         const specifiers = [];
         while (this.token.type !== TokenType.RIGHT_BRACE) {
-            const name = this.getIdentifier();
-
-            const import_specifier: ImportSpecifier = {
-                type: "ImportSpecifier",
-                local: name,
-                imported: name
-            };
+            const local = this.getIdentifier();
+            let imported = local;
 
             if (this.token.type === TokenType.AS) {
                 this.eatToken(TokenType.AS);
                 const alias = this.getIdentifier();
-                import_specifier.imported = alias;
+                imported = alias;
             }
+
+            const specifier: ImportSpecifier = {
+                type: "ImportSpecifier",
+                local,
+                imported
+            };
 
             if (this.token.type === TokenType.COLON) {
                 this.eatToken(TokenType.COLON);
-                import_specifier.typeAnnotation = this.parseType();
+                specifier.typeAnnotation = this.parseType();
             }
 
-            specifiers.push(import_specifier);
+            specifiers.push(specifier);
 
             if (this.token.type === TokenType.COMMA) this.eatToken(TokenType.COMMA);
         }
