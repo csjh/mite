@@ -75,10 +75,10 @@ export const START_OF_MEMORY = 0;
 export const START_OF_FN_PTRS = START_OF_MEMORY + 1024;
 
 export function programToModule(program: Program, _options: unknown = {}): binaryen.Module {
-    const structs = Object.fromEntries(identifyStructs(program).map((x) => [x.name, x]));
-    const primitives = Object.fromEntries(Primitive.primitives.entries());
-
-    const types = { ...primitives, ...structs, string: String_.type } as Context["types"];
+    program: Program,
+    options: ProgramToModuleOptions
+): Promise<binaryen.Module> {
+    const types = buildTypes(program);
 
     const callback_counts = getParameterCallbackCounts({ types } as Context, program);
     const RESERVED_FN_PTRS = callback_counts.map((x) => x[1]).reduce((acc, x) => acc + x, 0);

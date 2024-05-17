@@ -708,3 +708,36 @@ function structDeclarationToTypeInformation(
 
     return { ...type, sizeof: offset };
 }
+
+export function buildTypes(program: Program) {
+    const structs = Object.fromEntries(identifyStructs(program).map((x) => [x.name, x]));
+    const primitives = Object.fromEntries(Primitive.primitives.entries());
+
+    const types = { ...primitives, ...structs, string: String_.type } as Context["types"];
+
+    for (const {
+        id: { name: struct_name },
+        methods
+    } of program.body.filter((x): x is StructDeclaration => x.type === "StructDeclaration")) {
+        for (const { id, params, returnType } of methods) {
+            const method_type = {
+                classification: "function",
+                name: `${struct_name}.${id.name}`,
+                sizeof: 0,
+                implementation: {
+                    params: params.map(({ name, typeAnnotation }) => ({
+                        name: name.name,
+                        type: parseType(types, typeAnnotation)
+                    })),
+                    results: parseType(types, returnType)
+                },
+                is_ref: false
+            } satisfies InstanceFunctionTypeInformation;
+
+            (types[struct_name] as InstanceStructTypeInformation).methods.set(id.name, method_type);
+        }
+    }
+
+    return types;
+}
+

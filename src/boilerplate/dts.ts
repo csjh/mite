@@ -5,21 +5,15 @@ import {
     Program,
     StructDeclaration
 } from "../types/nodes.js";
-import { identifyStructs } from "../backend/context_initialization.js";
-import { Primitive, String_ } from "../backend/type_classes.js";
+import { buildTypes } from "../backend/context_initialization.js";
 import { parseType } from "../backend/utils.js";
 import dedent from "dedent";
 
 export type Options = unknown;
 
 export function programToBoilerplate(program: Program, _: Options) {
-    const structs = identifyStructs(program);
     const ctx = {
-        types: Object.fromEntries([
-            ...Primitive.primitives.entries(),
-            ...structs.map((x) => [x.name, x]),
-            ["string", String_.type]
-        ])
+        types: buildTypes(program)
     } as Context;
 
     for (const struct of program.body.filter(
@@ -66,7 +60,9 @@ export function programToBoilerplate(program: Program, _: Options) {
 
     code += "\n\n";
 
-    for (const { name, fields, methods } of structs) {
+    for (const { name, fields, methods } of Object.values(ctx.types).filter(
+        (x) => x.classification === "struct"
+    )) {
         code += dedent`
             declare class ${name} {
                 static sizeof: number;${Array.from(fields.entries(), ([name, info]) => {

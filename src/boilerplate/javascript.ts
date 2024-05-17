@@ -14,8 +14,8 @@ import {
     Program,
     StructDeclaration
 } from "../types/nodes.js";
-import { identifyStructs } from "../backend/context_initialization.js";
-import { IndirectFunction, Primitive, String_ } from "../backend/type_classes.js";
+import { buildTypes } from "../backend/context_initialization.js";
+import { IndirectFunction } from "../backend/type_classes.js";
 import { functionToSignature, getParameterCallbackCounts, parseType } from "../backend/utils.js";
 import dedent from "dedent";
 import { START_OF_FN_PTRS } from "../backend/code_generation.js";
@@ -42,13 +42,8 @@ export type Options = {
 type JSContext = Context & { callbacks: string[] };
 
 export function programToBoilerplate(program: Program, { createInstance }: Options) {
-    const structs = identifyStructs(program);
     const ctx = {
-        types: Object.fromEntries([
-            ...Primitive.primitives.entries(),
-            ...structs.map((x) => [x.name, x]),
-            ["string", String_.type]
-        ])
+        types: buildTypes(program)
     } as JSContext;
 
     ctx.callbacks = getParameterCallbackCounts(ctx, program).flatMap(([fn, count]) =>
@@ -171,7 +166,9 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
     code += "\n\n";
 
-    for (const { sizeof, fields, name } of structs) {
+    for (const { sizeof, fields, name } of Object.values(ctx.types).filter(
+        (x) => x.classification === "struct"
+    )) {
         code += dedent`
             class ${name} {
                 static sizeof = ${sizeof};
