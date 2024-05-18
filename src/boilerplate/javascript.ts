@@ -11,6 +11,7 @@ import {
 import {
     ExportNamedDeclaration,
     FunctionDeclaration,
+    ImportDeclaration,
     Program,
     StructDeclaration
 } from "../types/nodes.js";
@@ -62,23 +63,55 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
             .map((x) => [x.id.name, x.methods])
     );
 
+    const imports = program.body.filter(
+        (x): x is ImportDeclaration => x.type === "ImportDeclaration"
+    );
+
+    const js_import_strings = [];
+    const wasm_import_strings = [""];
+    for (const import_ of imports) {
+        const imported_file = import_.source.value;
+        if (!imported_file.endsWith(".mite")) {
+            js_import_strings.push(
+                `import { ${import_.specifiers
+                    .map((x) =>
+                        x.local.name !== x.imported.name
+                            ? `${x.imported.name} as ${x.local.name}`
+                            : x.imported.name
+                    )
+                    .join(", ")} } from "${imported_file}";`
+            );
+            wasm_import_strings.push(
+                `"${imported_file}": { ${import_.specifiers.map((x) => x.local.name).join(", ")} }`
+            );
+        } else {
+            // should get a better strategy for this
+            const variable_safe_file = imported_file.replace(/[^a-zA-Z0-9]/g, "_");
+            js_import_strings.push(
+                `import { $exports as ${variable_safe_file} } from "${imported_file}";`
+            );
+            wasm_import_strings.push(`"${imported_file}": ${variable_safe_file}`);
+        }
+    }
+
     const { setup = "", instantiation } = createInstance(`{
             console,
-            $mite: new Proxy({}, {
+            $mite: new Proxy({ $memory, $table }, {
                 get(_, prop) {
                     if (prop.startsWith("wrap_")) {
                         return function (ptr, ...args) { return $funcs[ptr](...args); };
                     }
+                    return Reflect.get(...arguments);
                 }
-            })
+            })${wasm_import_strings.join(",\n            ")}
         }`);
 
     let code = dedent`
+        import { $memory, $table } from "virtual:mite-shared";
+
         ${setup ? setup + "\n" : ""}
         const $wasm = await ${instantiation};
-        const { $memory, $table, $arena_heap_malloc, ${exports
-            .map((x) => `${x.id.name}: $wasm_export_${x.id.name}, `)
-            .join("")}} = $wasm.instance.exports;
+        export const $exports = $wasm.instance.exports;
         const $buffer = new DataView($memory.buffer);
 
         const $noop = () => {};
@@ -167,7 +200,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
     code += "\n\n";
 
     for (const { sizeof, fields, name } of Object.values(ctx.types).filter(
-        (x) => x.classification === "struct"
+        (x): x is StructTypeInformation => x.classification === "struct"
     )) {
         code += dedent`
             class ${name} {
@@ -338,7 +371,7 @@ function functionDeclarationToString(
     const setup_str = setup ? `\n\t    ${setup}` : "";
 
     return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {${args_setup_str}
-\t    const $result = $wasm_export_${id.name}(${args_expression});
+\t    const $result = $exports.${id.name}(${args_expression});
 \t${setup_str}${callbacks_cleanup_str}
 \t    return ${expression};
 \t}`.replaceAll("\t", " ".repeat(indentation));

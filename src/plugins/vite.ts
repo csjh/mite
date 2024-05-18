@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
 import { glob } from "glob";
+import dedent from "dedent";
 
 const dev = process.env.NODE_ENV === "development";
 
@@ -29,6 +30,9 @@ export async function mite(): Promise<Plugin<never>> {
 
     const processed_mite_files = new Map<string, MiteFileData>();
 
+    const mite_shared_id = "virtual:mite-shared";
+    const resolved_mite_shared_id = `\0${mite_shared_id}`;
+
     return {
         name: "vite-plugin-mite",
         async configureServer(server) {
@@ -41,11 +45,30 @@ export async function mite(): Promise<Plugin<never>> {
             const mite_files = await glob("**/*.mite", { ignore: "node_modules/**" });
             await Promise.all(mite_files.map(generateType));
         },
-        transform(code, id, opts = {}) {
+        resolveId(id) {
+            if (id === mite_shared_id) {
+                return resolved_mite_shared_id;
+            }
+        },
+        load(id) {
+            if (id === resolved_mite_shared_id) {
+                return dedent`
+                    export const $memory = new WebAssembly.Memory({ initial: 256 });
+                    export const $table = new WebAssembly.Table({ initial: 0, element: "anyfunc" });
+                `;
+            }
+        },
+        async transform(code, id, opts = {}) {
+            if (id.endsWith(".mite?bypass-processing")) return JSON.stringify(code);
             if (!id.endsWith(".mite")) return null;
 
             if (dev) {
-                const source = compile(code, { optimize: false });
+                const source = await compile(code, {
+                    optimize: false,
+                    resolveImport: async (path) => {
+                        return (await this.load({ id: `${path}?bypass-processing` })).code || "";
+                    }
+                });
 
                 return compile(code, {
                     as: "javascript",
@@ -80,9 +103,19 @@ export async function mite(): Promise<Plugin<never>> {
                 });
             }
         },
-        generateBundle(_options, _bundle) {
+        async generateBundle(_options, _bundle) {
             for (const [id, { code, wasmReferenceId }] of processed_mite_files.entries()) {
-                this.setAssetSource(wasmReferenceId, compile(code, { optimize: true }));
+                this.setAssetSource(
+                    wasmReferenceId,
+                    await compile(code, {
+                        optimize: true,
+                        resolveImport: async (path) => {
+                            return (
+                                (await this.load({ id: `${path}?bypass-processing` })).code || ""
+                            );
+                        }
+                    })
+                );
                 processed_mite_files.delete(id);
             }
         }

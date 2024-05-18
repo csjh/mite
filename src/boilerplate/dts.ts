@@ -1,7 +1,13 @@
-import { Context, InstanceStructTypeInformation, TypeInformation } from "../types/code_gen.js";
+import {
+    Context,
+    InstanceStructTypeInformation,
+    StructTypeInformation,
+    TypeInformation
+} from "../types/code_gen.js";
 import {
     ExportNamedDeclaration,
     FunctionDeclaration,
+    ImportDeclaration,
     Program,
     StructDeclaration
 } from "../types/nodes.js";
@@ -15,6 +21,20 @@ export function programToBoilerplate(program: Program, _: Options) {
     const ctx = {
         types: buildTypes(program)
     } as Context;
+
+    const imports = program.body.filter(
+        (x): x is ImportDeclaration => x.type === "ImportDeclaration"
+    );
+
+    for (const import_ of imports) {
+        for (const specifier of import_.specifiers) {
+            // @ts-expect-error filler type
+            ctx.types[specifier.local.name] = {
+                classification: "struct",
+                name: specifier.local.name
+            };
+        }
+    }
 
     for (const struct of program.body.filter(
         (x): x is StructDeclaration => x.type === "StructDeclaration"
@@ -44,6 +64,8 @@ export function programToBoilerplate(program: Program, _: Options) {
         .map((x) => x.declaration as FunctionDeclaration);
 
     let code = dedent`
+        ${imports.map((x) => `import { ${x.specifiers.map((x) => (x.local.name !== x.imported.name ? `${x.imported.name} as ${x.local.name}` : x.imported.name)).join(", ")} } from "${x.source.value}";`).join("\n")}
+
         declare type bool = boolean;
         declare type i8 = number;
         declare type i16 = number;
@@ -61,7 +83,7 @@ export function programToBoilerplate(program: Program, _: Options) {
     code += "\n\n";
 
     for (const { name, fields, methods } of Object.values(ctx.types).filter(
-        (x) => x.classification === "struct"
+        (x): x is StructTypeInformation => x.classification === "struct" && "sizeof" in x // catch filler imported structs
     )) {
         code += dedent`
             declare class ${name} {
