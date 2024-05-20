@@ -1,7 +1,7 @@
 /// <reference types="bun-types" />
 
-// describe("general errors", () => {
-//     it("should not stack overflow with a 64kb stack", () => {
+// describe("general errors", async () => {
+//     it("should not stack overflow with a 64kb stack", async () => {
 //         const program = `
 //         export fn main(): i32 {
 //             let x: struct_12;
@@ -76,10 +76,10 @@
 //         }
 //         `;
 
-//         compileAndRun(program, 0);
+//         await compileAndRun(program, 0);
 //     });
 
-//     it("should stack overflow with a 64kb + 16 bytes stack", () => {
+//     it("should stack overflow with a 64kb + 16 bytes stack", async () => {
 //         const program = `
 //         export fn main(): i32 {
 //             let x: struct_12;
@@ -155,6 +155,6 @@
 //         }
 //         `;
 
-//         compileAndRun(program, "error");
+//         await compileAndRun(program, "error");
 //     });
 // });

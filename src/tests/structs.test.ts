@@ -5,8 +5,8 @@ import { compileAndRun } from "./utils.js";
 import { compile } from "../compiler.js";
 import assert from "assert";
 
-describe("struct declarations", () => {
-    it("should detect cycles", () => {
+describe("struct declarations", async () => {
+    it("should detect cycles", async () => {
         const program = `
         struct x {
             uses: y,
@@ -18,7 +18,11 @@ describe("struct declarations", () => {
         }
         `;
 
-        assert.throws(() => compile(program));
+        await assert.rejects(() =>
+            compile(program, {
+                resolveImport: async () => ""
+            })
+        );
 
         const program2 = `
         struct x {
@@ -35,7 +39,11 @@ describe("struct declarations", () => {
         }
         `;
 
-        assert.throws(() => compile(program2));
+        await assert.rejects(() =>
+            compile(program2, {
+                resolveImport: async () => ""
+            })
+        );
 
         const program3 = `
         struct z {
@@ -51,24 +59,36 @@ describe("struct declarations", () => {
             uses: z
         }`;
 
-        assert.throws(() => compile(program3));
+        await assert.rejects(() =>
+            compile(program3, {
+                resolveImport: async () => ""
+            })
+        );
 
         const program4 = `
         struct x {
             uses: x
         }`;
 
-        assert.throws(() => compile(program4));
+        await assert.rejects(() =>
+            compile(program4, {
+                resolveImport: async () => ""
+            })
+        );
 
         const program5 = `
         struct x {
             uses: y
         }`;
 
-        assert.throws(() => compile(program5));
+        await assert.rejects(() =>
+            compile(program5, {
+                resolveImport: async () => ""
+            })
+        );
     });
 
-    it("shouldn't throw on valid structs", () => {
+    it("shouldn't throw on valid structs", async () => {
         const program = `
         struct x {
             uses: y,
@@ -85,12 +105,14 @@ describe("struct declarations", () => {
         }
         `;
 
-        compile(program);
+        await compile(program, {
+            resolveImport: async () => ""
+        });
     });
 });
 
-describe("arena struct functions", () => {
-    it("should work with return values", () => {
+describe("arena struct functions", async () => {
+    it("should work with return values", async () => {
         const program = `
         struct coord {
             x: i32,
@@ -112,10 +134,10 @@ describe("arena struct functions", () => {
         }
         `;
 
-        compileAndRun(program, 16);
+        await await compileAndRun(program, 16);
     });
 
-    it("should work with nested function calls", () => {
+    it("should work with nested function calls", async () => {
         const program = `
         struct coord {
             x: i32,
@@ -141,7 +163,7 @@ describe("arena struct functions", () => {
         }
         `;
 
-        compileAndRun(program, 16);
+        await await compileAndRun(program, 16);
 
         const program2 = `
         struct coord {
@@ -169,7 +191,7 @@ describe("arena struct functions", () => {
         }
         `;
 
-        compileAndRun(program2, 19);
+        await await compileAndRun(program2, 19);
 
         const program3 = `
         struct coord {
@@ -196,7 +218,7 @@ describe("arena struct functions", () => {
         }
         `;
 
-        compileAndRun(program3, 19);
+        await compileAndRun(program3, 19);
 
         const program4 = `
         struct coord {
@@ -221,12 +243,12 @@ describe("arena struct functions", () => {
         }
         `;
 
-        compileAndRun(program4, 19);
+        await compileAndRun(program4, 19);
     });
 });
 
-describe("struct functions", () => {
-    it("should work with return values", () => {
+describe("struct functions", async () => {
+    it("should work with return values", async () => {
         const program = `
         struct coord {
             x: i32,
@@ -248,10 +270,10 @@ describe("struct functions", () => {
         }
         `;
 
-        compileAndRun(program, 16);
+        await compileAndRun(program, 16);
     });
 
-    it("should work with nested function calls", () => {
+    it("should work with nested function calls", async () => {
         const program = `
         struct coord {
             x: i32,
@@ -277,7 +299,7 @@ describe("struct functions", () => {
         }
         `;
 
-        compileAndRun(program, 16);
+        await compileAndRun(program, 16);
 
         const program2 = `
         struct coord {
@@ -305,7 +327,7 @@ describe("struct functions", () => {
         }
         `;
 
-        compileAndRun(program2, 19);
+        await compileAndRun(program2, 19);
 
         const program3 = `
         struct coord {
@@ -332,7 +354,7 @@ describe("struct functions", () => {
         }
         `;
 
-        compileAndRun(program3, 19);
+        await compileAndRun(program3, 19);
 
         const program4 = `
         struct coord {
@@ -357,6 +379,6 @@ describe("struct functions", () => {
         }
         `;
 
-        compileAndRun(program4, 19);
+        await compileAndRun(program4, 19);
     });
 });

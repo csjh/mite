@@ -3,8 +3,8 @@
 import { describe, it } from "bun:test";
 import { compileAndRun } from "./utils.js";
 
-describe("for loops should work", () => {
-    it("should compile and run", () => {
+describe("for loops should work", async () => {
+    it("should compile and run", async () => {
         const program = `
         export fn main(): i32 {
             let sum = 0;
@@ -15,12 +15,12 @@ describe("for loops should work", () => {
         }
         `;
 
-        compileAndRun(program, 45);
+        await compileAndRun(program, 45);
     });
 });
 
-describe("for loops should work with expressions", () => {
-    it("should allow a variable assignment in the initializer", () => {
+describe("for loops should work with expressions", async () => {
+    it("should allow a variable assignment in the initializer", async () => {
         const program = `
         export fn main(): i32 {
             let sum = 0;
@@ -32,10 +32,10 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program, 45);
+        await compileAndRun(program, 45);
     });
 
-    it("should allow a block expression in the update", () => {
+    it("should allow a block expression in the update", async () => {
         const program = `
         export fn main(): i32 {
             let sum = 0;
@@ -46,10 +46,10 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program, 45);
+        await compileAndRun(program, 45);
     });
 
-    it("should allow a block expression in the body", () => {
+    it("should allow a block expression in the body", async () => {
         const program = `
         export fn main(): i32 {
             let sum = 0;
@@ -62,10 +62,10 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program, 45);
+        await compileAndRun(program, 45);
     });
 
-    it("should allow an empty everything", () => {
+    it("should allow an empty everything", async () => {
         const program = `
         export fn main(): i32 {
             let sum = 0;
@@ -74,7 +74,7 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program, 0);
+        await compileAndRun(program, 0);
 
         const program2 = `
         export fn main(): i32 {
@@ -89,10 +89,10 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program2, 10);
+        await compileAndRun(program2, 10);
     });
 
-    it("should work fine with break", () => {
+    it("should work fine with break", async () => {
         const program = `
         export fn main(): i32 {
             let sum = 0;
@@ -106,7 +106,7 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program, 15);
+        await compileAndRun(program, 15);
 
         const program2 = `
         export fn main(): i32 {
@@ -121,7 +121,7 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program2, 10);
+        await compileAndRun(program2, 10);
 
         const program3 = `
         export fn main(): i32 {
@@ -142,10 +142,10 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program3, 20);
+        await compileAndRun(program3, 20);
     });
 
-    it("should work fine with continue", () => {
+    it("should work fine with continue", async () => {
         const program = `
         export fn main(): i32 {
             let sum = 0;
@@ -159,7 +159,7 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program, 40);
+        await compileAndRun(program, 40);
 
         const program2 = `
         export fn main(): i32 {
@@ -174,7 +174,7 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program2, 450);
+        await compileAndRun(program2, 450);
 
         const program3 = `
         export fn main(): i32 {
@@ -201,6 +201,6 @@ describe("for loops should work with expressions", () => {
         }
         `;
 
-        compileAndRun(program3, 30);
+        await compileAndRun(program3, 30);
     });
 });

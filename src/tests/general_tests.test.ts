@@ -3,15 +3,15 @@
 import { describe, it } from "bun:test";
 import { compileAndRun } from "./utils.js";
 
-describe("operator precendence", () => {
-    it("should work with literals", () => {
+describe("operator precendence", async () => {
+    it("should work with literals", async () => {
         const program1 = `
         export fn main(): i32 {
             return 5 * 2 + 10;
         }
         `;
 
-        compileAndRun(program1, 20);
+        await compileAndRun(program1, 20);
 
         const program2 = `
         export fn main(): i32 {
@@ -19,7 +19,7 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program2, 1);
+        await compileAndRun(program2, 1);
 
         const program3 = `
         export fn main(): i32 {
@@ -27,7 +27,7 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program3, 10);
+        await compileAndRun(program3, 10);
 
         const program4 = `
         export fn main(): i32 {
@@ -35,45 +35,45 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program4, 32);
+        await compileAndRun(program4, 32);
 
         const program5 = `
         export fn main(): i32 {
             return 9 & 6 ^ 3;
         }`;
 
-        compileAndRun(program5, 3);
+        await compileAndRun(program5, 3);
 
         const program6 = `
         export fn main(): i32 {
             return 7 | 3 == 10;
         }`;
 
-        compileAndRun(program6, 7);
+        await compileAndRun(program6, 7);
 
         const program7 = `
         export fn main(): i32 {
             return 8 != 8 < 5;
         }`;
 
-        compileAndRun(program7, 1);
+        await compileAndRun(program7, 1);
 
         const program8 = `
         export fn main(): i32 {
             return 7 >= 3 && 4 < 9;
         }`;
 
-        compileAndRun(program8, 1);
+        await compileAndRun(program8, 1);
 
         const program9 = `
         export fn main(): i32 {
             return 1 || 0 && 0;
         }`;
 
-        compileAndRun(program9, 1);
+        await compileAndRun(program9, 1);
     });
 
-    it("should work with variables", () => {
+    it("should work with variables", async () => {
         const program1 = `
         export fn main(): i32 {
             let x = 5 * 3 + 2;
@@ -81,7 +81,7 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program1, 17);
+        await compileAndRun(program1, 17);
 
         const program2 = `
         export fn main(): i32 {
@@ -90,7 +90,7 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program2, 0);
+        await compileAndRun(program2, 0);
 
         const program3 = `
         export fn main(): i32 {
@@ -100,7 +100,7 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program3, 15);
+        await compileAndRun(program3, 15);
 
         const program4 = `
         export fn main(): i32 {
@@ -110,7 +110,7 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program4, 24);
+        await compileAndRun(program4, 24);
 
         const program5 = `
         export fn main(): i32 {
@@ -120,7 +120,7 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program5, 239);
+        await compileAndRun(program5, 239);
 
         const program6 = `
         export fn main(): i32 {
@@ -130,7 +130,7 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program6, 2395);
+        await compileAndRun(program6, 2395);
 
         const program7 = `
         export fn main(): i32 {
@@ -139,19 +139,19 @@ describe("operator precendence", () => {
         }
         `;
 
-        compileAndRun(program7, 38);
+        await compileAndRun(program7, 38);
     });
 });
 
-describe("literals", () => {
-    it("should work with numbers", () => {
+describe("literals", async () => {
+    it("should work with numbers", async () => {
         const program1 = `
         export fn main(): i32 {
             return 5;
         }
         `;
 
-        compileAndRun(program1, 5);
+        await compileAndRun(program1, 5);
 
         const program2 = `
         export fn main(): i32 {
@@ -159,7 +159,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program2, 0);
+        await compileAndRun(program2, 0);
 
         const program3 = `
         export fn main(): i32 {
@@ -167,7 +167,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program3, 0x0);
+        await compileAndRun(program3, 0x0);
 
         const program4 = `
         export fn main(): i32 {
@@ -175,7 +175,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program4, 0x5);
+        await compileAndRun(program4, 0x5);
 
         const program5 = `
         export fn main(): i32 {
@@ -183,7 +183,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program5, 0x0000005);
+        await compileAndRun(program5, 0x0000005);
 
         const program6 = `
         export fn main(): i32 {
@@ -191,7 +191,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program6, 0b101);
+        await compileAndRun(program6, 0b101);
 
         const program7 = `
         export fn main(): i64 {
@@ -199,7 +199,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program7, 0xfffffffffffffffn);
+        await compileAndRun(program7, 0xfffffffffffffffn);
 
         const program8 = `
         export fn main(): i64 {
@@ -207,10 +207,10 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program8, 0b1111111n);
+        await compileAndRun(program8, 0b1111111n);
     });
 
-    it("should work with SIMD", () => {
+    it("should work with SIMD", async () => {
         const program1 = `
         export fn main(): i32 {
             let simd = { 1, 2, 3, 4 };
@@ -218,7 +218,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program1, 1);
+        await compileAndRun(program1, 1);
 
         const program2 = `
         export fn main(): i64 {
@@ -227,7 +227,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program2, 2n);
+        await compileAndRun(program2, 2n);
 
         const program3 = `
         export fn main(): f32 {
@@ -236,7 +236,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program3, 3.4000000953674316);
+        await compileAndRun(program3, 3.4000000953674316);
 
         const program4 = `
         export fn main(): f64 {
@@ -245,7 +245,7 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program4, 2.1);
+        await compileAndRun(program4, 2.1);
 
         const program5 = `
         export fn main(): i32 {
@@ -254,19 +254,19 @@ describe("literals", () => {
         }
         `;
 
-        compileAndRun(program5, 4);
+        await compileAndRun(program5, 4);
     });
 });
 
-describe("unary operators", () => {
-    it("should work with numbers", () => {
+describe("unary operators", async () => {
+    it("should work with numbers", async () => {
         const program1 = `
         export fn main(): i32 {
             return -5;
         }
         `;
 
-        compileAndRun(program1, -5);
+        await compileAndRun(program1, -5);
 
         const program2 = `
         export fn main(): i32 {
@@ -274,7 +274,7 @@ describe("unary operators", () => {
         }
         `;
 
-        compileAndRun(program2, -6);
+        await compileAndRun(program2, -6);
 
         const program3 = `
         export fn main(): i32 {
@@ -282,7 +282,7 @@ describe("unary operators", () => {
         }
         `;
 
-        compileAndRun(program3, 1);
+        await compileAndRun(program3, 1);
 
         const program4 = `
         export fn main(): i32 {
@@ -290,10 +290,10 @@ describe("unary operators", () => {
         }
         `;
 
-        compileAndRun(program4, 0);
+        await compileAndRun(program4, 0);
     });
 
-    it("should work with SIMD", () => {
+    it("should work with SIMD", async () => {
         const program1 = `
         export fn main(): i32 {
             let simd = { 1, 2, 3, 4 };
@@ -301,7 +301,7 @@ describe("unary operators", () => {
         }
         `;
 
-        compileAndRun(program1, -1);
+        await compileAndRun(program1, -1);
 
         const program2 = `
         export fn main(): i64 {
@@ -310,6 +310,6 @@ describe("unary operators", () => {
         }
         `;
 
-        compileAndRun(program2, -3n);
+        await compileAndRun(program2, -3n);
     });
 });

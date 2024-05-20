@@ -3,8 +3,8 @@
 import { describe, it } from "bun:test";
 import { compileAndRun } from "./utils.js";
 
-// describe("array declarations", () => {
-//     it("should trigger stack overflow", () => {
+// describe("array declarations", async () => {
+//     it("should trigger stack overflow", async () => {
 //         const program = `
 //         export fn main(): i32 {
 //             let x: [i32; 16384];
@@ -14,7 +14,7 @@ import { compileAndRun } from "./utils.js";
 //         }
 //         `;
 
-//         compileAndRun(program, 0);
+//         await compileAndRun(program, 0);
 
 //         const program2 = `
 //         export fn main(): i32 {
@@ -25,12 +25,12 @@ import { compileAndRun } from "./utils.js";
 //         }
 //         `;
 
-//         assert.throws(() => compileAndRun(program2, 0));
+//         assert.throws(() => await compileAndRun(program2, 0));
 //     });
 // });
 
-describe("array initialization", () => {
-    it("should work with static sized arrays", () => {
+describe("array initialization", async () => {
+    it("should work with static sized arrays", async () => {
         const program = `
         export fn main(): i32 {
             let x: [i32; 3] = [1, 2, 3];
@@ -38,10 +38,10 @@ describe("array initialization", () => {
         }
         `;
 
-        compileAndRun(program, 6);
+        await compileAndRun(program, 6);
     });
 
-    it("should work with dynamic sized arrays", () => {
+    it("should work with dynamic sized arrays", async () => {
         const program = `
         export fn main(): i32 {
             let x: [i32] = [1, 2, 3];
@@ -49,7 +49,7 @@ describe("array initialization", () => {
         }
         `;
 
-        compileAndRun(program, 6);
+        await compileAndRun(program, 6);
 
         const program2 = `
         export fn main(): i32 {
@@ -61,12 +61,12 @@ describe("array initialization", () => {
         }
         `;
 
-        compileAndRun(program2, 1);
+        await compileAndRun(program2, 1);
     });
 });
 
-describe("arena array functions", () => {
-    it("should work with return values", () => {
+describe("arena array functions", async () => {
+    it("should work with return values", async () => {
         const program = `
         fn add(a: [i32; 2], b: [i32; 2]): [i32; 2] {
             return [a[0] + b[0], a[1] + b[1]];
@@ -80,10 +80,10 @@ describe("arena array functions", () => {
         }
         `;
 
-        compileAndRun(program, 16);
+        await compileAndRun(program, 16);
     });
 
-    it("should work with nested function calls", () => {
+    it("should work with nested function calls", async () => {
         const program = `
         fn add(a: [i32; 2], b: [i32; 2]): [i32; 2] {
             return [a[0] + b[0], a[1] + b[1]];
@@ -101,7 +101,7 @@ describe("arena array functions", () => {
         }
         `;
 
-        compileAndRun(program, 16);
+        await compileAndRun(program, 16);
 
         const program2 = `
         fn add_3(a: [i32; 2], b: [i32; 2], c: [i32; 2]): [i32; 2] {
@@ -121,7 +121,7 @@ describe("arena array functions", () => {
         }
         `;
 
-        compileAndRun(program2, 19);
+        await compileAndRun(program2, 19);
 
         const program3 = `
         fn add_3(a: [i32; 2], b: [i32; 2], c: [i32; 2]): [i32; 2] {
@@ -140,7 +140,7 @@ describe("arena array functions", () => {
         }
         `;
 
-        compileAndRun(program3, 19);
+        await compileAndRun(program3, 19);
 
         const program4 = `
         fn add_3(a: [i32; 2], b: [i32; 2], c: [i32; 2]): [i32; 2] {
@@ -156,12 +156,12 @@ describe("arena array functions", () => {
         }
         `;
 
-        compileAndRun(program4, 19);
+        await compileAndRun(program4, 19);
     });
 });
 
-describe("array functions", () => {
-    it("should work with return values", () => {
+describe("array functions", async () => {
+    it("should work with return values", async () => {
         const program = `
         fn add(a: [i32; 2], b: [i32; 2]): [i32; 2] {
             return [a[0] + b[0], a[1] + b[1]];
@@ -175,10 +175,10 @@ describe("array functions", () => {
         }
         `;
 
-        compileAndRun(program, 16);
+        await compileAndRun(program, 16);
     });
 
-    it("should work with nested function calls", () => {
+    it("should work with nested function calls", async () => {
         const program = `
         fn add(a: [i32; 2], b: [i32; 2]): [i32; 2] {
             return [a[0] + b[0], a[1] + b[1]];
@@ -196,7 +196,7 @@ describe("array functions", () => {
         }
         `;
 
-        compileAndRun(program, 16);
+        await compileAndRun(program, 16);
 
         const program2 = `
         fn add_3(a: [i32; 2], b: [i32; 2], c: [i32; 2]): [i32; 2] {
@@ -216,7 +216,7 @@ describe("array functions", () => {
         }
         `;
 
-        compileAndRun(program2, 19);
+        await compileAndRun(program2, 19);
 
         const program3 = `
         fn add_3(a: [i32; 2], b: [i32; 2], c: [i32; 2]): [i32; 2] {
@@ -235,7 +235,7 @@ describe("array functions", () => {
         }
         `;
 
-        compileAndRun(program3, 19);
+        await compileAndRun(program3, 19);
 
         const program4 = `
         fn add_3(a: [i32; 2], b: [i32; 2], c: [i32; 2]): [i32; 2] {
@@ -251,6 +251,6 @@ describe("array functions", () => {
         }
         `;
 
-        compileAndRun(program4, 19);
+        await compileAndRun(program4, 19);
     });
 });

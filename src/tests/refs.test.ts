@@ -1,8 +1,8 @@
 import { describe, it } from "bun:test";
 import { compileAndRun } from "./utils.js";
 
-describe("refs", () => {
-    it("should work with structs", () => {
+describe("refs", async () => {
+    it("should work with structs", async () => {
         const program = `
         struct Foo {
             x: i32,
@@ -17,10 +17,10 @@ describe("refs", () => {
         }
         `;
 
-        compileAndRun(program, 3);
+        await compileAndRun(program, 3);
     });
 
-    it("should work with arrays", () => {
+    it("should work with arrays", async () => {
         const program = `
         export fn main(): i32 {
             let a = [1, 2, 3];
@@ -30,10 +30,10 @@ describe("refs", () => {
         }
         `;
 
-        compileAndRun(program, 5);
+        await compileAndRun(program, 5);
     });
 
-    it("should work with struct members", () => {
+    it("should work with struct members", async () => {
         const program = `
         struct Coord {
             x: i32,
@@ -53,6 +53,6 @@ describe("refs", () => {
         }
         `;
 
-        compileAndRun(program, 1);
+        await compileAndRun(program, 1);
     });
 });
