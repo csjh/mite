@@ -117,9 +117,11 @@ export type Context = {
     current_block: MiteType[];
     /** All captured functions that will go into the virtualized_functions table */
     captured_functions: string[];
-    /** All string literals */
+    /** String literal management */
     string: {
+        /** Associates strings to their pointer in memory */
         literals: Map<string, number>;
+        /** End of string section / start of next string inserted */
         end: number;
     };
     /** constants that don't fit elsewhere */
