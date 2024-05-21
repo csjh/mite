@@ -611,6 +611,7 @@ this is going to have to be:
 export function identifyStructs(program: Program): StructTypeInformation[] {
     const struct_declarations = Object.fromEntries(
         program.body
+            .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
             .filter((x): x is StructDeclaration => x.type === "StructDeclaration")
             .map((x) => [x.id.name, x])
     );
@@ -725,7 +726,9 @@ export function buildTypes(program: Program) {
     for (const {
         id: { name: struct_name },
         methods
-    } of program.body.filter((x): x is StructDeclaration => x.type === "StructDeclaration")) {
+    } of program.body
+        .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
+        .filter((x): x is StructDeclaration => x.type === "StructDeclaration")) {
         for (const { id, params, returnType } of methods) {
             const method_type = {
                 classification: "function",

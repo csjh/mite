@@ -36,9 +36,9 @@ export function programToBoilerplate(program: Program, _: Options) {
         }
     }
 
-    for (const struct of program.body.filter(
-        (x): x is StructDeclaration => x.type === "StructDeclaration"
-    )) {
+    for (const struct of program.body
+        .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
+        .filter((x): x is StructDeclaration => x.type === "StructDeclaration")) {
         for (const { id, params, returnType } of struct.methods) {
             (ctx.types[struct.id.name] as InstanceStructTypeInformation).methods.set(id.name, {
                 classification: "function",

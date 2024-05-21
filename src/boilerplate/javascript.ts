@@ -59,6 +59,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         .map((x) => x.declaration as FunctionDeclaration);
     const methods = Object.fromEntries(
         program.body
+            .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
             .filter((x): x is StructDeclaration => x.type === "StructDeclaration")
             .map((x) => [x.id.name, x.methods])
     );
