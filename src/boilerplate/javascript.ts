@@ -182,35 +182,35 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 type ValueOf<T> = T extends Map<unknown, infer V> ? V : never;
 
 function typeToAccessors({ type, offset }: ValueOf<StructTypeInformation["fields"]>): Accessors {
-    const ptr = type.is_ref ? `$GetUint32(this._ + ${offset}, true)` : `this._ + ${offset}`;
+    const ptr = type.is_ref ? `$GetUint32(this._ + ${offset})` : `this._ + ${offset}`;
 
     if (type.classification === "primitive") {
         if (type.name === "void") return { getter: "return undefined", setter: "" };
         if (type.name === "bool") {
             return {
-                getter: `return !!$GetInt32(${ptr}, true);`,
-                setter: `$SetInt32(${ptr}, !!$val, true);`
+                getter: `return !!$GetInt32(${ptr});`,
+                setter: `$SetInt32(${ptr}, !!$val);`
             };
         }
 
         const typed_name = primitiveToTypedName(type.name);
         return {
-            getter: `return $Get${typed_name}(${ptr}, true);`,
-            setter: `$Set${typed_name}(${ptr}, $val, true);`
+            getter: `return $Get${typed_name}(${ptr});`,
+            setter: `$Set${typed_name}(${ptr}, $val);`
         };
     } else if (type.classification === "struct") {
         // TODO: handle non-ref setters
         const getter = structToJavascript(ptr, type);
         return {
             getter: `${getter.setup}; return ${getter.expression};`,
-            setter: type.is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
+            setter: type.is_ref ? `$SetUint32(${ptr}, $val._);` : ""
         };
     } else if (type.classification === "array") {
         // TODO: handle non-ref setters
         const getter = arrayToJavascript(ptr, type);
         return {
             getter: `${getter.setup}; return ${getter.expression};`,
-            setter: type.is_ref ? `$SetUint32(${ptr}, $val._, true);` : ""
+            setter: type.is_ref ? `$SetUint32(${ptr}, $val._);` : ""
         };
     } else if (type.classification === "function") {
         const getter = functionToJavascript(ptr, type);
@@ -222,7 +222,7 @@ function typeToAccessors({ type, offset }: ValueOf<StructTypeInformation["fields
         const getter = stringToJavascript(ptr, type);
         return {
             getter: `${getter.setup}; return ${getter.expression};`,
-            setter: `$SetUint32(${ptr}, $fromJavascriptString($val), true);`
+            setter: `$SetUint32(${ptr}, $fromJavascriptString($val));`
         };
     } else {
         // @ts-expect-error unreachable probably
@@ -413,26 +413,26 @@ function arrayToJavascript(ptr: string, type: ArrayTypeInformation): Conversion 
         const typed_name = primitiveToTypedName(type.element_type.name);
         return {
             setup: `const $ptr = ${ptr};`,
-            expression: `new ${typed_name}Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true))`
+            expression: `new ${typed_name}Array($memory.buffer, $ptr + 4, $GetUint32($ptr))`
         };
     } else if (type.element_type.classification === "struct") {
         return {
             setup: `const $ptr = ${ptr};`,
             expression: type.element_type.is_ref
-                ? `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => new ${type.element_type.name}($el))`
-                : `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => new ${type.element_type.name}($ptr + 4 + i * ${type.element_type.sizeof}))`
+                ? `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr)), ($el) => new ${type.element_type.name}($el))`
+                : `Array.from({ length: $GetUint32($ptr) }, (_, i) => new ${type.element_type.name}($ptr + 4 + i * ${type.element_type.sizeof}))`
         };
     } else if (type.element_type.classification === "array") {
         throw new Error("Nested arrays are not supported");
     } else if (type.element_type.classification === "function") {
         return {
             setup: `const $ptr = ${ptr};`,
-            expression: `Array.from({ length: $GetUint32($ptr, true) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4", type.element_type).expression})`
+            expression: `Array.from({ length: $GetUint32($ptr) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4", type.element_type).expression})`
         };
     } else if (type.element_type.classification === "string") {
         return {
             setup: `const $ptr = ${ptr};`,
-            expression: `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)), ($el) => ${stringToJavascript("$el", type.element_type).expression})`
+            expression: `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr)), ($el) => ${stringToJavascript("$el", type.element_type).expression})`
         };
     } else {
         // @ts-expect-error unreachable probably
