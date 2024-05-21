@@ -154,13 +154,13 @@ export class Parser {
 
         const specifiers = [];
         while (this.token.type !== TokenType.RIGHT_BRACE) {
-            const local = this.getIdentifier();
-            let imported = local;
+            const imported = this.getIdentifier();
+            let local = imported;
 
             if (this.token.type === TokenType.AS) {
                 this.eatToken(TokenType.AS);
                 const alias = this.getIdentifier();
-                imported = alias;
+                local = alias;
             }
 
             const specifier: ImportSpecifier = {
