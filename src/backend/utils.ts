@@ -30,6 +30,7 @@ import {
 export const ARENA_HEAP_POINTER = "__arena_heap_pointer";
 export const ARENA_HEAP_OFFSET = "__arena_heap_pointer_offset";
 export const VIRTUALIZED_FUNCTIONS = "virtualized_functions";
+export const STRING_SECTION_START = "$string_section_start";
 
 export function updateExpected(ctx: Context, expected: Context["expected"]) {
     return { ...ctx, expected };
@@ -331,7 +332,6 @@ export function addDataSegment(
     ctx: Context,
     segment_name: string,
     memory_name: string,
-    offset: binaryen.ExpressionRef,
     data: Uint8Array
 ) {
     // @ts-expect-error undocumented binaryen export
@@ -345,8 +345,8 @@ export function addDataSegment(
         binaryen.stringToUTF8OnStack(segment_name),
         // @ts-expect-error undocumented binaryen export
         binaryen.stringToUTF8OnStack(memory_name),
-        false,
-        offset,
+        true,
+        null,
         data_ptr,
         data.length
     );

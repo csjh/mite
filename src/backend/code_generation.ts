@@ -15,7 +15,10 @@ import {
     VIRTUALIZED_FUNCTIONS,
     getParameterCallbackCounts,
     addDataSegment,
-    typeInformationToBinaryen
+    typeInformationToBinaryen,
+    FN_PTRS_START,
+    STRING_SECTION_START,
+    assumeStructs
 } from "./utils.js";
 import {
     Context,
@@ -94,9 +97,6 @@ export async function programToModule(
     const callback_counts = getParameterCallbackCounts(assumeStructs(types), program);
     const RESERVED_FN_PTRS = callback_counts.map((x) => x[1]).reduce((acc, x) => acc + x, 0);
 
-    const START_OF_STRING_SECTION =
-        START_OF_FN_PTRS + IndirectFunction.struct_type.sizeof * RESERVED_FN_PTRS;
-
     const mod = new binaryen.Module();
     const ctx: Context = {
         mod,
@@ -108,7 +108,7 @@ export async function programToModule(
         local_count: 0,
         string: {
             literals: new Map(),
-            end: START_OF_STRING_SECTION
+            end: 0
         },
         constants: {
             RESERVED_FN_PTRS
@@ -121,6 +121,7 @@ export async function programToModule(
     addBuiltins(ctx);
 
     mod.setMemory(256, -1, "$memory", [], false, false, "main_memory");
+    mod.addMemoryImport("main_memory", "$mite", "$memory");
 
     for (const node of program.body.filter(
         (x): x is ImportDeclaration => x.type === "ImportDeclaration"
@@ -205,7 +206,7 @@ export async function programToModule(
     }
 
     const encoder = new TextEncoder();
-    const string_data = new Uint8Array(ctx.string.end - START_OF_STRING_SECTION);
+    const string_data = new Uint8Array(ctx.string.end);
     let position = 0;
     for (const [literal] of Array.from(ctx.string.literals.entries()).sort((a, b) => a[1] - b[1])) {
         const string_length = encoder.encodeInto(literal, string_data.subarray(position + 4));
@@ -219,7 +220,6 @@ export async function programToModule(
             ctx,
             "js_function_pointers",
             "main_memory",
-            mod.i32.const(START_OF_FN_PTRS),
             new Uint8Array(
                 Array.from({ length: RESERVED_FN_PTRS }, (_, i) => [i, 0, 0, 0, i, 0, 0, 0]).flat()
             )
@@ -227,16 +227,8 @@ export async function programToModule(
     }
 
     if (string_data.length > 0) {
-        addDataSegment(
-            ctx,
-            "string_data",
-            "main_memory",
-            mod.i32.const(START_OF_STRING_SECTION),
-            string_data
-        );
+        addDataSegment(ctx, "string_data", "main_memory", string_data);
     }
-
-    const START_OF_HEAP = START_OF_STRING_SECTION + string_data.length;
 
     ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
     ctx.mod.addGlobal(ARENA_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(START_OF_HEAP));
@@ -245,10 +237,30 @@ export async function programToModule(
         ...callback_counts.flatMap(([fn, count]) => Array(count).fill(fn)),
         ...ctx.captured_functions
     ];
-    const table_size = fns.length + RESERVED_FN_PTRS;
-    mod.addTable(VIRTUALIZED_FUNCTIONS, table_size, table_size);
-    mod.addActiveElementSegment(VIRTUALIZED_FUNCTIONS, "initializer", fns, mod.i32.const(0));
-    mod.addTableExport(VIRTUALIZED_FUNCTIONS, "$table");
+    const init = [];
+
+    if (string_data.length > 0) {
+        mod.addGlobal(STRING_SECTION_START, binaryen.i32, true, mod.i32.const(0));
+
+        init.push(
+            mod.global.set(
+                STRING_SECTION_START,
+                mod.call("arena_heap_malloc", [mod.i32.const(string_data.length)], binaryen.i32)
+            ),
+            mod.memory.init(
+                "string_data",
+                mod.global.get(STRING_SECTION_START, binaryen.i32),
+                mod.i32.const(0),
+                mod.i32.const(string_data.length),
+                "main_memory"
+            ),
+            mod.data.drop("string_data")
+        );
+    }
+
+    mod.setStart(
+        mod.addFunction("$start", binaryen.none, binaryen.none, [], mod.block(null, init))
+    );
 
     return mod;
 }
@@ -574,7 +586,10 @@ function literalToExpression(ctx: Context, value: Literal): MiteType {
                     new TransientPrimitive(
                         ctx,
                         Pointer.type,
-                        ctx.mod.i32.const(ctx.string.literals.get(str)!)
+                        ctx.mod.i32.add(
+                            ctx.mod.i32.const(ctx.string.literals.get(str)!),
+                            ctx.mod.global.get(STRING_SECTION_START, binaryen.i32)
+                        )
                     )
                 )
             );
