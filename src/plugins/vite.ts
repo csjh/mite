@@ -156,14 +156,13 @@ export async function mite(): Promise<Plugin<never>> {
             }
         },
         async transform(code, id, opts = {}) {
-            if (id.endsWith(".mite?bypass-processing")) return JSON.stringify(code);
             if (!id.endsWith(".mite")) return null;
 
             if (dev) {
                 const source = await compile(code, {
                     optimize: false,
-                    resolveImport: async (path) => {
-                        return (await this.load({ id: `${path}?bypass-processing` })).code || "";
+                    resolveImport: async (p) => {
+                        return fs.readFile(path.resolve(path.dirname(id), p), "utf-8");
                     }
                 });
 
@@ -206,10 +205,8 @@ export async function mite(): Promise<Plugin<never>> {
                     wasmReferenceId,
                     await compile(code, {
                         optimize: true,
-                        resolveImport: async (path) => {
-                            return (
-                                (await this.load({ id: `${path}?bypass-processing` })).code || ""
-                            );
+                        resolveImport: async (p) => {
+                            return fs.readFile(path.resolve(path.dirname(id), p), "utf-8");
                         }
                     })
                 );
