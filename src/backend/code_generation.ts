@@ -230,13 +230,25 @@ export async function programToModule(
         addDataSegment(ctx, "string_data", "main_memory", string_data);
     }
 
-    ctx.mod.addGlobal(ARENA_HEAP_OFFSET, binaryen.i32, true, ctx.mod.i32.const(0));
-    ctx.mod.addGlobal(ARENA_HEAP_POINTER, binaryen.i32, false, ctx.mod.i32.const(START_OF_HEAP));
+    ctx.mod.addGlobalImport(ARENA_HEAP_OFFSET, "$mite", "$heap_offset", binaryen.i32, true);
+    ctx.mod.addGlobalImport(ARENA_HEAP_POINTER, "$mite", "$heap_pointer", binaryen.i32, false);
 
     const fns = [
         ...callback_counts.flatMap(([fn, count]) => Array(count).fill(fn)),
         ...ctx.captured_functions
     ];
+
+    mod.addTableImport(VIRTUALIZED_FUNCTIONS, "$mite", "$table");
+    // TODO: copy the logic for strings below for function poointers when binaryen adds table.init support
+    // in the mean time, assume we have an imported global and 64 reserved spaces
+    mod.addGlobalImport(FN_PTRS_START, "$mite", "$fn_ptrs_start", binaryen.i32, false);
+    mod.addActiveElementSegment(
+        VIRTUALIZED_FUNCTIONS,
+        "initializer",
+        fns,
+        mod.global.get(FN_PTRS_START, binaryen.i32)
+    );
+
     const init = [];
 
     if (string_data.length > 0) {
@@ -357,12 +369,12 @@ async function handleDeclaration(
                             new DirectFunction(ctx, { ...exportable, is_ref: false })
                         );
                     } else if (exportable.classification === "struct") {
-                        ctx.types[exportable.name] = exportable;
+                        ctx.types[specifier.local.name] = exportable;
                         for (const method of exportable.methods.values()) {
                             ctx.mod.addFunctionImport(
-                                specifier.local.name,
+                                `${specifier.local.name}.${method.name}`,
                                 import_file,
-                                specifier.imported.name,
+                                `${specifier.imported.name}.${method.name}`,
                                 binaryen.createType(
                                     method.implementation.params.map((x) =>
                                         typeInformationToBinaryen(x.type)

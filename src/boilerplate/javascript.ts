@@ -17,7 +17,12 @@ import {
 } from "../types/nodes.js";
 import { buildTypes } from "../backend/context_initialization.js";
 import { IndirectFunction } from "../backend/type_classes.js";
-import { functionToSignature, getParameterCallbackCounts, parseType } from "../backend/utils.js";
+import {
+    assumeStructs,
+    functionToSignature,
+    getParameterCallbackCounts,
+    parseType
+} from "../backend/utils.js";
 import dedent from "dedent";
 import { START_OF_FN_PTRS } from "../backend/code_generation.js";
 
@@ -57,6 +62,12 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                 x.type === "ExportNamedDeclaration" && x.declaration.type === "FunctionDeclaration"
         )
         .map((x) => x.declaration as FunctionDeclaration);
+    const exported_structs = new Set(
+        program.body
+            .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
+            .filter((x): x is StructDeclaration => x.type === "StructDeclaration")
+            .map((x) => x.id.name)
+    );
     const methods = Object.fromEntries(
         program.body
             .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
@@ -142,7 +153,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         (x): x is StructTypeInformation => x.classification === "struct"
     )) {
         code += dedent`
-            class ${name} {
+            ${exported_structs.has(name) ? "export " : ""}class ${name} {
                 static sizeof = ${sizeof};
 
                 constructor(ptr) {

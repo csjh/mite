@@ -25,6 +25,7 @@ import {
 import {
     allocate,
     createMiteType,
+    FN_PTRS_START,
     fromExpressionRef,
     miteSignatureToBinaryenSignature,
     typeInformationToBinaryen,
@@ -1210,9 +1211,12 @@ export class DirectFunction implements MiteType {
                     new TransientPrimitive(
                         this.ctx,
                         Pointer.type,
-                        this.ctx.mod.i32.const(
-                            this.ctx.constants.RESERVED_FN_PTRS +
-                                this.ctx.captured_functions.indexOf(captured_name)
+                        this.ctx.mod.i32.add(
+                            this.ctx.mod.i32.const(
+                                this.ctx.constants.RESERVED_FN_PTRS +
+                                    this.ctx.captured_functions.indexOf(captured_name)
+                            ),
+                            this.ctx.mod.global.get(FN_PTRS_START, binaryen.i32)
                         )
                     )
                 )
@@ -1339,7 +1343,13 @@ export class StructMethod implements MiteType {
                     new TransientPrimitive(
                         this.ctx,
                         Pointer.type,
-                        this.ctx.mod.i32.const(this.ctx.captured_functions.indexOf(this.type.name))
+                        this.ctx.mod.i32.add(
+                            this.ctx.mod.i32.const(
+                                this.ctx.constants.RESERVED_FN_PTRS +
+                                    this.ctx.captured_functions.indexOf(this.type.name)
+                            ),
+                            this.ctx.mod.global.get(FN_PTRS_START, binaryen.i32)
+                        )
                     )
                 ),
             func.struct
