@@ -3,9 +3,17 @@ import { compile } from "./compiler.js";
 
 const program = await fs.readFile(process.argv[2], "utf8");
 
-console.log(compile(program, { as: "wat", optimize: false }));
 console.log(
-    compile(program, {
+    await compile(program, {
+        as: "wat",
+        optimize: false,
+        resolveImport() {
+            return Promise.resolve("");
+        }
+    })
+);
+console.log(
+    await compile(program, {
         as: "javascript",
         createInstance(imports) {
             return {
@@ -14,9 +22,13 @@ console.log(
         }
     })
 );
-console.log(compile(program, { as: "dts" }));
+console.log(await compile(program, { as: "dts" }));
 
-const output = compile(program);
+const output = await compile(program, {
+    resolveImport() {
+        return Promise.resolve("");
+    }
+});
 
 await fs.writeFile("out.wasm", output);
 
