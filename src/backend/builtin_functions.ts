@@ -44,6 +44,14 @@ export function addBuiltins(ctx: Context) {
     const ARENA_HEAP_OFFSET = enhanced_global(mod, AHO);
     const ARENA_HEAP_POINTER = enhanced_global(mod, AHP);
 
+    ctx.mod.addFunctionImport(
+        "$update_dataview",
+        "$mite",
+        "$update_dataview",
+        binaryen.none,
+        binaryen.none
+    );
+
     const DESIRED_SIZE = enhanced_local(mod, 0);
     // prettier-ignore
     const arena_heap_malloc = mod.block(null, [
@@ -51,7 +59,7 @@ export function addBuiltins(ctx: Context) {
             i32.ge_u(
                 i32.add(DESIRED_SIZE.get(), i32.add(ARENA_HEAP_OFFSET.get(), ARENA_HEAP_POINTER.get())),
                 i32.mul(mod.memory.size("main_memory"), i32.const(PAGE_SIZE))),
-            mod.memory.grow(mod.memory.size("main_memory"), "main_memory")),
+            mod.block(null, [mod.memory.grow(mod.memory.size("main_memory"), "main_memory"), mod.call("$update_dataview", [], binaryen.none)])),
 
         ARENA_HEAP_OFFSET.set(
             i32.add(DESIRED_SIZE.get(), DESIRED_SIZE.tee(ARENA_HEAP_OFFSET.get()))),
