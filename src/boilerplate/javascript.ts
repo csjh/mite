@@ -88,7 +88,13 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
             // should get a better strategy for this
             const variable_safe_file = imported_file.replace(/[^a-zA-Z0-9]/g, "_");
             js_import_strings.push(
-                `import { $exports as ${variable_safe_file} } from "${imported_file}";`
+                `import { $exports as ${variable_safe_file}, ${import_.specifiers
+                    .map((x) =>
+                        x.local.name !== x.imported.name
+                            ? `${x.imported.name} as ${x.local.name}`
+                            : x.imported.name
+                    )
+                    .join(", ")} } from "${imported_file}";`
             );
             wasm_import_strings.push(`"${imported_file}": ${variable_safe_file}`);
         }
@@ -96,7 +102,14 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
     const { setup = "", instantiation } = createInstance(`{
             console,
-            $mite: new Proxy({ $memory, $table }, {
+            $mite: new Proxy({
+                $memory,
+                $table,
+                $heap_pointer,
+                $heap_offset,
+                $fn_ptrs_start: new WebAssembly.Global({ value: "i32" }, $table.grow(64)),
+                $update_dataview: $updateDataView
+            }, {
                 get(_, prop) {
                     if (prop.startsWith("wrap_")) {
                         return function (ptr, ...args) { return $funcs[ptr](...args); };
@@ -107,94 +120,19 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         }`);
 
     let code = dedent`
-        import { $memory, $table } from "virtual:mite-shared";
+        import {
+            $memory, $table, $heap_pointer, $heap_offset, $updateDataView,
+            $toJavascriptFunction, $toJavascriptString, $fromJavascriptString,
+            $GetBigInt64, $GetBigUint64, $GetFloat32, $GetFloat64, $GetInt16, $GetInt32, $GetInt8, $GetUint16, $GetUint32, $GetUint8, $SetBigInt64, $SetBigUint64, $SetFloat32, $SetFloat64, $SetInt16, $SetInt32, $SetInt8, $SetUint16, $SetUint32, $SetUint8
+        } from "virtual:mite-shared";
+        ${js_import_strings.join("\n        ")}
 
         ${setup ? setup + "\n" : ""}
         const $wasm = await ${instantiation};
         export const $exports = $wasm.instance.exports;
-        const $buffer = new DataView($memory.buffer);
 
         const $noop = () => {};
-        const $virtualized_functions =  /*#__PURE__*/ Array.from($table, (_, i) => $table.get(i));
         const $funcs = /*#__PURE__*/ Array(${ctx.callbacks.length}).fill($noop);
-
-        const $encoder = /*#__PURE__*/ new TextEncoder();
-        const $decoder = /*#__PURE__*/ new TextDecoder();
-        const $stringToPointer = /*#__PURE__*/ new Map();
-        const $pointerToString = /*#__PURE__*/ new Map();
-
-        const $DataViewPrototype = DataView.prototype;
-        const $GetBigInt64 =  /*#__PURE__*/ $DataViewPrototype.getBigInt64 .bind($buffer);
-        const $GetBigUint64 = /*#__PURE__*/ $DataViewPrototype.getBigUint64.bind($buffer);
-        const $GetFloat32 =   /*#__PURE__*/ $DataViewPrototype.getFloat32  .bind($buffer);
-        const $GetFloat64 =   /*#__PURE__*/ $DataViewPrototype.getFloat64  .bind($buffer);
-        const $GetInt16 =     /*#__PURE__*/ $DataViewPrototype.getInt16    .bind($buffer);
-        const $GetInt32 =     /*#__PURE__*/ $DataViewPrototype.getInt32    .bind($buffer);
-        const $GetInt8 =      /*#__PURE__*/ $DataViewPrototype.getInt8     .bind($buffer);
-        const $GetUint16 =    /*#__PURE__*/ $DataViewPrototype.getUint16   .bind($buffer);
-        const $GetUint32 =    /*#__PURE__*/ $DataViewPrototype.getUint32   .bind($buffer);
-        const $GetUint8 =     /*#__PURE__*/ $DataViewPrototype.getUint8    .bind($buffer);
-        const $SetBigInt64 =  /*#__PURE__*/ $DataViewPrototype.setBigInt64 .bind($buffer);
-        const $SetBigUint64 = /*#__PURE__*/ $DataViewPrototype.setBigUint64.bind($buffer);
-        const $SetFloat32 =   /*#__PURE__*/ $DataViewPrototype.setFloat32  .bind($buffer);
-        const $SetFloat64 =   /*#__PURE__*/ $DataViewPrototype.setFloat64  .bind($buffer);
-        const $SetInt16 =     /*#__PURE__*/ $DataViewPrototype.setInt16    .bind($buffer);
-        const $SetInt32 =     /*#__PURE__*/ $DataViewPrototype.setInt32    .bind($buffer);
-        const $SetInt8 =      /*#__PURE__*/ $DataViewPrototype.setInt8     .bind($buffer);
-        const $SetUint16 =    /*#__PURE__*/ $DataViewPrototype.setUint16   .bind($buffer);
-        const $SetUint32 =    /*#__PURE__*/ $DataViewPrototype.setUint32   .bind($buffer);
-        const $SetUint8 =     /*#__PURE__*/ $DataViewPrototype.setUint8    .bind($buffer);
-        ${/* function bindings actually don't really care about types */ ""}
-        function $toJavascriptFunction($ptr) {
-            const $fn = $virtualized_functions[$GetUint32($ptr, true)].bind(null, $GetUint32($ptr + 4, true));
-            $fn._ = $ptr;
-            return $fn;
-        }
-
-        function $toJavascriptString($ptr) {
-            if ($pointerToString.has($ptr)) return $pointerToString.get($ptr);
-
-            const $str = $decoder.decode(new Uint8Array($memory.buffer, $ptr + 4, $GetUint32($ptr, true)));
-
-            $pointerToString.set($ptr, $str);
-            $stringToPointer.set($str, $ptr);
-
-            return $str;
-        }
-        ${/* Courtesy of emscripten */ ""}
-        function $utf8Length($str) {
-            var $len = 0;
-            for (var $i = 0; $i < $str.length; ++$i) {
-                var $c = $str.charCodeAt($i);
-                if ($c <= 127) {
-                    ++$len;
-                } else if ($c <= 2047) {
-                    $len += 2;
-                } else if ($c >= 55296 && $c <= 57343) {
-                    $len += 4;
-                    ++$i;
-                } else {
-                    $len += 3;
-                }
-            }
-            return $len;
-        }
-
-        function $fromJavascriptString($str) {
-            if ($stringToPointer.has($str)) return $stringToPointer.get($str);
-
-            const $len = $utf8Length($str);
-            const $ptr = $arena_heap_malloc(4 + $len);
-            $SetUint32($ptr, $len, true);
-
-            const $output = new Uint8Array($memory.buffer, $ptr + 4, $len);
-            $encoder.encodeInto($str, $output);
-
-            $pointerToString.set($ptr, $str);
-            $stringToPointer.set($str, $ptr);
-
-            return $ptr;
-        }
     `;
 
     code += "\n\n";
