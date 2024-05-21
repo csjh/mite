@@ -44,10 +44,10 @@ type JSContext = Context & { callbacks: string[] };
 
 export function programToBoilerplate(program: Program, { createInstance }: Options) {
     const ctx = {
-        types: buildTypes(program)
+        types: assumeStructs(buildTypes(program))
     } as JSContext;
 
-    ctx.callbacks = getParameterCallbackCounts(ctx, program).flatMap(([fn, count]) =>
+    ctx.callbacks = getParameterCallbackCounts(ctx.types, program).flatMap(([fn, count]) =>
         Array<string>(count).fill(fn)
     );
 

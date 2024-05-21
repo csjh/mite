@@ -283,9 +283,9 @@ export function functionToSignature({
     return `${fn.params.map((y) => typeInformationToBinaryen(y.type)).join(",")}|${typeInformationToBinaryen(fn.results)}`;
 }
 
-function functionDeclarationToString(ctx: Context, func: FunctionDeclaration): string[] {
+function functionDeclarationToString(types: Context["types"], func: FunctionDeclaration): string[] {
     return func.params
-        .map((x) => parseType(ctx, x.typeAnnotation))
+        .map((x) => parseType(types, x.typeAnnotation))
         .filter((x): x is InstanceFunctionTypeInformation => x.classification === "function")
         .map(
             ({ implementation: x }) =>
@@ -293,7 +293,10 @@ function functionDeclarationToString(ctx: Context, func: FunctionDeclaration): s
         );
 }
 
-export function getParameterCallbackCounts(ctx: Context, program: Program): [string, number][] {
+export function getParameterCallbackCounts(
+    types: Context["types"],
+    program: Program
+): [string, number][] {
     const exports = program.body
         .filter(
             (x): x is ExportNamedDeclaration =>
@@ -307,10 +310,10 @@ export function getParameterCallbackCounts(ctx: Context, program: Program): [str
     );
 
     const function_callbacks = exports
-        .map((x) => functionDeclarationToString(ctx, x))
+        .map((x) => functionDeclarationToString(types, x))
         .concat(
             Object.values(methods).flatMap((x) =>
-                x.flatMap((y) => functionDeclarationToString(ctx, y))
+                x.flatMap((y) => functionDeclarationToString(types, y))
             )
         );
 
@@ -349,4 +352,20 @@ export function addDataSegment(
     );
     // @ts-expect-error undocumented binaryen export
     binaryen._free(data.byteOffset);
+}
+
+export function assumeStructs(types: Context["types"]): Context["types"] {
+    return new Proxy(types, {
+        get(target, p, receiver) {
+            if (p in target) return Reflect.get(target, p, receiver);
+            return {
+                classification: "struct",
+                name: p,
+                sizeof: 0,
+                fields: new Map(),
+                methods: new Map(),
+                is_ref: false
+            };
+        }
+    });
 }

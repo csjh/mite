@@ -91,7 +91,7 @@ export async function programToModule(
 ): Promise<binaryen.Module> {
     const types = buildTypes(program);
 
-    const callback_counts = getParameterCallbackCounts({ types } as Context, program);
+    const callback_counts = getParameterCallbackCounts(assumeStructs(types), program);
     const RESERVED_FN_PTRS = callback_counts.map((x) => x[1]).reduce((acc, x) => acc + x, 0);
 
     const START_OF_STRING_SECTION =

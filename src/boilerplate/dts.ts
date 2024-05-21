@@ -12,14 +12,14 @@ import {
     StructDeclaration
 } from "../types/nodes.js";
 import { buildTypes } from "../backend/context_initialization.js";
-import { parseType } from "../backend/utils.js";
+import { assumeStructs, parseType } from "../backend/utils.js";
 import dedent from "dedent";
 
 export type Options = unknown;
 
 export function programToBoilerplate(program: Program, _: Options) {
     const ctx = {
-        types: buildTypes(program)
+        types: assumeStructs(buildTypes(program))
     } as Context;
 
     const imports = program.body.filter(
