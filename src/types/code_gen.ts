@@ -3,33 +3,33 @@ import { MiteType } from "../backend/type_classes.js";
 
 export type ProgramToModuleOptions = unknown;
 
-type SharedTypeInformation = {
+interface SharedTypeInformation {
     classification: string;
     name: string;
     sizeof: number;
-};
+}
 
-export type ArrayTypeInformation = SharedTypeInformation & {
+export interface ArrayTypeInformation extends SharedTypeInformation {
     classification: "array";
     element_type: InstanceTypeInformation;
     length?: number;
-};
-export type StructTypeInformation = SharedTypeInformation & {
+}
+export interface StructTypeInformation extends SharedTypeInformation {
     classification: "struct";
     fields: Map<string, { type: InstanceTypeInformation; offset: number }>;
     methods: Map<string, InstanceFunctionTypeInformation>;
-};
-export type PrimitiveTypeInformation = SharedTypeInformation & {
+}
+export interface PrimitiveTypeInformation extends SharedTypeInformation {
     classification: "primitive";
-};
-export type FunctionTypeInformation = SharedTypeInformation & {
+}
+export interface FunctionTypeInformation extends SharedTypeInformation {
     classification: "function";
     implementation: FunctionInformation;
-};
-export type StringTypeInformation = SharedTypeInformation & {
+}
+export interface StringTypeInformation extends SharedTypeInformation {
     classification: "string";
     name: "string";
-};
+}
 
 export type TypeInformation =
     | PrimitiveTypeInformation
@@ -38,17 +38,21 @@ export type TypeInformation =
     | FunctionTypeInformation
     | StringTypeInformation;
 
-type SharedInstanceTypeInformation = {
+interface SharedInstanceTypeInformation {
     is_ref: boolean;
-};
+}
 
 type Instance<T> = SharedInstanceTypeInformation & T;
 
-export type InstanceArrayTypeInformation = Instance<ArrayTypeInformation>;
-export type InstanceStructTypeInformation = Instance<StructTypeInformation>;
-export type InstancePrimitiveTypeInformation = PrimitiveTypeInformation & { is_ref?: boolean };
-export type InstanceFunctionTypeInformation = Instance<FunctionTypeInformation>;
-export type InstanceStringTypeInformation = Instance<StringTypeInformation> & { is_ref: true };
+export interface InstanceArrayTypeInformation extends Instance<ArrayTypeInformation> {}
+export interface InstanceStructTypeInformation extends Instance<StructTypeInformation> {}
+export interface InstancePrimitiveTypeInformation extends PrimitiveTypeInformation {
+    is_ref?: boolean;
+}
+export interface InstanceFunctionTypeInformation extends Instance<FunctionTypeInformation> {}
+export interface InstanceStringTypeInformation extends Instance<StringTypeInformation> {
+    is_ref: true;
+}
 
 export type InstanceTypeInformation =
     | InstancePrimitiveTypeInformation
@@ -57,17 +61,17 @@ export type InstanceTypeInformation =
     | InstanceFunctionTypeInformation
     | InstanceStringTypeInformation;
 
-type Parameter = {
+interface Parameter {
     name: string;
     type: InstanceTypeInformation;
-};
+}
 
-export type FunctionInformation = {
+export interface FunctionInformation {
     params: Parameter[];
     results: InstanceTypeInformation;
-};
+}
 
-export type Context = {
+export interface Context {
     /** The binaryen module */
     mod: binaryen.Module;
     /** Variables defined in this scope */
@@ -133,7 +137,7 @@ export type Context = {
         stack_frame_size: number;
         local_count: number;
     };
-};
+}
 
 export type TernaryOperator = (left: MiteType, middle: MiteType, right: MiteType) => MiteType;
 export type BinaryOperator = (left: MiteType, right: MiteType) => MiteType;
