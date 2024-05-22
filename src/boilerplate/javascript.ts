@@ -17,14 +17,8 @@ import {
 } from "../types/nodes.js";
 import { buildTypes } from "../backend/context_initialization.js";
 import { IndirectFunction } from "../backend/type_classes.js";
-import {
-    assumeStructs,
-    functionToSignature,
-    getParameterCallbackCounts,
-    parseType
-} from "../backend/utils.js";
+import { assumeStructs, functionToSignature, getCallbacks, parseType } from "../backend/utils.js";
 import dedent from "dedent";
-import { START_OF_FN_PTRS } from "../backend/code_generation.js";
 
 interface Accessors {
     getter: string;
@@ -45,16 +39,16 @@ export type Options = {
     createInstance(imports: string): { instantiation: string; setup?: string };
 };
 
-type JSContext = Context & { callbacks: string[] };
+interface JSContext extends Context {
+    callbacks: string[];
+}
 
 export function programToBoilerplate(program: Program, { createInstance }: Options) {
+    const types = assumeStructs(buildTypes(program));
     const ctx = {
-        types: assumeStructs(buildTypes(program))
+        types,
+        callbacks: getCallbacks(types, program)
     } as JSContext;
-
-    ctx.callbacks = getParameterCallbackCounts(ctx.types, program).flatMap(([fn, count]) =>
-        Array<string>(count).fill(fn)
-    );
 
     const exports = program.body
         .filter(
@@ -62,18 +56,12 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                 x.type === "ExportNamedDeclaration" && x.declaration.type === "FunctionDeclaration"
         )
         .map((x) => x.declaration as FunctionDeclaration);
-    const exported_structs = new Set(
-        program.body
-            .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
-            .filter((x): x is StructDeclaration => x.type === "StructDeclaration")
-            .map((x) => x.id.name)
-    );
-    const methods = Object.fromEntries(
-        program.body
-            .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
-            .filter((x): x is StructDeclaration => x.type === "StructDeclaration")
-            .map((x) => [x.id.name, x.methods])
-    );
+
+    const structs = program.body
+        .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
+        .filter((x): x is StructDeclaration => x.type === "StructDeclaration");
+    const exported_structs = new Set(structs.map((x) => x.id.name));
+    const methods = Object.fromEntries(structs.map((x) => [x.id.name, x.methods]));
 
     const imports = program.body.filter(
         (x): x is ImportDeclaration => x.type === "ImportDeclaration"
@@ -114,37 +102,23 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
     const { setup = "", instantiation } = createInstance(`{
             console,
-            $mite: new Proxy({
-                $memory,
-                $table,
-                $heap_pointer,
-                $heap_offset,
-                $fn_ptrs_start: new WebAssembly.Global({ value: "i32" }, $table.grow(64)),
-                $update_dataview: $updateDataView
-            }, {
-                get(_, prop) {
-                    if (prop.startsWith("wrap_")) {
-                        return function (ptr, ...args) { return $funcs[ptr](...args); };
-                    }
-                    return Reflect.get(...arguments);
-                }
-            })${wasm_import_strings.join(",\n            ")}
+            $mite: $setup$miteImports($table_start, function (ptr, ...args) { return $funcs[ptr](...args); })${wasm_import_strings.join(",\n            ")}
         }`);
 
     let code = dedent`
         import {
-            $memory, $table, $heap_pointer, $heap_offset, $updateDataView,
-            $toJavascriptFunction, $toJavascriptString, $fromJavascriptString,
+            $memory, $table, $setup$miteImports,
+            $toJavascriptFunction, $toJavascriptString, $fromJavascriptString, $arena_heap_malloc, $arena_heap_reset,
             $GetBigInt64, $GetBigUint64, $GetFloat32, $GetFloat64, $GetInt16, $GetInt32, $GetInt8, $GetUint16, $GetUint32, $GetUint8, $SetBigInt64, $SetBigUint64, $SetFloat32, $SetFloat64, $SetInt16, $SetInt32, $SetInt8, $SetUint16, $SetUint32, $SetUint8
         } from "virtual:mite-shared";
         ${js_import_strings.join("\n        ")}
 
+        const $table_start = $table.grow(64);
+        const $funcs = [];
+
         ${setup ? setup + "\n" : ""}
         const $wasm = await ${instantiation};
         export const $exports = $wasm.instance.exports;
-
-        const $noop = () => {};
-        const $funcs = /*#__PURE__*/ Array(${ctx.callbacks.length}).fill($noop);
     `;
 
     code += "\n\n";
@@ -295,13 +269,10 @@ function functionDeclarationToString(
     const callbacks = arg_types
         .map((x) => x[1])
         .filter((x): x is InstanceFunctionTypeInformation => x.classification === "function");
-    const counts: Record<string, number> = {};
     for (const callback of callbacks) {
         const sig = functionToSignature(callback);
-        counts[sig] ??= 0;
-        // @ts-expect-error adding extra property for ease of usage
-        callback.idx = ctx.callbacks.indexOf(sig) + counts[sig];
-        counts[sig]++;
+        // @ts-expect-error idx is added in functionDeclarationToString
+        callback.idx = ctx.callbacks.indexOf(sig);
     }
 
     const args = arg_types.map(([name, type]) => javascriptToMite(name, type));
@@ -313,8 +284,7 @@ function functionDeclarationToString(
     const args_expression = args.map((x) => x.expression).join(", ");
 
     const callbacks_cleanup_str = callbacks.length
-        ? // @ts-expect-error idx is added in functionDeclarationToString
-          `\n\t    ${callbacks.map((x) => `$funcs[${x.idx}] = $noop;`).join("\n\t    ")}\n`
+        ? `\n\t    ${callbacks.map(() => `$funcs.pop();`).join("\n\t    ")}\n`
         : "";
 
     const { setup, expression } = miteToJavascript("$result", returnTypeType);
@@ -380,11 +350,13 @@ function functionToMite(
 \t    if (Object.hasOwn(${ptr}, '_')) {
 \t        ${fn} = ${ptr}._;
 \t    } else {
-\t        $funcs[${idx}] = function (${params.map((x) => x.name).join(", ")}) {${args_setup_str}
+\t        ${fn} = $arena_heap_malloc(${IndirectFunction.struct_type.sizeof});
+\t        $SetUint32(${fn}, $table_start + ${idx});
+\t        $SetUint32(${fn} + 4, $funcs.length);
+\t        $funcs.push(function (${params.map((x) => x.name).join(", ")}) {${args_setup_str}
 \t            const ${fn_result} = ${ptr}(${args_expression});${setup_str}
 \t            return ${expression};
-\t        };
-\t        ${fn} = ${START_OF_FN_PTRS + IndirectFunction.struct_type.sizeof * idx};
+\t        });
 \t    }`,
         expression: fn
     };

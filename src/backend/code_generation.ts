@@ -13,7 +13,7 @@ import {
     createMiteType,
     constructArray,
     VIRTUALIZED_FUNCTIONS,
-    getParameterCallbackCounts,
+    getCallbacks,
     addDataSegment,
     typeInformationToBinaryen,
     FN_PTRS_START,
@@ -94,8 +94,8 @@ export async function programToModule(
 ): Promise<binaryen.Module> {
     const types = buildTypes(program);
 
-    const callback_counts = getParameterCallbackCounts(assumeStructs(types), program);
-    const RESERVED_FN_PTRS = callback_counts.map((x) => x[1]).reduce((acc, x) => acc + x, 0);
+    const callbacks = getCallbacks(assumeStructs(types), program);
+    const RESERVED_FN_PTRS = callbacks.length;
 
     const mod = new binaryen.Module();
     const ctx: Context = {
@@ -120,7 +120,7 @@ export async function programToModule(
     ctx.conversions = createConversions(ctx);
     addBuiltins(ctx);
 
-    mod.setMemory(256, -1, "$memory", [], false, false, "main_memory");
+    mod.setMemory(256, -1, null, [], false, false, "main_memory");
     mod.addMemoryImport("main_memory", "$mite", "$memory");
 
     for (const node of program.body.filter(
@@ -192,7 +192,7 @@ export async function programToModule(
         }
     }
 
-    for (const [fn] of callback_counts) {
+    for (const fn of callbacks) {
         const [params, result] = fn.split("|");
         const param_types = params.split(",").map((x) => Number(x));
         const result_type = Number(result);
@@ -215,17 +215,6 @@ export async function programToModule(
         position += 4 + string_length.written;
     }
 
-    if (RESERVED_FN_PTRS > 0) {
-        addDataSegment(
-            ctx,
-            "js_function_pointers",
-            "main_memory",
-            new Uint8Array(
-                Array.from({ length: RESERVED_FN_PTRS }, (_, i) => [i, 0, 0, 0, i, 0, 0, 0]).flat()
-            )
-        );
-    }
-
     if (string_data.length > 0) {
         addDataSegment(ctx, "string_data", "main_memory", string_data);
     }
@@ -233,10 +222,7 @@ export async function programToModule(
     ctx.mod.addGlobalImport(ARENA_HEAP_OFFSET, "$mite", "$heap_offset", binaryen.i32, true);
     ctx.mod.addGlobalImport(ARENA_HEAP_POINTER, "$mite", "$heap_pointer", binaryen.i32, false);
 
-    const fns = [
-        ...callback_counts.flatMap(([fn, count]) => Array(count).fill(fn)),
-        ...ctx.captured_functions
-    ];
+    const fns = [...callbacks, ...ctx.captured_functions];
 
     mod.addTableImport(VIRTUALIZED_FUNCTIONS, "$mite", "$table");
     // TODO: copy the logic for strings below for function poointers when binaryen adds table.init support

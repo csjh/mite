@@ -55,8 +55,8 @@ export async function mite(): Promise<Plugin<never>> {
                 return dedent`
                     export const $memory = new WebAssembly.Memory({ initial: 256 });
                     export const $table = new WebAssembly.Table({ initial: 0, element: "anyfunc" });
-                    export const $heap_pointer = new WebAssembly.Global({ value: "i32", mutable: false }, 0);
-                    export const $heap_offset = new WebAssembly.Global({ value: "i32", mutable: true }, 0);
+                    const $heap_pointer = new WebAssembly.Global({ value: "i32", mutable: false }, 0);
+                    const $heap_offset = new WebAssembly.Global({ value: "i32", mutable: true }, 0);
             
                     const $encoder = /*#__PURE__*/ new TextEncoder();
                     const $decoder = /*#__PURE__*/ new TextDecoder();
@@ -85,7 +85,7 @@ export async function mite(): Promise<Plugin<never>> {
                     export const $SetUint32 =    (ptr, v) => $dataview.setUint32(ptr, v, true);
                     export const $SetUint8 =     (ptr, v) => $dataview.setUint8(ptr, v, true);
 
-                    export function $updateDataView() {
+                    function $updateDataView() {
                         $dataview = new DataView($memory.buffer);
                     }
                     ${/* function bindings actually don't really care about types */ ""}
@@ -151,6 +151,26 @@ export async function mite(): Promise<Plugin<never>> {
                         $heap_offset.value = $desired_size + ($desired_size = $heap_offset.value);
                 
                         return $desired_size + $heap_pointer.value;
+                    }
+
+                    export function $arena_heap_reset() {
+                        $heap_offset.value = 0;
+                    }
+
+                    export function $setup$miteImports($table_start, $wrapper_func) {
+                        return new Proxy({
+                            $memory,
+                            $table,
+                            $heap_pointer,
+                            $heap_offset,
+                            $fn_ptrs_start: new WebAssembly.Global({ value: "i32" }, $table_start),
+                            $update_dataview: $updateDataView
+                        }, {
+                            get(_, prop) {
+                                if (prop.startsWith("wrap_")) return $wrapper_func;
+                                return Reflect.get(...arguments);
+                            }
+                        });
                     }
                 `;
             }

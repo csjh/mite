@@ -73,9 +73,7 @@ export function addBuiltins(ctx: Context) {
         [],
         arena_heap_malloc
     );
-    mod.addFunctionExport("arena_heap_malloc", "$arena_heap_malloc");
 
     const arena_heap_reset = mod.block(null, [ARENA_HEAP_OFFSET.set(i32.const(0))]);
     mod.addFunction("arena_heap_reset", binaryen.none, binaryen.none, [], arena_heap_reset);
-    mod.addFunctionExport("arena_heap_reset", "$arena_heap_reset");
 }

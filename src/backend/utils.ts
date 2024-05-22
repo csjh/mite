@@ -295,10 +295,7 @@ function functionDeclarationToString(types: Context["types"], func: FunctionDecl
         );
 }
 
-export function getParameterCallbackCounts(
-    types: Context["types"],
-    program: Program
-): [string, number][] {
+export function getCallbacks(types: Context["types"], program: Program): string[] {
     const exports = program.body
         .filter(
             (x): x is ExportNamedDeclaration =>
@@ -312,21 +309,14 @@ export function getParameterCallbackCounts(
     );
 
     const function_callbacks = exports
-        .map((x) => functionDeclarationToString(types, x))
+        .flatMap((x) => functionDeclarationToString(types, x))
         .concat(
             Object.values(methods).flatMap((x) =>
                 x.flatMap((y) => functionDeclarationToString(types, y))
             )
         );
 
-    const counts = Object.fromEntries(function_callbacks.flatMap((x) => x.map((y) => [y, 0])));
-    for (const type of function_callbacks) {
-        const local_counts = Object.fromEntries(type.map((x) => [x, 0]));
-        for (const v of type) local_counts[v]++;
-        for (const [k, v] of Object.entries(local_counts)) counts[k] = Math.max(counts[k], v);
-    }
-
-    return Object.entries(counts).sort((a, b) => a[1] - b[1]);
+    return Array.from(new Set(function_callbacks));
 }
 
 export function addDataSegment(
