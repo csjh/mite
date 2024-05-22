@@ -3,7 +3,6 @@ import { compile } from "../compiler.js";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
-import { glob } from "glob";
 import dedent from "dedent";
 
 const dev = process.env.NODE_ENV === "development";
@@ -17,6 +16,18 @@ async function generateType(file: string) {
         await fs.mkdir(path.dirname(destination), { recursive: true });
     }
     await fs.writeFile(destination, dts);
+}
+
+const BANNED_DIRECTORIES = new Set(["node_modules", ".mite"]);
+async function* getAllMite(dir = "."): AsyncGenerator<string> {
+    const files = await fs.readdir(dir, { withFileTypes: true });
+    for (const file of files) {
+        if (file.isDirectory() && !BANNED_DIRECTORIES.has(file.name)) {
+            yield* getAllMite(path.join(dir, file.name));
+        } else if (file.name.endsWith(".mite")) {
+            yield path.join(dir, file.name);
+        }
+    }
 }
 
 type MiteFileData = {
@@ -42,8 +53,10 @@ export async function mite(): Promise<Plugin<never>> {
                 fs.rm(path.join(".mite/types", `${file.replace(process.cwd(), "")}.d.ts`))
             );
 
-            const mite_files = await glob("**/*.mite", { ignore: "node_modules/**" });
-            await Promise.all(mite_files.map(generateType));
+            // could be Promise.all'd but really not that serious
+            for await (const file of getAllMite()) {
+                await generateType(file);
+            }
         },
         resolveId(id) {
             if (id === mite_shared_id) {
