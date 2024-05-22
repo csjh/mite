@@ -64,26 +64,26 @@ export async function mite(): Promise<Plugin<never>> {
                     const $pointerToString = /*#__PURE__*/ new Map();
             
                     let $dataview = new DataView($memory.buffer);
-                    export const $GetBigInt64 =  /*#__PURE__*/ (ptr) => $dataview.getBigInt64(ptr, true);
-                    export const $GetBigUint64 = /*#__PURE__*/ (ptr) => $dataview.getBigUint64(ptr, true);
-                    export const $GetFloat32 =   /*#__PURE__*/ (ptr) => $dataview.getFloat32(ptr, true);
-                    export const $GetFloat64 =   /*#__PURE__*/ (ptr) => $dataview.getFloat64(ptr, true);
-                    export const $GetInt16 =     /*#__PURE__*/ (ptr) => $dataview.getInt16(ptr, true);
-                    export const $GetInt32 =     /*#__PURE__*/ (ptr) => $dataview.getInt32(ptr, true);
-                    export const $GetInt8 =      /*#__PURE__*/ (ptr) => $dataview.getInt8(ptr, true);
-                    export const $GetUint16 =    /*#__PURE__*/ (ptr) => $dataview.getUint16(ptr, true);
-                    export const $GetUint32 =    /*#__PURE__*/ (ptr) => $dataview.getUint32(ptr, true);
-                    export const $GetUint8 =     /*#__PURE__*/ (ptr) => $dataview.getUint8(ptr, true);
-                    export const $SetBigInt64 =  /*#__PURE__*/ (ptr, v) => $dataview.setBigInt64(ptr, v, true);
-                    export const $SetBigUint64 = /*#__PURE__*/ (ptr, v) => $dataview.setBigUint64(ptr, v, true);
-                    export const $SetFloat32 =   /*#__PURE__*/ (ptr, v) => $dataview.setFloat32(ptr, v, true);
-                    export const $SetFloat64 =   /*#__PURE__*/ (ptr, v) => $dataview.setFloat64(ptr, v, true);
-                    export const $SetInt16 =     /*#__PURE__*/ (ptr, v) => $dataview.setInt16(ptr, v, true);
-                    export const $SetInt32 =     /*#__PURE__*/ (ptr, v) => $dataview.setInt32(ptr, v, true);
-                    export const $SetInt8 =      /*#__PURE__*/ (ptr, v) => $dataview.setInt8(ptr, v, true);
-                    export const $SetUint16 =    /*#__PURE__*/ (ptr, v) => $dataview.setUint16(ptr, v, true);
-                    export const $SetUint32 =    /*#__PURE__*/ (ptr, v) => $dataview.setUint32(ptr, v, true);
-                    export const $SetUint8 =     /*#__PURE__*/ (ptr, v) => $dataview.setUint8(ptr, v, true);
+                    export const $GetBigInt64 =  (ptr) => $dataview.getBigInt64(ptr, true);
+                    export const $GetBigUint64 = (ptr) => $dataview.getBigUint64(ptr, true);
+                    export const $GetFloat32 =   (ptr) => $dataview.getFloat32(ptr, true);
+                    export const $GetFloat64 =   (ptr) => $dataview.getFloat64(ptr, true);
+                    export const $GetInt16 =     (ptr) => $dataview.getInt16(ptr, true);
+                    export const $GetInt32 =     (ptr) => $dataview.getInt32(ptr, true);
+                    export const $GetInt8 =      (ptr) => $dataview.getInt8(ptr, true);
+                    export const $GetUint16 =    (ptr) => $dataview.getUint16(ptr, true);
+                    export const $GetUint32 =    (ptr) => $dataview.getUint32(ptr, true);
+                    export const $GetUint8 =     (ptr) => $dataview.getUint8(ptr, true);
+                    export const $SetBigInt64 =  (ptr, v) => $dataview.setBigInt64(ptr, v, true);
+                    export const $SetBigUint64 = (ptr, v) => $dataview.setBigUint64(ptr, v, true);
+                    export const $SetFloat32 =   (ptr, v) => $dataview.setFloat32(ptr, v, true);
+                    export const $SetFloat64 =   (ptr, v) => $dataview.setFloat64(ptr, v, true);
+                    export const $SetInt16 =     (ptr, v) => $dataview.setInt16(ptr, v, true);
+                    export const $SetInt32 =     (ptr, v) => $dataview.setInt32(ptr, v, true);
+                    export const $SetInt8 =      (ptr, v) => $dataview.setInt8(ptr, v, true);
+                    export const $SetUint16 =    (ptr, v) => $dataview.setUint16(ptr, v, true);
+                    export const $SetUint32 =    (ptr, v) => $dataview.setUint32(ptr, v, true);
+                    export const $SetUint8 =     (ptr, v) => $dataview.setUint8(ptr, v, true);
 
                     export function $updateDataView() {
                         $dataview = new DataView($memory.buffer);
