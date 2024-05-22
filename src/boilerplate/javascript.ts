@@ -113,12 +113,12 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         } from "virtual:mite-shared";
         ${js_import_strings.join("\n        ")}
 
-        const $table_start = $table.grow(64);
-        const $funcs = [];
+        var $table_start = $table.grow(64);
+        var $funcs = [];
 
         ${setup ? setup + "\n" : ""}
-        const $wasm = await ${instantiation};
-        export const $exports = $wasm.instance.exports;
+        var $wasm = await ${instantiation};
+        export var $exports = $wasm.instance.exports;
     `;
 
     code += "\n\n";
@@ -291,7 +291,7 @@ function functionDeclarationToString(
     const setup_str = setup ? `\n\t    ${setup}` : "";
 
     return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {${args_setup_str}
-\t    const $result = $exports.${id.name}(${args_expression});
+\t    var $result = $exports.${id.name}(${args_expression});
 \t${setup_str}${callbacks_cleanup_str}
 \t    return ${expression};
 \t}`.replaceAll("\t", " ".repeat(indentation));
@@ -346,7 +346,7 @@ function functionToMite(
     const setup_str = setup ? `\n\t    ${setup}` : "";
 
     return {
-        setup: `\tlet ${fn} = 0;
+        setup: `\tvar ${fn} = 0;
 \t    if (Object.hasOwn(${ptr}, '_')) {
 \t        ${fn} = ${ptr}._;
 \t    } else {
@@ -354,7 +354,7 @@ function functionToMite(
 \t        $SetUint32(${fn}, $table_start + ${idx});
 \t        $SetUint32(${fn} + 4, $funcs.length);
 \t        $funcs.push(function (${params.map((x) => x.name).join(", ")}) {${args_setup_str}
-\t            const ${fn_result} = ${ptr}(${args_expression});${setup_str}
+\t            var ${fn_result} = ${ptr}(${args_expression});${setup_str}
 \t            return ${expression};
 \t        });
 \t    }`,
@@ -396,12 +396,12 @@ function arrayToJavascript(ptr: string, type: ArrayTypeInformation): Conversion 
     if (type.element_type.classification === "primitive") {
         const typed_name = primitiveToTypedName(type.element_type.name);
         return {
-            setup: `const $ptr = ${ptr};`,
+            setup: `var $ptr = ${ptr};`,
             expression: `new ${typed_name}Array($memory.buffer, $ptr + 4, $GetUint32($ptr))`
         };
     } else if (type.element_type.classification === "struct") {
         return {
-            setup: `const $ptr = ${ptr};`,
+            setup: `var $ptr = ${ptr};`,
             expression: type.element_type.is_ref
                 ? `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr)), ($el) => new ${type.element_type.name}($el))`
                 : `Array.from({ length: $GetUint32($ptr) }, (_, i) => new ${type.element_type.name}($ptr + 4 + i * ${type.element_type.sizeof}))`
@@ -410,12 +410,12 @@ function arrayToJavascript(ptr: string, type: ArrayTypeInformation): Conversion 
         throw new Error("Nested arrays are not supported");
     } else if (type.element_type.classification === "function") {
         return {
-            setup: `const $ptr = ${ptr};`,
+            setup: `var $ptr = ${ptr};`,
             expression: `Array.from({ length: $GetUint32($ptr) }, (_, i) => ${functionToJavascript("$ptr + 4 + i * 4", type.element_type).expression})`
         };
     } else if (type.element_type.classification === "string") {
         return {
-            setup: `const $ptr = ${ptr};`,
+            setup: `var $ptr = ${ptr};`,
             expression: `Array.from(new Uint32Array($memory.buffer, $ptr + 4, $GetUint32($ptr)), ($el) => ${stringToJavascript("$el", type.element_type).expression})`
         };
     } else {

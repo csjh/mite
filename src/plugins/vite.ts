@@ -53,44 +53,44 @@ export async function mite(): Promise<Plugin<never>> {
         load(id) {
             if (id === resolved_mite_shared_id) {
                 return dedent`
-                    export const $memory = new WebAssembly.Memory({ initial: 256 });
-                    export const $table = new WebAssembly.Table({ initial: 0, element: "anyfunc" });
-                    const $heap_pointer = new WebAssembly.Global({ value: "i32", mutable: false }, 0);
-                    const $heap_offset = new WebAssembly.Global({ value: "i32", mutable: true }, 0);
+                    export var $memory = new WebAssembly.Memory({ initial: 256 });
+                    export var $table = new WebAssembly.Table({ initial: 0, element: "anyfunc" });
+                    var $heap_pointer = new WebAssembly.Global({ value: "i32", mutable: false }, 0);
+                    var $heap_offset = new WebAssembly.Global({ value: "i32", mutable: true }, 0);
             
-                    const $encoder = /*#__PURE__*/ new TextEncoder();
-                    const $decoder = /*#__PURE__*/ new TextDecoder();
-                    const $stringToPointer = /*#__PURE__*/ new Map();
-                    const $pointerToString = /*#__PURE__*/ new Map();
+                    var $encoder = /*#__PURE__*/ new TextEncoder();
+                    var $decoder = /*#__PURE__*/ new TextDecoder();
+                    var $stringToPointer = /*#__PURE__*/ new Map();
+                    var $pointerToString = /*#__PURE__*/ new Map();
             
-                    let $dataview = new DataView($memory.buffer);
-                    export const $GetBigInt64 =  (ptr) => $dataview.getBigInt64(ptr, true);
-                    export const $GetBigUint64 = (ptr) => $dataview.getBigUint64(ptr, true);
-                    export const $GetFloat32 =   (ptr) => $dataview.getFloat32(ptr, true);
-                    export const $GetFloat64 =   (ptr) => $dataview.getFloat64(ptr, true);
-                    export const $GetInt16 =     (ptr) => $dataview.getInt16(ptr, true);
-                    export const $GetInt32 =     (ptr) => $dataview.getInt32(ptr, true);
-                    export const $GetInt8 =      (ptr) => $dataview.getInt8(ptr, true);
-                    export const $GetUint16 =    (ptr) => $dataview.getUint16(ptr, true);
-                    export const $GetUint32 =    (ptr) => $dataview.getUint32(ptr, true);
-                    export const $GetUint8 =     (ptr) => $dataview.getUint8(ptr, true);
-                    export const $SetBigInt64 =  (ptr, v) => $dataview.setBigInt64(ptr, v, true);
-                    export const $SetBigUint64 = (ptr, v) => $dataview.setBigUint64(ptr, v, true);
-                    export const $SetFloat32 =   (ptr, v) => $dataview.setFloat32(ptr, v, true);
-                    export const $SetFloat64 =   (ptr, v) => $dataview.setFloat64(ptr, v, true);
-                    export const $SetInt16 =     (ptr, v) => $dataview.setInt16(ptr, v, true);
-                    export const $SetInt32 =     (ptr, v) => $dataview.setInt32(ptr, v, true);
-                    export const $SetInt8 =      (ptr, v) => $dataview.setInt8(ptr, v, true);
-                    export const $SetUint16 =    (ptr, v) => $dataview.setUint16(ptr, v, true);
-                    export const $SetUint32 =    (ptr, v) => $dataview.setUint32(ptr, v, true);
-                    export const $SetUint8 =     (ptr, v) => $dataview.setUint8(ptr, v, true);
+                    var $dataview = new DataView($memory.buffer);
+                    export var $GetBigInt64 =  (ptr) => $dataview.getBigInt64(ptr, true);
+                    export var $GetBigUint64 = (ptr) => $dataview.getBigUint64(ptr, true);
+                    export var $GetFloat32 =   (ptr) => $dataview.getFloat32(ptr, true);
+                    export var $GetFloat64 =   (ptr) => $dataview.getFloat64(ptr, true);
+                    export var $GetInt16 =     (ptr) => $dataview.getInt16(ptr, true);
+                    export var $GetInt32 =     (ptr) => $dataview.getInt32(ptr, true);
+                    export var $GetInt8 =      (ptr) => $dataview.getInt8(ptr, true);
+                    export var $GetUint16 =    (ptr) => $dataview.getUint16(ptr, true);
+                    export var $GetUint32 =    (ptr) => $dataview.getUint32(ptr, true);
+                    export var $GetUint8 =     (ptr) => $dataview.getUint8(ptr, true);
+                    export var $SetBigInt64 =  (ptr, v) => $dataview.setBigInt64(ptr, v, true);
+                    export var $SetBigUint64 = (ptr, v) => $dataview.setBigUint64(ptr, v, true);
+                    export var $SetFloat32 =   (ptr, v) => $dataview.setFloat32(ptr, v, true);
+                    export var $SetFloat64 =   (ptr, v) => $dataview.setFloat64(ptr, v, true);
+                    export var $SetInt16 =     (ptr, v) => $dataview.setInt16(ptr, v, true);
+                    export var $SetInt32 =     (ptr, v) => $dataview.setInt32(ptr, v, true);
+                    export var $SetInt8 =      (ptr, v) => $dataview.setInt8(ptr, v, true);
+                    export var $SetUint16 =    (ptr, v) => $dataview.setUint16(ptr, v, true);
+                    export var $SetUint32 =    (ptr, v) => $dataview.setUint32(ptr, v, true);
+                    export var $SetUint8 =     (ptr, v) => $dataview.setUint8(ptr, v, true);
 
                     function $updateDataView() {
                         $dataview = new DataView($memory.buffer);
                     }
                     ${/* function bindings actually don't really care about types */ ""}
                     export function $toJavascriptFunction($ptr) {
-                        const $fn = $table.get($GetUint32($ptr)).bind(null, $GetUint32($ptr + 4));
+                        var $fn = $table.get($GetUint32($ptr)).bind(null, $GetUint32($ptr + 4));
                         $fn._ = $ptr;
                         return $fn;
                     }
@@ -98,7 +98,7 @@ export async function mite(): Promise<Plugin<never>> {
                     export function $toJavascriptString($ptr) {
                         if ($pointerToString.has($ptr)) return $pointerToString.get($ptr);
             
-                        const $str = $decoder.decode(new Uint8Array($memory.buffer, $ptr + 4, $GetUint32($ptr)));
+                        var $str = $decoder.decode(new Uint8Array($memory.buffer, $ptr + 4, $GetUint32($ptr)));
             
                         $pointerToString.set($ptr, $str);
                         $stringToPointer.set($str, $ptr);
@@ -127,11 +127,11 @@ export async function mite(): Promise<Plugin<never>> {
                     export function $fromJavascriptString($str) {
                         if ($stringToPointer.has($str)) return $stringToPointer.get($str);
             
-                        const $len = $utf8Length($str);
-                        const $ptr = $arena_heap_malloc(4 + $len);
+                        var $len = $utf8Length($str);
+                        var $ptr = $arena_heap_malloc(4 + $len);
                         $SetUint32($ptr, $len);
             
-                        const $output = new Uint8Array($memory.buffer, $ptr + 4, $len);
+                        var $output = new Uint8Array($memory.buffer, $ptr + 4, $len);
                         $encoder.encodeInto($str, $output);
             
                         $pointerToString.set($ptr, $str);
