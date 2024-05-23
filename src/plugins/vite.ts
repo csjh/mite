@@ -4,7 +4,7 @@ import { compile } from "../compiler.js";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
-import { shared } from "./mite-shared.js";
+import { mite_shared } from "./shared.js";
 
 const dev = process.env.NODE_ENV === "development";
 
@@ -76,7 +76,7 @@ export async function mite(): Promise<Plugin<never>> {
         },
         load(id) {
             if (id === resolved_mite_shared_id) {
-                return shared;
+                return mite_shared;
             }
         },
         async transform(code, id, opts = {}) {

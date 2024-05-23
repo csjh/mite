@@ -1,4 +1,4 @@
-export const shared = `
+export const mite_shared = `
 export var $memory = new WebAssembly.Memory({ initial: 256 });
 export var $table = new WebAssembly.Table({ initial: 0, element: "anyfunc" });
 var $heap_pointer = new WebAssembly.Global({ value: "i32", mutable: false }, 0);
