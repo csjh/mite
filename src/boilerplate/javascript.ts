@@ -30,10 +30,8 @@ interface Conversion {
     expression: string;
 }
 
-type Capitalize<S extends string> = S extends `${infer F}${infer R}` ? `${Uppercase<F>}${R}` : S;
-
 type DataViewGetterTypes =
-    Extract<keyof DataView, `get${string}`> extends `get${infer T}` ? Capitalize<T> : never;
+    Extract<keyof DataView, `get${string}`> extends `get${infer T}` ? T : never;
 
 export type Options = {
     createInstance(imports: string): { instantiation: string; setup?: string };
@@ -74,16 +72,25 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         if (!imported_file.endsWith(".mite")) {
             js_import_strings.push(
                 `import { ${import_.specifiers
-                    .map((x) =>
-                        x.local.name !== x.imported.name
-                            ? `${x.imported.name} as ${x.local.name}`
-                            : x.imported.name
-                    )
+                    .map((x) => `${x.imported.name} as _${x.local.name}`)
                     .join(", ")} } from "${imported_file}";`
             );
-            wasm_import_strings.push(
-                `"${imported_file}": { ${import_.specifiers.map((x) => `${x.imported.name}: ${x.local.name}`).join(", ")} }`
-            );
+
+            const specifiers = [];
+            for (const { imported, local, typeAnnotation } of import_.specifiers) {
+                if (!typeAnnotation) throw new Error("Type annotations are required for imports");
+                const type = parseType(ctx, typeAnnotation);
+                if (type.classification !== "function")
+                    throw new Error("Only functions can be imported from non-mite files");
+
+                specifiers.push(
+                    `${imported.name}: ${adaptJSFunctionToMite(type, `_${local.name}`, "$result").replaceAll("\t", "        ")}`
+                );
+            }
+
+            wasm_import_strings.push(`"${imported_file}": {
+                ${specifiers.join(",\n                ")}
+            }`);
         } else {
             // should get a better strategy for this
             const variable_safe_file = imported_file.replace(/[^a-zA-Z0-9]/g, "_");
@@ -326,39 +333,45 @@ function arrayToMite(ptr: string, _type: ArrayTypeInformation): Conversion {
     return { expression: `${ptr}._` };
 }
 
-function functionToMite(
-    ptr: string,
-    // @ts-expect-error idx is added in functionDeclarationToString
-    { implementation: { params, results }, idx }: FunctionTypeInformation
-): Conversion {
-    const fn = `$mite_${ptr}`;
-    const fn_result = `${fn}_result`;
-
+function adaptJSFunctionToMite(
+    { implementation: { params, results } }: FunctionTypeInformation,
+    function_name: string,
+    result: string
+) {
     const args = params.map((x) => miteToJavascript(x.name, x.type));
     const args_setup = args
         .map((x) => x.setup)
         .filter(Boolean)
-        .join("\n\t    ");
-    const args_setup_str = args_setup ? `\n\t            ${args_setup}` : "";
+        .join("\n                ");
+    const args_setup_str = args_setup ? `\n                ${args_setup}` : "";
     const args_expression = args.map((x) => x.expression).join(", ");
 
-    const { setup, expression } = miteToJavascript(fn_result, results);
-    const setup_str = setup ? `\n\t    ${setup}` : "";
+    const { setup, expression } = miteToJavascript("$result", results);
+    const setup_str = setup ? `\n                ${setup}` : "";
+
+    return `(${params.map((x) => x.name).join(", ")}) => {${args_setup_str}
+\t            var ${result} = ${function_name}(${args_expression});${setup_str}
+\t            return ${expression};
+\t        }`;
+}
+
+function functionToMite(ptr: string, fn: FunctionTypeInformation): Conversion {
+    const fn_name = `$mite_${ptr}`;
 
     return {
-        setup: `\tvar ${fn} = 0;
+        setup: `\tvar ${fn_name} = 0;
 \t    if (Object.hasOwn(${ptr}, '_')) {
-\t        ${fn} = ${ptr}._;
+\t        ${fn_name} = ${ptr}._;
 \t    } else {
-\t        ${fn} = $arena_heap_malloc(${IndirectFunction.struct_type.sizeof});
-\t        $SetUint32(${fn}, $table_start + ${idx});
-\t        $SetUint32(${fn} + 4, $funcs.length);
-\t        $funcs.push(function (${params.map((x) => x.name).join(", ")}) {${args_setup_str}
-\t            var ${fn_result} = ${ptr}(${args_expression});${setup_str}
-\t            return ${expression};
-\t        });
+\t        ${fn_name} = $arena_heap_malloc(${IndirectFunction.struct_type.sizeof});
+\t        $SetUint32(${fn_name}, $table_start + ${
+            // @ts-expect-error idx is added in functionDeclarationToString
+            fn.idx
+        });
+\t        $SetUint32(${fn_name} + 4, $funcs.length);
+\t        $funcs.push(${adaptJSFunctionToMite(fn, ptr, `${fn_name}_result`)});
 \t    }`,
-        expression: fn
+        expression: fn_name
     };
 }
 
