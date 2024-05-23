@@ -59,7 +59,9 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         .map((x) => (x.type === "ExportNamedDeclaration" ? x.declaration : x))
         .filter((x): x is StructDeclaration => x.type === "StructDeclaration");
     const exported_structs = new Set(structs.map((x) => x.id.name));
-    const methods = Object.fromEntries(structs.map((x) => [x.id.name, x.methods]));
+    const methods = Object.fromEntries(
+        structs.map((x) => [x.id.name, x.methods.map((y) => functionDeclarationToType(ctx, y))])
+    );
 
     const imports = program.body.filter(
         (x): x is ImportDeclaration => x.type === "ImportDeclaration"
@@ -109,7 +111,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
     const { setup = "", instantiation } = createInstance(`{
             console,
-            $mite: $setup$miteImports($table_start, function (ptr, ...args) { return $funcs[ptr](...args); })${wasm_import_strings.join(",\n            ")}
+            $mite: $setup$miteImports($table_start, (ptr, ...args) => $funcs[ptr](...args))${wasm_import_strings.join(",\n            ")}
         }`);
 
     let code = dedent`
@@ -153,7 +155,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                 }).join("")}${methods[name]
                     .map((fn) => {
                         return `\n
-                ${functionDeclarationToString(ctx, fn, 16)}`;
+                ${functionTypeInformationToString(ctx, fn).replaceAll("\t", " ".repeat(16))}`;
                     })
                     .join("")}
             }
@@ -163,7 +165,13 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
     }
 
     for (const func of exports) {
-        code += `export function ${functionDeclarationToString(ctx, func, 0)}`;
+        const type = functionDeclarationToType(ctx, func);
+
+        if (isPrimitiveFunction(type)) {
+            code += `export var ${type.name} = $exports.${type.name};`;
+        } else {
+            code += `export function ${functionTypeInformationToString(ctx, type).replaceAll("\t", "")}`;
+        }
 
         code += "\n\n";
     }
@@ -263,18 +271,14 @@ function primitiveToTypedName(primitive: string): DataViewGetterTypes {
     }
 }
 
-function functionDeclarationToString(
+function functionTypeInformationToString(
     ctx: JSContext,
-    func: FunctionDeclaration,
-    indentation: number
+    { name, implementation: { params, results } }: FunctionTypeInformation
 ) {
-    const { id, params, returnType } = func;
-    if (params[0]?.name.name === "this") params.shift();
-    const returnTypeType = parseType(ctx, returnType);
+    if (params[0]?.name === "this") params.shift();
 
-    const arg_types = params.map((x) => [x.name.name, parseType(ctx, x.typeAnnotation)] as const);
-    const callbacks = arg_types
-        .map((x) => x[1])
+    const callbacks = params
+        .map((x) => x.type)
         .filter((x): x is InstanceFunctionTypeInformation => x.classification === "function");
     for (const callback of callbacks) {
         const sig = functionToSignature(callback);
@@ -282,7 +286,7 @@ function functionDeclarationToString(
         callback.idx = ctx.callbacks.indexOf(sig);
     }
 
-    const args = arg_types.map(([name, type]) => javascriptToMite(name, type));
+    const args = params.map((param) => javascriptToMite(param.name, param.type));
     const args_setup = args
         .map((x) => x.setup)
         .filter(Boolean)
@@ -294,14 +298,20 @@ function functionDeclarationToString(
         ? `\n\t    ${callbacks.map(() => `$funcs.pop();`).join("\n\t    ")}\n`
         : "";
 
-    const { setup, expression } = miteToJavascript("$result", returnTypeType);
+    const { setup, expression } = miteToJavascript("$result", results);
     const setup_str = setup ? `\n\t    ${setup}` : "";
 
-    return `${id.name}(${params.map((x) => x.name.name).join(", ")}) {${args_setup_str}
-\t    var $result = $exports.${id.name}(${args_expression});
+    // make it look nicer when the result var isn't needed
+    if (setup_str === "" && callbacks_cleanup_str === "") {
+        return `${name}(${params.map((x) => x.name).join(", ")}) {${args_setup_str}
+\t    return ${expression.replace("$result", `$exports.${name}(${args_expression})`)};
+\t}`;
+    }
+    return `${name}(${params.map((x) => x.name).join(", ")}) {${args_setup_str}
+\t    var $result = $exports.${name}(${args_expression});
 \t${setup_str}${callbacks_cleanup_str}
 \t    return ${expression};
-\t}`.replaceAll("\t", " ".repeat(indentation));
+\t}`;
 }
 
 function javascriptToMite(ptr: string, type: TypeInformation): Conversion {
@@ -333,11 +343,12 @@ function arrayToMite(ptr: string, _type: ArrayTypeInformation): Conversion {
     return { expression: `${ptr}._` };
 }
 
-function adaptJSFunctionToMite(
-    { implementation: { params, results } }: FunctionTypeInformation,
-    function_name: string,
-    result: string
-) {
+function adaptJSFunctionToMite(fn: FunctionTypeInformation, function_name: string, result: string) {
+    if (isPrimitiveFunction(fn)) return function_name;
+
+    const {
+        implementation: { params, results }
+    } = fn;
     const args = params.map((x) => miteToJavascript(x.name, x.type));
     const args_setup = args
         .map((x) => x.setup)
@@ -346,9 +357,16 @@ function adaptJSFunctionToMite(
     const args_setup_str = args_setup ? `\n                ${args_setup}` : "";
     const args_expression = args.map((x) => x.expression).join(", ");
 
-    const { setup, expression } = miteToJavascript("$result", results);
+    const { setup, expression } = miteToJavascript(result, results);
     const setup_str = setup ? `\n                ${setup}` : "";
 
+    if (args_setup_str === "" && setup_str === "") {
+        return `(${params.map((x) => x.name).join(", ")}) => ${expression.replace(result, `${function_name}(${args_expression})`)}`;
+    } else if (setup_str === "") {
+        return `(${params.map((x) => x.name).join(", ")}) => {${args_setup_str}
+\t            return ${expression.replace(result, `${function_name}(${args_expression})`)};
+\t        }`;
+    }
     return `(${params.map((x) => x.name).join(", ")}) => {${args_setup_str}
 \t            var ${result} = ${function_name}(${args_expression});${setup_str}
 \t            return ${expression};
@@ -443,4 +461,26 @@ function functionToJavascript(ptr: string, _type: FunctionTypeInformation): Conv
 
 function stringToJavascript(ptr: string, _type: StringTypeInformation): Conversion {
     return { expression: `$toJavascriptString(${ptr})` };
+}
+
+function isPrimitiveFunction(type: FunctionTypeInformation) {
+    return (
+        type.implementation.results.classification === "primitive" &&
+        type.implementation.params.every((x) => x.type.classification === "primitive")
+    );
+}
+
+function functionDeclarationToType(ctx: JSContext, func: FunctionDeclaration) {
+    return {
+        classification: "function",
+        name: func.id.name,
+        implementation: {
+            params: func.params.map((x) => ({
+                name: x.name.name,
+                type: parseType(ctx, x.typeAnnotation)
+            })),
+            results: parseType(ctx, func.returnType)
+        },
+        sizeof: 0
+    } satisfies FunctionTypeInformation;
 }
