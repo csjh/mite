@@ -124,8 +124,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
         var $table_start = $table.grow(64);
         var $funcs = [];
-
-        ${setup ? setup + "\n" : ""}
+        ${setup ? `\n${setup}\n` : ""}
         var $wasm = await ${instantiation};
         export var $exports = $wasm.instance.exports;
     `;
