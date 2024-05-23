@@ -9,6 +9,8 @@ const dev = process.env.NODE_ENV === "development";
 
 async function generateType(file: string) {
     if (!file.endsWith(".mite")) return;
+    const isFile = await fs.stat(file).then((stat) => stat.isFile());
+    if (!isFile) return;
 
     const dts = await fs.readFile(file, "utf-8").then((code) => compile(code, { as: "dts" }));
     const destination = path.join(".mite/types", `${file.replace(process.cwd(), "")}.d.ts`);
@@ -24,7 +26,7 @@ async function* getAllMite(dir = "."): AsyncGenerator<string> {
     for (const file of files) {
         if (file.isDirectory() && !BANNED_DIRECTORIES.has(file.name)) {
             yield* getAllMite(path.join(dir, file.name));
-        } else if (file.name.endsWith(".mite")) {
+        } else if (file.isFile() && file.name.endsWith(".mite")) {
             yield path.join(dir, file.name);
         }
     }
