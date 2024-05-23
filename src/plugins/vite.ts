@@ -1,4 +1,5 @@
 import type { Plugin } from "vite";
+import type { PluginContext } from "rollup";
 import { compile } from "../compiler.js";
 import path from "path";
 import fs from "fs/promises";
@@ -30,6 +31,14 @@ async function* getAllMite(dir = "."): AsyncGenerator<string> {
             yield path.join(dir, file.name);
         }
     }
+}
+
+function getImportResolver(this: PluginContext, importer: string) {
+    return async (p: string) => {
+        const resolved = await this.resolve(p, importer);
+        if (!resolved) return "";
+        return fs.readFile(resolved.id, "utf-8");
+    };
 }
 
 type MiteFileData = {
@@ -76,9 +85,7 @@ export async function mite(): Promise<Plugin<never>> {
             if (dev) {
                 const source = await compile(code, {
                     optimize: false,
-                    resolveImport: async (p) => {
-                        return fs.readFile(path.resolve(path.dirname(id), p), "utf-8");
-                    }
+                    resolveImport: getImportResolver.call(this, id)
                 });
 
                 return compile(code, {
@@ -120,9 +127,7 @@ export async function mite(): Promise<Plugin<never>> {
                     wasmReferenceId,
                     await compile(code, {
                         optimize: true,
-                        resolveImport: async (p) => {
-                            return fs.readFile(path.resolve(path.dirname(id), p), "utf-8");
-                        }
+                        resolveImport: getImportResolver.call(this, id)
                     })
                 );
                 processed_mite_files.delete(id);
