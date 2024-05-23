@@ -82,7 +82,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
                     .join(", ")} } from "${imported_file}";`
             );
             wasm_import_strings.push(
-                `"${imported_file}": { ${import_.specifiers.map((x) => x.local.name).join(", ")} }`
+                `"${imported_file}": { ${import_.specifiers.map((x) => `${x.imported.name}: ${x.local.name}`).join(", ")} }`
             );
         } else {
             // should get a better strategy for this
