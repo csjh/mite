@@ -110,7 +110,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
             $memory, $table, $setup$miteImports,
             $toJavascriptFunction, $toJavascriptString, $fromJavascriptString, $arena_heap_malloc, $arena_heap_reset,
             $GetBigInt64, $GetBigUint64, $GetFloat32, $GetFloat64, $GetInt16, $GetInt32, $GetInt8, $GetUint16, $GetUint32, $GetUint8, $SetBigInt64, $SetBigUint64, $SetFloat32, $SetFloat64, $SetInt16, $SetInt32, $SetInt8, $SetUint16, $SetUint32, $SetUint8
-        } from "virtual:mite-shared";
+        } from "mite:shared";
         ${js_import_strings.join("\n        ")}
 
         var $table_start = $table.grow(64);
