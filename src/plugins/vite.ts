@@ -41,10 +41,10 @@ function getImportResolver(this: PluginContext, importer: string) {
     };
 }
 
-type MiteFileData = {
+interface MiteFileData {
     code: string;
     wasmReferenceId: string;
-};
+}
 
 export async function mite(): Promise<Plugin<never>> {
     await fs.access(".mite").catch(() => fs.mkdir(".mite"));
