@@ -81,7 +81,12 @@ import { Parser } from "../frontend/parser.js";
 import { tokenize } from "../frontend/tokenizer.js";
 
 export type Options = {
-    resolveImport: (path: string) => Promise<string>;
+    resolveImport(path: string): Promise<{
+        isMite: boolean;
+        absolute: string;
+        // maybe make this lazy
+        code: string;
+    }>;
 };
 
 // static sized memory regions
@@ -266,7 +271,7 @@ export async function programToModule(
 async function handleDeclaration(
     ctx: Context,
     node: Declaration,
-    resolveImport: (file: string) => Promise<string>
+    resolveImport: Options["resolveImport"]
 ): Promise<void> {
     switch (node.type) {
         case "ExportNamedDeclaration":
@@ -296,7 +301,8 @@ async function handleDeclaration(
             break;
         case "ImportDeclaration": {
             const import_file = node.source.value;
-            if (!import_file.endsWith(".mite")) {
+            const import_data = await resolveImport(import_file);
+            if (!import_data.isMite) {
                 for (const specifier of node.specifiers) {
                     if (!specifier.typeAnnotation) {
                         throw new Error("Non-Mite function imports must have type annotations");
@@ -326,9 +332,7 @@ async function handleDeclaration(
                     );
                 }
             } else {
-                const possible_exports = getExportables(
-                    Parser.parse(tokenize(await resolveImport(import_file)))
-                );
+                const possible_exports = getExportables(Parser.parse(tokenize(import_data.code)));
 
                 for (const specifier of node.specifiers) {
                     const exportable = possible_exports[specifier.imported.name];

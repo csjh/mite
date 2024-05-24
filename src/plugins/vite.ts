@@ -36,8 +36,12 @@ async function* getAllMite(dir = "."): AsyncGenerator<string> {
 function getImportResolver(this: PluginContext, importer: string) {
     return async (p: string) => {
         const resolved = await this.resolve(p, importer);
-        if (!resolved) return "";
-        return fs.readFile(resolved.id, "utf-8");
+        if (!resolved) return { isMite: false, absolute: "", code: "" };
+        return {
+            isMite: resolved.id.endsWith(".mite"),
+            absolute: resolved.id,
+            code: await fs.readFile(resolved.id, "utf-8")
+        };
     };
 }
 
