@@ -50,9 +50,6 @@ export enum TokenType {
     ASSIGNMENT_BITWISE_AND = "&=",
 
     REF = "ref",
-    // ARENA = "arena",
-    // STACK = "stack",
-    // JS = "js",
     LET = "let",
     CONST = "const",
     FN = "fn",

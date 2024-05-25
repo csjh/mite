@@ -1436,6 +1436,3 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
         return this.array.sizeof();
     }
 }
-
-// funcref, externref
-// export class Reference implements MiteType {}
