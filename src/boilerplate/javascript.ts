@@ -5,6 +5,7 @@ import {
     InstanceFunctionTypeInformation,
     PrimitiveTypeInformation,
     StringTypeInformation,
+    StructField,
     StructTypeInformation,
     TypeInformation
 } from "../types/code_gen.js";
@@ -179,9 +180,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
     return code.slice(0, -1);
 }
 
-type ValueOf<T> = T extends Map<unknown, infer V> ? V : never;
-
-function typeToAccessors({ type, offset }: ValueOf<StructTypeInformation["fields"]>): Accessors {
+function typeToAccessors({ type, offset }: StructField): Accessors {
     const ptr = type.is_ref ? `$GetUint32(this._ + ${offset})` : `this._ + ${offset}`;
 
     if (type.classification === "primitive") {

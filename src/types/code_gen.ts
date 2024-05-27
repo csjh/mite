@@ -3,6 +3,11 @@ import { MiteType } from "../backend/type_classes.js";
 
 export type ProgramToModuleOptions = unknown;
 
+export interface StructField {
+    offset: number;
+    type: InstanceTypeInformation;
+}
+
 interface SharedTypeInformation {
     classification: string;
     name: string;
@@ -16,7 +21,7 @@ export interface ArrayTypeInformation extends SharedTypeInformation {
 }
 export interface StructTypeInformation extends SharedTypeInformation {
     classification: "struct";
-    fields: Map<string, { type: InstanceTypeInformation; offset: number }>;
+    fields: Map<string, StructField>;
     methods: Map<string, InstanceFunctionTypeInformation>;
 }
 export interface PrimitiveTypeInformation extends SharedTypeInformation {
