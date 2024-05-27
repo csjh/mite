@@ -1,6 +1,6 @@
 import binaryen from "binaryen";
 import {
-    bigintToLowAndHigh,
+    i64const,
     lookForVariable,
     miteSignatureToBinaryenSignature,
     updateExpected,
@@ -614,7 +614,7 @@ function literalToExpression(ctx: Context, value: Literal): MiteType {
         case "u64":
             if (typeof value.value !== "number" && typeof value.value !== "bigint")
                 throw new Error("Expected numerical literal");
-            ref = ctx.mod.i64.const(...bigintToLowAndHigh(value.value));
+            ref = i64const(ctx, value.value);
             break;
         case "f32":
             if (typeof value.value !== "number" && typeof value.value !== "bigint")

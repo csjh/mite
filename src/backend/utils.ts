@@ -37,10 +37,10 @@ export function updateExpected(ctx: Context, expected: Context["expected"]) {
     return { ...ctx, expected };
 }
 
-export function bigintToLowAndHigh(num: bigint | number): [number, number] {
+export function i64const(ctx: Context, num: bigint | number) {
     if (typeof num === "number") num = BigInt(Math.floor(num));
     num = BigInt.asUintN(64, num);
-    return [Number(num & 0xffffffffn), Number(num >> 32n)];
+    return ctx.mod.i64.const(Number(num & 0xffffffffn), Number(num >> 32n));
 }
 
 export function lookForVariable(ctx: Context, name: string): MiteType {

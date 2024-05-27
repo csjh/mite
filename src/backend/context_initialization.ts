@@ -11,7 +11,7 @@ import {
 import { ExportNamedDeclaration, Program, StructDeclaration } from "../types/nodes.js";
 import { MiteType, Pointer, Primitive, String_, TransientPrimitive } from "./type_classes.js";
 import binaryen from "binaryen";
-import { bigintToLowAndHigh, parseType } from "./utils.js";
+import { i64const, parseType } from "./utils.js";
 
 export function createConversions(ctx: Context): Context["conversions"] {
     const unary_op =
@@ -36,11 +36,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
             );
         } else {
             return unary_op(
-                (expr) =>
-                    ctx.mod.i64.and(
-                        expr,
-                        ctx.mod.i64.const(...bigintToLowAndHigh(2 ** to_bits - 1))
-                    ),
+                (expr) => ctx.mod.i64.and(expr, i64const(ctx, 2 ** to_bits - 1)),
                 Primitive.primitives.get(to)!
             );
         }
