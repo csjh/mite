@@ -61,8 +61,10 @@ export abstract class MiteType {
     // generate checkRef call for memory management stuff
     // prettier-ignore
     static handle_refs(variant: HandleRef, mod: Context["mod"], type: InstanceTypeInformation, offset: binaryen.ExpressionRef): binaryen.ExpressionRef {
-        if (type.classification === "primitive" || type.classification === "string") {
-            throw new Error(`Cannot check refs for ${type.name}`);
+        if (type.classification === "primitive") {
+            return Primitive.handle_refs(variant, mod, type, offset);
+        } else if (type.classification === "string") {
+            return String_.handle_refs(variant, mod, type, offset);
         } else if (type.classification === "struct") {
             return Struct.handle_refs(variant, mod, type, offset);
         } else if (type.classification === "array") {
@@ -755,6 +757,15 @@ export abstract class Primitive implements MiteType {
         }
 
         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
+    }
+
+    static handle_refs(
+        variant: HandleRef,
+        mod: Context["mod"],
+        _type: InstancePrimitiveTypeInformation,
+        _offset: binaryen.ExpressionRef
+    ) {
+        return mod.nop();
     }
 }
 
@@ -1576,5 +1587,14 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
 
     sizeof(): number {
         return this.array.sizeof();
+    }
+
+    static handle_refs(
+        variant: HandleRef,
+        mod: Context["mod"],
+        _type: InstanceStringTypeInformation,
+        _offset: binaryen.ExpressionRef
+    ) {
+        return mod.nop();
     }
 }
