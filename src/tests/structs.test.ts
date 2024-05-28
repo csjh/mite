@@ -20,7 +20,11 @@ describe("struct declarations", async () => {
 
         await assert.rejects(() =>
             compile(program, {
-                resolveImport: async () => ""
+                resolveImport: async () => ({
+                    isMite: false,
+                    absolute: "",
+                    code: ""
+                })
             })
         );
 
@@ -41,7 +45,11 @@ describe("struct declarations", async () => {
 
         await assert.rejects(() =>
             compile(program2, {
-                resolveImport: async () => ""
+                resolveImport: async () => ({
+                    isMite: false,
+                    absolute: "",
+                    code: ""
+                })
             })
         );
 
@@ -61,7 +69,11 @@ describe("struct declarations", async () => {
 
         await assert.rejects(() =>
             compile(program3, {
-                resolveImport: async () => ""
+                resolveImport: async () => ({
+                    isMite: false,
+                    absolute: "",
+                    code: ""
+                })
             })
         );
 
@@ -72,7 +84,11 @@ describe("struct declarations", async () => {
 
         await assert.rejects(() =>
             compile(program4, {
-                resolveImport: async () => ""
+                resolveImport: async () => ({
+                    isMite: false,
+                    absolute: "",
+                    code: ""
+                })
             })
         );
 
@@ -83,7 +99,11 @@ describe("struct declarations", async () => {
 
         await assert.rejects(() =>
             compile(program5, {
-                resolveImport: async () => ""
+                resolveImport: async () => ({
+                    isMite: false,
+                    absolute: "",
+                    code: ""
+                })
             })
         );
     });
@@ -106,7 +126,11 @@ describe("struct declarations", async () => {
         `;
 
         await compile(program, {
-            resolveImport: async () => ""
+            resolveImport: async () => ({
+                isMite: false,
+                absolute: "",
+                code: ""
+            })
         });
     });
 });

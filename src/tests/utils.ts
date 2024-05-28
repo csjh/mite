@@ -8,7 +8,11 @@ export async function compileAndRun(
     func: string = "main"
 ) {
     const compiled = await compile(program, {
-        resolveImport: async () => ""
+        resolveImport: async () => ({
+            isMite: false,
+            absolute: "",
+            code: ""
+        })
     });
     // console.log(compile(program, { as: "wat" }));
 
