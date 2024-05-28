@@ -14,7 +14,8 @@ import {
     FunctionDeclaration,
     ImportDeclaration,
     Program,
-    StructDeclaration
+    StructDeclaration,
+    VariableDeclaration
 } from "../types/nodes.js";
 import { buildTypes } from "../backend/context_initialization.js";
 import { IndirectFunction } from "../backend/type_classes.js";
@@ -49,7 +50,14 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         callbacks: getCallbacks(types, program)
     } as JSContext;
 
-    const exports = program.body
+    const var_exports = program.body
+        .filter(
+            (x): x is ExportNamedDeclaration =>
+                x.type === "ExportNamedDeclaration" && x.declaration.type === "VariableDeclaration"
+        )
+        .map((x) => x.declaration as VariableDeclaration);
+
+    const function_exports = program.body
         .filter(
             (x): x is ExportNamedDeclaration =>
                 x.type === "ExportNamedDeclaration" && x.declaration.type === "FunctionDeclaration"
@@ -164,7 +172,7 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         code += "\n\n";
     }
 
-    for (const func of exports) {
+    for (const func of function_exports) {
         const type = functionDeclarationToType(ctx, func);
 
         if (isPrimitiveFunction(type)) {
@@ -174,6 +182,19 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
         }
 
         code += "\n\n";
+    }
+
+    for (const { declarations } of var_exports) {
+        for (const { id, typeAnnotation } of declarations) {
+            const type = parseType(ctx, typeAnnotation);
+            const { setup, expression } = miteToJavascript(`$exports.${id.name}.value`, type);
+            code += dedent`
+                ${setup}
+                export var ${id.name} = ${expression};
+            `;
+
+            code += "\n\n";
+        }
     }
 
     // remove second trailing newline
