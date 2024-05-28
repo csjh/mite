@@ -225,7 +225,7 @@ export async function programToModule(
     }
 
     ctx.mod.addGlobalImport(ARENA_HEAP_OFFSET, "$mite", "$heap_offset", binaryen.i32, true);
-    ctx.mod.addGlobalImport(ARENA_HEAP_POINTER, "$mite", "$heap_pointer", binaryen.i32, false);
+    ctx.mod.addGlobalImport(ARENA_HEAP_POINTER, "$mite", "$heap_pointer", binaryen.i32, true);
 
     const fns = [...callbacks, ...ctx.captured_functions];
 
@@ -246,9 +246,13 @@ export async function programToModule(
         mod.addGlobal(STRING_SECTION_START, binaryen.i32, true, mod.i32.const(0));
 
         init.push(
+            mod.global.set(STRING_SECTION_START, mod.global.get(ARENA_HEAP_POINTER, binaryen.i32)),
             mod.global.set(
-                STRING_SECTION_START,
-                mod.call("arena_heap_malloc", [mod.i32.const(string_data.length)], binaryen.i32)
+                ARENA_HEAP_POINTER,
+                mod.i32.add(
+                    mod.global.get(ARENA_HEAP_POINTER, binaryen.i32),
+                    mod.i32.const(string_data.length)
+                )
             ),
             mod.memory.init(
                 "string_data",
