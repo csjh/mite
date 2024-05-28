@@ -183,11 +183,14 @@ export async function programToModule(
         );
     }
 
+    const init = [];
+
     for (const node of program.body) {
         switch (node.type) {
             case "ExportNamedDeclaration":
             case "FunctionDeclaration":
             case "StructDeclaration":
+            case "VariableDeclaration":
                 await handleDeclaration(ctx, node, options.resolveImport);
                 break;
             case "ImportDeclaration":
@@ -197,6 +200,12 @@ export async function programToModule(
                 throw new Error(`Unknown node type: ${node.type}`);
         }
     }
+
+    init.push(...ctx.current_block.map((x) => x.get_expression_ref()));
+    const start_locals = Array.from(ctx.variables.entries())
+        .filter(([_, mitetype]) => !(mitetype instanceof DirectFunction))
+        .map(([, { type }]) => type);
+    ctx.current_block = [];
 
     for (const fn of callbacks) {
         const [params, result] = fn.split("|");
@@ -241,8 +250,6 @@ export async function programToModule(
         mod.global.get(FN_PTRS_START, binaryen.i32)
     );
 
-    const init = [];
-
     if (string_data.length > 0) {
         mod.addGlobal(STRING_SECTION_START, binaryen.i32, true, mod.i32.const(0));
 
@@ -263,7 +270,13 @@ export async function programToModule(
     }
 
     mod.setStart(
-        mod.addFunction("$start", binaryen.none, binaryen.none, [], mod.block(null, init))
+        mod.addFunction(
+            "$start",
+            binaryen.none,
+            binaryen.none,
+            start_locals.map((x) => typeInformationToBinaryen(x)),
+            mod.block(null, init)
+        )
     );
 
     return mod;
@@ -381,6 +394,30 @@ async function handleDeclaration(
                         }
                     }
                 }
+            }
+            break;
+        }
+        case "VariableDeclaration": {
+            for (const { id, typeAnnotation, init } of node.declarations) {
+                if (!typeAnnotation) {
+                    throw new Error(
+                        `Global variable declaration ${id.name} must have type annotation`
+                    );
+                }
+
+                const type = parseType(ctx, typeAnnotation);
+                const expr = init && expressionToExpression(updateExpected(ctx, type), init);
+
+                const global = createMiteType(ctx, type, id.name);
+
+                if (type.classification === "struct" || type.classification === "function") {
+                    ctx.current_block.push(global.set(allocate(ctx, type, type.sizeof)));
+                } else if (type.classification === "array") {
+                    ctx.current_block.push(global.set(constructArray(ctx, type)));
+                }
+
+                if (expr) ctx.current_block.push(global.set(expr));
+                ctx.variables.set(id.name, global);
             }
             break;
         }
