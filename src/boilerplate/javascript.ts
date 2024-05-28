@@ -385,6 +385,7 @@ function functionToMite(ptr: string, fn: FunctionTypeInformation): Conversion {
             fn.idx
         });
 \t        $SetUint32(${fn_name} + 4, $funcs.length);
+\t        $SetUint32(${fn_name} + 8, 0);
 \t        $funcs.push(${adaptJSFunctionToMite(fn, ptr, `${fn_name}_result`)});
 \t    }`,
         expression: fn_name

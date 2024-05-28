@@ -24,6 +24,7 @@ import {
 } from "../types/code_gen.js";
 import {
     allocate,
+    ARENA_HEAP_POINTER,
     createMiteType,
     FN_PTRS_START,
     fromExpressionRef,
@@ -33,6 +34,8 @@ import {
 } from "./utils.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import { UnaryOperator } from "../types/nodes.js";
+
+type HandleRef = "check" | "change";
 
 export abstract class MiteType {
     // get the value as a primitive (pointer for structs and arrays, value for locals)
@@ -54,6 +57,23 @@ export abstract class MiteType {
     abstract operator(operator: BinaryOperator): BinaryOperatorHandler;
     // the type information of the value
     abstract type: InstanceTypeInformation;
+
+    // generate checkRef call for memory management stuff
+    // prettier-ignore
+    static handle_refs(variant: HandleRef, mod: Context["mod"], type: InstanceTypeInformation, offset: binaryen.ExpressionRef): binaryen.ExpressionRef {
+        if (type.classification === "primitive" || type.classification === "string") {
+            throw new Error(`Cannot check refs for ${type.name}`);
+        } else if (type.classification === "struct") {
+            return Struct.handle_refs(variant, mod, type, offset);
+        } else if (type.classification === "array") {
+            return Array_.handle_refs(variant, mod, type, offset);
+        } else if (type.classification === "function") {
+            return IndirectFunction.handle_refs(variant, mod, type, offset);
+        } else {
+            // @ts-expect-error - we've checked all the classifications
+            throw new Error(`Invalid type classification ${type.classification}`);
+        }
+    }
 }
 
 export abstract class Primitive implements MiteType {
@@ -1102,6 +1122,24 @@ export class Struct extends AggregateType<InstanceStructTypeInformation> {
     sizeof(): number {
         return this.ctx.mod.i32.const(this.type.sizeof);
     }
+
+    // prettier-ignore
+    static handle_refs(variant: HandleRef, mod: Context["mod"], type: InstanceStructTypeInformation, offset: binaryen.ExpressionRef) {
+        const offsetted = () => mod.i32.add(mod.local.get(0, binaryen.i32), mod.i32.const(offset));
+
+        if (type.is_ref) {
+            return mod.if(
+                mod.local.tee(1, mod.i32.load(0, 0, offsetted(), "main_memory"), binaryen.i32 ),
+                mod.block(null, [
+                    mod.i32.store(0, 0, offsetted(), mod.i32.const(0), "main_memory"),
+                    mod.call(`${type.name}.$checkRefsOnRef`, [mod.local.get(1, binaryen.i32)], binaryen.none),
+                    mod.i32.store(0, 0, offsetted(), mod.local.get(1, binaryen.i32), "main_memory")
+                ])
+            );
+        } else {
+            return mod.call(`${type.name}.$checkRefsOnValue`, [offsetted()], binaryen.none);
+        }
+    }
 }
 
 export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
@@ -1155,6 +1193,71 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
                 this.ctx.mod.i32.const(this.type.element_type.sizeof)
             )
         );
+    }
+
+    // prettier-ignore
+    static handle_refs(variant: HandleRef, mod: Context["mod"], type: InstanceArrayTypeInformation, offset: binaryen.ExpressionRef) {
+        const offsetted = () => mod.i32.add(mod.local.get(0, binaryen.i32), offset);
+
+        const element_size = type.element_type.is_ref
+            ? Pointer.type.sizeof
+            : type.element_type.sizeof;
+
+        const setup_locals = mod.local.set(
+            2,
+            mod.i32.add(
+                mod.local.tee(1, offsetted(), binaryen.i32),
+                mod.i32.mul(
+                    mod.i32.load(0, 0, mod.local.get(1, binaryen.i32), "main_memory"),
+                    mod.i32.const(element_size)
+                )
+            )
+        );
+
+        const main_loop = mod.loop(type.name, mod.block(null, [
+            mod.local.set(2, mod.i32.sub(mod.local.get(2, binaryen.i32), mod.i32.const(element_size))),
+            // this will break for nested arrays, need to be able to add more locals
+            MiteType.handle_refs(variant, mod, type.element_type, mod.local.get(2, binaryen.i32)),
+            mod.br_if(type.name, mod.i32.gt_u(mod.local.get(2, binaryen.i32), mod.local.get(1, binaryen.i32)))
+        ]));
+
+        if (type.is_ref) {
+            // local 0 : base ptr
+            // local 1 : array ptr
+            // local 2 : array end
+
+            const store_in_c = mod.if(
+                mod.i32.ge_u(mod.local.get(1, binaryen.i32), mod.global.get(ARENA_HEAP_POINTER, binaryen.i32)),
+                mod.i64.store(0, 0,
+                    mod.call("arena_heap_malloc", [mod.i32.const(8)], binaryen.i32),
+                    mod.i64.or(
+                        mod.i64.shl(mod.i64.extend_u(mod.local.get(1, binaryen.i32)), mod.i32.const(32)),
+                        mod.i64.extend_u(mod.i32.sub(mod.local.get(2, binaryen.i32), mod.local.get(1, binaryen.i32)))
+                    ),
+                    "main_memory"
+                )
+            );
+
+            return mod.if(
+                mod.local.tee(1, mod.i32.load(0, 0, offsetted(), "main_memory"), binaryen.i32 ),
+                mod.block(null, [
+                    mod.i32.store(0, 0, offsetted(), mod.i32.const(0), "main_memory"),
+                    setup_locals,
+                    store_in_c,
+                    ['primitive', 'string'].includes(type.element_type.classification) && main_loop,
+                    mod.i32.store(0, 0, offsetted(), mod.local.get(1, binaryen.i32), "main_memory")
+                ].filter((x) => x !== false))
+            );
+        } else {
+            // local 0 : base ptr
+            // local 1 : array ptr
+            // local 2 : array end
+
+            return ['primitive', 'string'].includes(type.element_type.classification) ? mod.block(null, [
+                setup_locals,
+                main_loop
+            ]) : mod.nop();
+        }
     }
 }
 
@@ -1219,7 +1322,10 @@ export class DirectFunction implements MiteType {
                             this.ctx.mod.global.get(FN_PTRS_START, binaryen.i32)
                         )
                     )
-                )
+                ),
+            func.struct
+                .access("handle_refs")
+                .set(new TransientPrimitive(this.ctx, Pointer.type, this.ctx.mod.i32.const(0)))
         );
 
         return func.get();
@@ -1274,8 +1380,9 @@ export class IndirectFunction extends AggregateType<InstanceFunctionTypeInformat
         sizeof: Pointer.type.sizeof * 2,
         // prettier-ignore
         fields: new Map([
-            ["pointer", { type: Pointer.type, offset: Pointer.type.sizeof * 0, is_ref: false }],
-            ["ctx",     { type: Pointer.type, offset: Pointer.type.sizeof * 1, is_ref: false }]
+            ["pointer",    { type: Pointer.type, offset: Pointer.type.sizeof * 0, is_ref: false }],
+            ["ctx",        { type: Pointer.type, offset: Pointer.type.sizeof * 1, is_ref: false }],
+            ["handle_refs", { type: Pointer.type, offset: Pointer.type.sizeof * 2, is_ref: false }]
         ]),
         methods: new Map(),
         is_ref: false
@@ -1310,6 +1417,21 @@ export class IndirectFunction extends AggregateType<InstanceFunctionTypeInformat
     sizeof(): binaryen.ExpressionRef {
         return this.ctx.mod.i32.const(IndirectFunction.struct_type.sizeof);
     }
+
+    // prettier-ignore
+    static handle_refs(variant: HandleRef, mod: Context["mod"], type: InstanceFunctionTypeInformation, offset: binaryen.ExpressionRef) {
+        const ptr = () => mod.i32.add(mod.local.get(0, binaryen.i32), offset);
+        return mod.if(
+            mod.local.tee(1, mod.i32.load(IndirectFunction.struct_type.fields.get("handle_refs")!.offset, 0, ptr(), "main_memory"), binaryen.i32),
+            mod.call_indirect(
+                VIRTUALIZED_FUNCTIONS,
+                mod.local.get(1, binaryen.i32),
+                [mod.i32.load(IndirectFunction.struct_type.fields.get("ctx")!.offset, 0, ptr(), "main_memory")],
+                binaryen.createType([binaryen.i32]),
+                binaryen.none
+            )
+        );
+    }
 }
 
 export class StructMethod implements MiteType {
@@ -1326,6 +1448,11 @@ export class StructMethod implements MiteType {
     get() {
         if (this.ctx.captured_functions.indexOf(this.type.name) === -1) {
             this.ctx.captured_functions.push(this.type.name);
+        }
+
+        const handle_refs_name = `${this.type.name}.$checkRefsOnRef`;
+        if (this.ctx.captured_functions.indexOf(handle_refs_name) === -1) {
+            this.ctx.captured_functions.push(handle_refs_name);
         }
 
         const ptr = allocate(
@@ -1356,6 +1483,21 @@ export class StructMethod implements MiteType {
                 .access("ctx")
                 .set(
                     new TransientPrimitive(this.ctx, Pointer.type, this.this_.get_expression_ref())
+                ),
+            func.struct
+                .access("handle_refs")
+                .set(
+                    new TransientPrimitive(
+                        this.ctx,
+                        Pointer.type,
+                        this.ctx.mod.i32.add(
+                            this.ctx.mod.i32.const(
+                                this.ctx.constants.RESERVED_FN_PTRS +
+                                    this.ctx.captured_functions.indexOf(handle_refs_name)
+                            ),
+                            this.ctx.mod.global.get(FN_PTRS_START, binaryen.i32)
+                        )
+                    )
                 )
         );
 
