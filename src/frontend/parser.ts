@@ -105,20 +105,10 @@ export class Parser {
         // only functions can be top level right now
         $: while (this.idx < this.tokens.length) {
             switch (this.token.type) {
-                case TokenType.EXPORT:
-                    program.body.push(this.parseExport());
-                    break;
-                case TokenType.IMPORT:
-                    program.body.push(this.parseImport());
-                    break;
-                case TokenType.FN:
-                    program.body.push(this.parseFunction());
-                    break;
-                case TokenType.STRUCT:
-                    program.body.push(this.parseStruct());
-                    break;
-                default:
+                case TokenType.EOF:
                     break $;
+                default:
+                    program.body.push(this.parseTopLevelDeclaration());
             }
         }
 
@@ -130,22 +120,38 @@ export class Parser {
     private parseExport(): ExportNamedDeclaration {
         this.eatToken(TokenType.EXPORT);
 
-        let declaration: Declaration;
-        switch (this.token.type) {
-            case TokenType.FN:
-                declaration = this.parseFunction();
-                break;
-            case TokenType.STRUCT:
-                declaration = this.parseStruct();
-                break;
-            default:
-                throw new Error(`Unknown export type: ${this.token.value}`);
+        const declaration = this.parseTopLevelDeclaration();
+        if (
+            declaration.type === "ExportNamedDeclaration" ||
+            declaration.type === "ImportDeclaration"
+        ) {
+            throw new Error("Cannot export an export or import declaration");
         }
 
         return {
             type: "ExportNamedDeclaration",
             declaration
         };
+    }
+
+    private parseTopLevelDeclaration(): Declaration {
+        switch (this.token.type) {
+            case TokenType.IMPORT:
+                return this.parseImport();
+            case TokenType.EXPORT:
+                return this.parseExport();
+            case TokenType.FN:
+                return this.parseFunction();
+            case TokenType.STRUCT:
+                return this.parseStruct();
+            case TokenType.LET:
+            case TokenType.CONST:
+                const decl = this.parseVariableDeclaration();
+                this.eatToken(TokenType.SEMICOLON);
+                return decl;
+            default:
+                throw new Error(`Unknown top level declaration: ${this.token.value}`);
+        }
     }
 
     private parseImport(): ImportDeclaration {
