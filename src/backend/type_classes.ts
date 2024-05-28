@@ -946,6 +946,22 @@ export class GlobalPrimitive extends Primitive {
         private readonly global_name: string
     ) {
         super(ctx, type);
+        const zero =
+            this.binaryenType === binaryen.i32
+                ? ctx.mod.i32.const(0)
+                : this.binaryenType === binaryen.i64
+                  ? ctx.mod.i64.const(0, 0)
+                  : this.binaryenType === binaryen.f32
+                    ? ctx.mod.f32.const(0)
+                    : this.binaryenType === binaryen.f64
+                      ? ctx.mod.f64.const(0)
+                      : this.binaryenType === binaryen.v128
+                        ? ctx.mod.v128.const(new Uint8Array(16))
+                        : (() => {
+                              throw new Error("invalid binaryen type");
+                          })();
+
+        ctx.mod.addGlobal(global_name, this.binaryenType, true, zero);
     }
 
     get_expression_ref(): binaryen.ExpressionRef {
