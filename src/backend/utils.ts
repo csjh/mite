@@ -9,6 +9,7 @@ import {
 } from "../types/code_gen.js";
 import {
     Array_,
+    GlobalPrimitive,
     IndirectFunction,
     LinearMemoryPrimitive,
     LocalPrimitive,
@@ -52,13 +53,18 @@ export function lookForVariable(ctx: Context, name: string): MiteType {
 export function createMiteType(
     ctx: Context,
     type: InstanceTypeInformation,
-    address_or_local: MiteType | number
+    address_or_local: MiteType | number | string
 ): MiteType {
-    if (typeof address_or_local === "number") {
+    if (typeof address_or_local === "number" || typeof address_or_local === "string") {
         if (type.classification === "primitive") {
-            return new LocalPrimitive(ctx, type, address_or_local);
+            return typeof address_or_local === "number"
+                ? new LocalPrimitive(ctx, type, address_or_local)
+                : new GlobalPrimitive(ctx, type, address_or_local);
         } else {
-            const local = new LocalPrimitive(ctx, Pointer.type, address_or_local);
+            const local =
+                typeof address_or_local === "number"
+                    ? new LocalPrimitive(ctx, Pointer.type, address_or_local)
+                    : new GlobalPrimitive(ctx, Pointer.type, address_or_local);
             if (type.classification === "array") {
                 return new Array_(ctx, type, new Pointer(local));
             } else if (type.classification === "struct") {
