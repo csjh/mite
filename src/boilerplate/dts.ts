@@ -9,7 +9,8 @@ import {
     FunctionDeclaration,
     ImportDeclaration,
     Program,
-    StructDeclaration
+    StructDeclaration,
+    VariableDeclaration
 } from "../types/nodes.js";
 import { buildTypes } from "../backend/context_initialization.js";
 import { assumeStructs, parseType } from "../backend/utils.js";
@@ -56,7 +57,14 @@ export function programToBoilerplate(program: Program, _: Options) {
         }
     }
 
-    const exports = program.body
+    const var_exports = program.body
+        .filter(
+            (x): x is ExportNamedDeclaration =>
+                x.type === "ExportNamedDeclaration" && x.declaration.type === "VariableDeclaration"
+        )
+        .map((x) => x.declaration as VariableDeclaration);
+
+    const function_exports = program.body
         .filter(
             (x): x is ExportNamedDeclaration =>
                 x.type === "ExportNamedDeclaration" && x.declaration.type === "FunctionDeclaration"
@@ -105,7 +113,7 @@ export function programToBoilerplate(program: Program, _: Options) {
         code += "\n\n";
     }
 
-    for (const { id, params, returnType } of exports) {
+    for (const { id, params, returnType } of function_exports) {
         code += dedent`
             export declare function ${id.name}(${params
                 .map((x) => `${x.name.name}: ${typeToIdentifier(parseType(ctx, x.typeAnnotation))}`)
@@ -113,6 +121,16 @@ export function programToBoilerplate(program: Program, _: Options) {
         `;
 
         code += "\n\n";
+    }
+
+    for (const { declarations } of var_exports) {
+        for (const { id, typeAnnotation } of declarations) {
+            code += dedent`
+                export declare const ${id.name}: ${typeToIdentifier(parseType(ctx, typeAnnotation))};
+            `;
+
+            code += "\n\n";
+        }
     }
 
     // remove second trailing newline
