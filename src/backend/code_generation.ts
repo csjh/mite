@@ -191,6 +191,7 @@ export async function programToModule(
                 await handleDeclaration(ctx, node, options.resolveImport);
                 break;
             case "ImportDeclaration":
+                // already handled
                 break;
             default:
                 throw new Error(`Unknown node type: ${node.type}`);
