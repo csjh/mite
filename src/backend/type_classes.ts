@@ -939,6 +939,63 @@ export class LocalPrimitive extends Primitive {
     }
 }
 
+export class GlobalPrimitive extends Primitive {
+    constructor(
+        ctx: Context,
+        public readonly type: InstancePrimitiveTypeInformation,
+        private readonly global_name: string
+    ) {
+        super(ctx, type);
+    }
+
+    get_expression_ref(): binaryen.ExpressionRef {
+        return this.get().get_expression_ref();
+    }
+
+    get(): Primitive {
+        let expr = this.ctx.mod.global.get(this.global_name, this.binaryenType);
+        if (this.type.name == "bool") {
+            expr = this.ctx.mod.i32.gt_u(expr, this.ctx.mod.i32.const(0));
+        } else if (this.type.name === "i8") {
+            expr = this.ctx.mod.i32.extend8_s(expr);
+        } else if (this.type.name === "u8") {
+            expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xff));
+        } else if (this.type.name === "i16") {
+            expr = this.ctx.mod.i32.extend16_s(expr);
+        } else if (this.type.name === "u16") {
+            expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xffff));
+        }
+        return new TransientPrimitive(this.ctx, this.type, expr);
+    }
+
+    set(value: MiteType): MiteType {
+        if (value.type.name !== this.type.name) {
+            throw new Error(`Cannot set ${this.type.name} to ${value.type.name}`);
+        }
+
+        let expr = value.get_expression_ref();
+        if (this.type.name == "bool") {
+            expr = this.ctx.mod.i32.gt_u(expr, this.ctx.mod.i32.const(0));
+        } else if (this.type.name === "i8") {
+            expr = this.ctx.mod.i32.extend8_s(expr);
+        } else if (this.type.name === "u8") {
+            expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xff));
+        } else if (this.type.name === "i16") {
+            expr = this.ctx.mod.i32.extend16_s(expr);
+        } else if (this.type.name === "u16") {
+            expr = this.ctx.mod.i32.and(expr, this.ctx.mod.i32.const(0xffff));
+        }
+        return new TransientPrimitive(
+            this.ctx,
+            this.type,
+            this.ctx.mod.block(null, [
+                this.ctx.mod.global.set(this.global_name, expr),
+                this.ctx.mod.global.get(this.global_name, this.binaryenType)
+            ])
+        );
+    }
+}
+
 export class Pointer implements MiteType {
     public static type = Primitive.primitives.get("u32")!;
     public type = Primitive.primitives.get("u32")!;
