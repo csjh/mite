@@ -8,7 +8,11 @@ console.log(
         as: "wat",
         optimize: false,
         resolveImport() {
-            return Promise.resolve("");
+            return Promise.resolve({
+                isMite: false,
+                absolute: "",
+                code: ""
+            });
         }
     })
 );
@@ -26,7 +30,11 @@ console.log(await compile(program, { as: "dts" }));
 
 const output = await compile(program, {
     resolveImport() {
-        return Promise.resolve("");
+        return Promise.resolve({
+            isMite: false,
+            absolute: "",
+            code: ""
+        });
     }
 });
 
