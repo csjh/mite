@@ -1178,7 +1178,14 @@ export class Struct extends AggregateType<InstanceStructTypeInformation> {
 }
 
 export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
-    access(_: string): MiteType {
+    access(accessor: string): MiteType {
+        if (accessor === "length") {
+            return new TransientPrimitive(
+                this.ctx,
+                this.ctx.types.u32,
+                this.ctx.mod.i32.load(0, 0, this.get_expression_ref(), "main_memory")
+            );
+        }
         throw new Error("Unable to access properties of an array.");
     }
 
@@ -1497,8 +1504,8 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
         );
     }
 
-    access(_: string): MiteType {
-        throw new Error("Unable to access properties of a string.");
+    access(accessor: string): MiteType {
+        return this.array.access(accessor);
     }
 
     index(index: MiteType): MiteType {
