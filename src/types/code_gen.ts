@@ -120,8 +120,6 @@ export interface Context {
         break: string[];
         depth: number;
     };
-    /** All declared structs in the program */
-    structs: Record<string, Omit<StructTypeInformation, "instance">>;
     /** The current block */
     current_block: MiteType[];
     /** All captured functions that will go into the virtualized_functions table */
@@ -139,7 +137,6 @@ export interface Context {
     };
     /** Data about current function */
     current_function: FunctionInformation & {
-        stack_frame_size: number;
         local_count: number;
     };
 }

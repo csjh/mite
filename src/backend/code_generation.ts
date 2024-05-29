@@ -103,6 +103,7 @@ export async function programToModule(
     const RESERVED_FN_PTRS = callbacks.length;
 
     const mod = new binaryen.Module();
+    // @ts-expect-error we add a couple things after ctx is initialized
     const ctx: Context = {
         mod,
         variables: new Map(),
@@ -110,7 +111,6 @@ export async function programToModule(
         types,
         current_block: [],
         captured_functions: [],
-        local_count: 0,
         string: {
             literals: new Map(),
             end: 0
@@ -118,8 +118,7 @@ export async function programToModule(
         constants: {
             RESERVED_FN_PTRS
         },
-        // @ts-expect-error initially we're not in a function
-        current_function: null
+        current_function: { params: [], results: types.void, local_count: 0 }
     };
     ctx.intrinsics = createIntrinsics(ctx);
     ctx.conversions = createConversions(ctx);
@@ -462,7 +461,6 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     const current_function = (ctx.current_function = {
         ...(lookForVariable(ctx, node.id.name).type as InstanceFunctionTypeInformation)
             .implementation,
-        stack_frame_size: 0,
         local_count
     });
 
@@ -985,8 +983,6 @@ function emptyExpressionToExpression(ctx: Context, _: EmptyExpression): MiteType
 
 function memberExpressionToExpression(ctx: Context, value: MemberExpression): MiteType {
     const struct = expressionToExpression(ctx, value.object);
-    if (struct.type.classification !== "struct")
-        throw new Error("Cannot access member of non-struct");
     return struct.access(value.property.name);
 }
 
