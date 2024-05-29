@@ -52,6 +52,8 @@ export abstract class MiteType {
     // operators
     abstract operator(operator: UnaryOperator): UnaryOperatorHandler;
     abstract operator(operator: BinaryOperator): BinaryOperatorHandler;
+    // if it's a global
+    abstract readonly is_global: boolean;
     // the type information of the value
     abstract type: InstanceTypeInformation;
 }
@@ -115,7 +117,8 @@ export abstract class Primitive implements MiteType {
 
     constructor(
         protected readonly ctx: Context,
-        public readonly type: InstancePrimitiveTypeInformation
+        public readonly type: InstancePrimitiveTypeInformation,
+        public readonly is_global: boolean
     ) {
         if (!Primitive.primitiveToBinaryen.has(type.name))
             throw new Error(`Invalid primitive type ${type.name}`);
@@ -744,7 +747,7 @@ export class TransientPrimitive extends Primitive {
         public readonly type: InstancePrimitiveTypeInformation,
         private readonly expression: binaryen.ExpressionRef
     ) {
-        super(ctx, type);
+        super(ctx, type, false);
     }
 
     get_expression_ref(): binaryen.ExpressionRef {
@@ -766,7 +769,7 @@ export class LinearMemoryPrimitive extends Primitive {
         type: InstancePrimitiveTypeInformation,
         private readonly pointer: MiteType
     ) {
-        super(ctx, type);
+        super(ctx, type, false);
     }
 
     get_expression_ref(): binaryen.ExpressionRef {
@@ -891,7 +894,7 @@ export class LocalPrimitive extends Primitive {
         public readonly type: InstancePrimitiveTypeInformation,
         private readonly local_index: number
     ) {
-        super(ctx, type);
+        super(ctx, type, false);
     }
 
     get_expression_ref(): binaryen.ExpressionRef {
@@ -945,7 +948,7 @@ export class GlobalPrimitive extends Primitive {
         public readonly type: InstancePrimitiveTypeInformation,
         private readonly global_name: string
     ) {
-        super(ctx, type);
+        super(ctx, type, true);
         const zero =
             this.binaryenType === binaryen.i32
                 ? ctx.mod.i32.const(0)
@@ -1015,11 +1018,13 @@ export class GlobalPrimitive extends Primitive {
 export class Pointer implements MiteType {
     public static type = Primitive.primitives.get("u32")!;
     public type = Primitive.primitives.get("u32")!;
+    public is_global: boolean;
 
     constructor(private readonly pointer: Primitive) {
         if (pointer.type.name !== "u32") {
             throw new Error("Pointer must be u32");
         }
+        this.is_global = pointer.is_global;
     }
 
     get_expression_ref(): binaryen.ExpressionRef {
@@ -1060,11 +1065,15 @@ export class Pointer implements MiteType {
 }
 
 export abstract class AggregateType<T extends InstanceTypeInformation> implements MiteType {
+    public readonly is_global: boolean;
+
     constructor(
         protected ctx: Context,
         public type: T,
         protected address: Pointer
-    ) {}
+    ) {
+        this.is_global = address.is_global;
+    }
 
     get(): Primitive {
         return new TransientPrimitive(
@@ -1239,6 +1248,8 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
 }
 
 export class DirectFunction implements MiteType {
+    public readonly is_global = true;
+
     constructor(
         private readonly ctx: Context,
         readonly type: InstanceFunctionTypeInformation
@@ -1393,6 +1404,8 @@ export class IndirectFunction extends AggregateType<InstanceFunctionTypeInformat
 }
 
 export class StructMethod implements MiteType {
+    public readonly is_global = true;
+
     constructor(
         private readonly ctx: Context,
         readonly type: InstanceFunctionTypeInformation,

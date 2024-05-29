@@ -183,13 +183,25 @@ export async function programToModule(
     }
 
     const init = [];
-
+    const start_locals = [];
     for (const node of program.body) {
         switch (node.type) {
+            case "VariableDeclaration":
+                await handleDeclaration(ctx, node, options.resolveImport);
+                start_locals.push(
+                    ...Array.from(ctx.variables.values())
+                        .filter((x) => !x.is_global)
+                        .map((x) => x.type)
+                );
+                ctx.variables.forEach(
+                    (value, key) => !value.is_global && ctx.variables.delete(key)
+                );
+                init.push(...ctx.current_block.map((x) => x.get_expression_ref()));
+                ctx.current_block = [];
+                break;
             case "ExportNamedDeclaration":
             case "FunctionDeclaration":
             case "StructDeclaration":
-            case "VariableDeclaration":
                 await handleDeclaration(ctx, node, options.resolveImport);
                 break;
             case "ImportDeclaration":
@@ -200,10 +212,6 @@ export async function programToModule(
         }
     }
 
-    init.push(...ctx.current_block.map((x) => x.get_expression_ref()));
-    const start_locals = Array.from(ctx.variables.entries())
-        .filter(([_, mitetype]) => !(mitetype instanceof DirectFunction))
-        .map(([, { type }]) => type);
     ctx.current_block = [];
 
     for (const fn of callbacks) {
@@ -470,7 +478,7 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
 
     const function_variables = Array.from(ctx.variables.entries())
         .filter(([name]) => !params.has(name))
-        .filter(([_, mitetype]) => !(mitetype instanceof DirectFunction))
+        .filter(([_, mitetype]) => !mitetype.is_global)
         .map(([, { type }]) => type);
 
     miteSignatureToBinaryenSignature(
