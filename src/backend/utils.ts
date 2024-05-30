@@ -229,7 +229,25 @@ export function allocate(ctx: Context, type: InstanceTypeInformation, size: numb
     const allocation = new TransientPrimitive(
         ctx,
         Pointer.type,
-        ctx.mod.call("arena_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32)
+        ctx.current_function.is_init
+            ? ctx.mod.block(
+                  null,
+                  [
+                      ctx.mod.global.set(
+                          ARENA_HEAP_POINTER,
+                          ctx.mod.i32.add(
+                              ctx.mod.global.get(ARENA_HEAP_POINTER, binaryen.i32),
+                              ctx.mod.i32.const(size)
+                          )
+                      ),
+                      ctx.mod.i32.sub(
+                          ctx.mod.global.get(ARENA_HEAP_POINTER, binaryen.i32),
+                          ctx.mod.i32.const(size)
+                      )
+                  ],
+                  binaryen.i32
+              )
+            : ctx.mod.call("arena_heap_malloc", [ctx.mod.i32.const(size)], binaryen.i32)
     );
 
     const local = createMiteType(ctx, Pointer.type, ctx.current_function.local_count++);

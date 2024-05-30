@@ -138,6 +138,7 @@ export interface Context {
     /** Data about current function */
     current_function: FunctionInformation & {
         local_count: number;
+        is_init: boolean;
     };
 }
 

@@ -118,7 +118,7 @@ export async function programToModule(
         constants: {
             RESERVED_FN_PTRS
         },
-        current_function: { params: [], results: types.void, local_count: 0 }
+        current_function: { params: [], results: types.void, local_count: 0, is_init: true }
     };
     ctx.intrinsics = createIntrinsics(ctx);
     ctx.conversions = createConversions(ctx);
@@ -261,9 +261,13 @@ export async function programToModule(
         mod.addGlobal(STRING_SECTION_START, binaryen.i32, true, mod.i32.const(0));
 
         init.push(
+            mod.global.set(STRING_SECTION_START, mod.global.get(ARENA_HEAP_POINTER, binaryen.i32)),
             mod.global.set(
-                STRING_SECTION_START,
-                mod.call("arena_heap_malloc", [mod.i32.const(string_data.length)], binaryen.i32)
+                ARENA_HEAP_POINTER,
+                mod.i32.add(
+                    mod.global.get(ARENA_HEAP_POINTER, binaryen.i32),
+                    mod.i32.const(string_data.length)
+                )
             ),
             mod.memory.init(
                 "string_data",
@@ -469,7 +473,8 @@ function buildFunctionDeclaration(ctx: Context, node: FunctionDeclaration): void
     const current_function = (ctx.current_function = {
         ...(lookForVariable(ctx, node.id.name).type as InstanceFunctionTypeInformation)
             .implementation,
-        local_count
+        local_count,
+        is_init: false
     });
 
     const function_body = newBlock(ctx, () =>
