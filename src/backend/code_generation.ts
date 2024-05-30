@@ -242,7 +242,7 @@ export async function programToModule(
     }
 
     ctx.mod.addGlobalImport(ARENA_HEAP_OFFSET, "$mite", "$heap_offset", binaryen.i32, true);
-    ctx.mod.addGlobalImport(ARENA_HEAP_POINTER, "$mite", "$heap_pointer", binaryen.i32, false);
+    ctx.mod.addGlobalImport(ARENA_HEAP_POINTER, "$mite", "$heap_pointer", binaryen.i32, true);
 
     const fns = [...callbacks, ...ctx.captured_functions];
 
