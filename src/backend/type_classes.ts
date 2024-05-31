@@ -1522,7 +1522,7 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
     }
 
     index(index: MiteType): MiteType {
-        return this.array.index(index);
+        return new TransientPrimitive(this.ctx, this.ctx.types.u32, this.array.index(index).get_expression_ref());
     }
 
     sizeof(): number {

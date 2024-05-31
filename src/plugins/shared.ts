@@ -6,8 +6,6 @@ var $heap_offset = new WebAssembly.Global({ value: "i32", mutable: true }, 0);
 
 var $encoder = /*#__PURE__*/ new TextEncoder();
 var $decoder = /*#__PURE__*/ new TextDecoder();
-var $stringToPointer = /*#__PURE__*/ new Map();
-var $pointerToString = /*#__PURE__*/ new Map();
 
 var $dataview = new DataView($memory.buffer);
 export var $GetBigInt64 =  (ptr) => $dataview.getBigInt64(ptr, true);
@@ -42,12 +40,7 @@ export function $toJavascriptFunction($ptr) {
 }
 
 export function $toJavascriptString($ptr) {
-    if ($pointerToString.has($ptr)) return $pointerToString.get($ptr);
-
     var $str = $decoder.decode(new Uint8Array($memory.buffer, $ptr + 4, $GetUint32($ptr)));
-
-    $pointerToString.set($ptr, $str);
-    $stringToPointer.set($str, $ptr);
 
     return $str;
 }
@@ -71,17 +64,12 @@ function $utf8Length($str) {
 }
 
 export function $fromJavascriptString($str) {
-    if ($stringToPointer.has($str)) return $stringToPointer.get($str);
-
     var $len = $utf8Length($str);
     var $ptr = $arena_heap_malloc(4 + $len);
     $SetUint32($ptr, $len);
 
     var $output = new Uint8Array($memory.buffer, $ptr + 4, $len);
     $encoder.encodeInto($str, $output);
-
-    $pointerToString.set($ptr, $str);
-    $stringToPointer.set($str, $ptr);
 
     return $ptr;
 }
