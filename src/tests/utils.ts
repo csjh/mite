@@ -65,26 +65,17 @@ export async function compileAndRun(
 function adaptImportsExports(source: string): string {
     const s = { start: 0, end: 0 };
 
-    const ast = parse(source, { sourceType: "module", ecmaVersion: "latest" });
-    // const $$exports = {};
-    ast.body.unshift({
-        type: "VariableDeclaration",
-        declarations: [
-            {
-                type: "VariableDeclarator",
-                id: { type: "Identifier", name: "$$exports", ...s },
-                init: { type: "ObjectExpression", properties: [], ...s },
-                ...s
-            }
-        ],
-        kind: "const",
-        ...s
+    const ast = parse("const $$exports = {};" + source + ";return $$exports;", {
+        sourceType: "module",
+        ecmaVersion: "latest",
+        allowReturnOutsideFunction: true
     });
 
     // @ts-expect-error annoying mismatch between estree and acorn
     ast.body = ast.body.flatMap((node) => {
         if (node.type === "ImportDeclaration") {
             // import { imported as local } from "some-module"
+            // becomes
             // var { imported: local } = $$imports["some-module"]
 
             const new_node_declaration = {
@@ -121,10 +112,10 @@ function adaptImportsExports(source: string): string {
                 declarations: [new_node_declaration]
             } satisfies VariableDeclaration;
         } else if (node.type === "ExportNamedDeclaration") {
-            // export function exported() {};
-            // function exported() {}; $$exports.exported = exported;
-
             if (node.declaration?.type === "VariableDeclaration") {
+                // export var x = 1;
+                // becomes
+                // var x = 1; $$exports.x = x;
                 return [
                     node.declaration,
                     {
@@ -147,6 +138,9 @@ function adaptImportsExports(source: string): string {
                     } satisfies SequenceExpression
                 ];
             } else if (node.declaration) {
+                // export function x() {}
+                // becomes
+                // function x() {} $$exports.x = x;
                 return [
                     node.declaration,
                     {
@@ -166,6 +160,9 @@ function adaptImportsExports(source: string): string {
                     } satisfies AssignmentExpression
                 ];
             } else {
+                // export { x, y, z }
+                // becomes
+                // $$exports.x = x, $$exports.y = y, $$exports.z = z;
                 return {
                     type: "SequenceExpression",
                     expressions: node.specifiers.map((specifier) => ({
@@ -188,16 +185,6 @@ function adaptImportsExports(source: string): string {
         } else {
             return node;
         }
-    });
-
-    ast.body.push({
-        type: "ReturnStatement",
-        argument: {
-            type: "Identifier",
-            name: "$$exports",
-            ...s
-        },
-        ...s
     });
 
     return print(ast as unknown as Node).code;
