@@ -10,7 +10,7 @@ import type {
     Identifier,
     Node
 } from "estree";
-import { parse } from "acorn";
+import { ImportSpecifier, parse } from "acorn";
 import { print } from "esrap";
 
 export async function compileAndRun(
@@ -83,7 +83,7 @@ function adaptImportsExports(source: string): string {
                 id: {
                     type: "ObjectPattern",
                     properties: node.specifiers
-                        .filter((x) => x.type === "ImportSpecifier")
+                        .filter((x): x is ImportSpecifier => x.type === "ImportSpecifier")
                         .map((specifier) => ({
                             type: "Property",
                             method: false,
