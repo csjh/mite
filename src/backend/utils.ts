@@ -101,10 +101,7 @@ export function createMiteType(
 
 // converts a mite type to binaryen type (for parameter or return type)
 export function typeInformationToBinaryen(type: TypeInformation) {
-    if (type.classification === "primitive") {
-        return Primitive.primitiveToBinaryen.get(type.name)!;
-    }
-    return binaryen.i32;
+    return type.classification === "primitive" ? type.binaryen_type : binaryen.i32;
 }
 
 export function miteSignatureToBinaryenSignature(

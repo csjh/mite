@@ -26,6 +26,7 @@ export interface StructTypeInformation extends SharedTypeInformation {
 }
 export interface PrimitiveTypeInformation extends SharedTypeInformation {
     classification: "primitive";
+    binaryen_type: binaryen.Type;
 }
 export interface FunctionTypeInformation extends SharedTypeInformation {
     classification: "function";

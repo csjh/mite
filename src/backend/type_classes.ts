@@ -59,71 +59,44 @@ export abstract class MiteType {
 }
 
 export abstract class Primitive implements MiteType {
-    static primitiveToBinaryen = new Map([
-        ["void", binaryen.none],
-        ["bool", binaryen.i32],
-        ["i8", binaryen.i32],
-        ["i16", binaryen.i32],
-        ["i32", binaryen.i32],
-        ["i64", binaryen.i64],
-        ["u8", binaryen.i32],
-        ["u16", binaryen.i32],
-        ["u32", binaryen.i32],
-        ["u64", binaryen.i64],
-        ["f32", binaryen.f32],
-        ["f64", binaryen.f64],
-        ["v128", binaryen.v128],
-        ["i8x16", binaryen.v128],
-        ["u8x16", binaryen.v128],
-        ["i16x8", binaryen.v128],
-        ["u16x8", binaryen.v128],
-        ["i32x4", binaryen.v128],
-        ["u32x4", binaryen.v128],
-        ["f32x4", binaryen.v128],
-        ["i64x2", binaryen.v128],
-        ["u64x2", binaryen.v128],
-        ["f64x2", binaryen.v128]
-    ]);
+    // prettier-ignore
     static primitives = new Map<string, PrimitiveTypeInformation>([
-        ["void", { classification: "primitive", name: "void", sizeof: 0 }],
-        ["bool", { classification: "primitive", name: "bool", sizeof: 4 }],
-        ["i8", { classification: "primitive", name: "i8", sizeof: 1 }],
-        ["i16", { classification: "primitive", name: "i16", sizeof: 2 }],
-        ["i32", { classification: "primitive", name: "i32", sizeof: 4 }],
-        ["i64", { classification: "primitive", name: "i64", sizeof: 8 }],
-        ["u8", { classification: "primitive", name: "u8", sizeof: 1 }],
-        ["u16", { classification: "primitive", name: "u16", sizeof: 2 }],
-        ["u32", { classification: "primitive", name: "u32", sizeof: 4 }],
-        ["u64", { classification: "primitive", name: "u64", sizeof: 8 }],
-        ["f32", { classification: "primitive", name: "f32", sizeof: 4 }],
-        ["f64", { classification: "primitive", name: "f64", sizeof: 8 }],
-        ["v128", { classification: "primitive", name: "v128", sizeof: 16 }],
-        ["i8x16", { classification: "primitive", name: "i8x16", sizeof: 16 }],
-        ["u8x16", { classification: "primitive", name: "u8x16", sizeof: 16 }],
-        ["i16x8", { classification: "primitive", name: "i16x8", sizeof: 16 }],
-        ["u16x8", { classification: "primitive", name: "u16x8", sizeof: 16 }],
-        ["i32x4", { classification: "primitive", name: "i32x4", sizeof: 16 }],
-        ["u32x4", { classification: "primitive", name: "u32x4", sizeof: 16 }],
-        ["f32x4", { classification: "primitive", name: "f32x4", sizeof: 16 }],
-        ["i64x2", { classification: "primitive", name: "i64x2", sizeof: 16 }],
-        ["u64x2", { classification: "primitive", name: "u64x2", sizeof: 16 }],
-        ["f64x2", { classification: "primitive", name: "f64x2", sizeof: 16 }]
+        ["void", { classification: "primitive", name: "void", sizeof: 0, binaryen_type: binaryen.none }],
+        ["bool", { classification: "primitive", name: "bool", sizeof: 4, binaryen_type: binaryen.i32 }],
+        ["i8", { classification: "primitive", name: "i8", sizeof: 1, binaryen_type: binaryen.i32 }],
+        ["i16", { classification: "primitive", name: "i16", sizeof: 2, binaryen_type: binaryen.i32 }],
+        ["i32", { classification: "primitive", name: "i32", sizeof: 4, binaryen_type: binaryen.i32 }],
+        ["i64", { classification: "primitive", name: "i64", sizeof: 8, binaryen_type: binaryen.i64 }],
+        ["u8", { classification: "primitive", name: "u8", sizeof: 1, binaryen_type: binaryen.i32 }],
+        ["u16", { classification: "primitive", name: "u16", sizeof: 2, binaryen_type: binaryen.i32 }],
+        ["u32", { classification: "primitive", name: "u32", sizeof: 4, binaryen_type: binaryen.i32 }],
+        ["u64", { classification: "primitive", name: "u64", sizeof: 8, binaryen_type: binaryen.i64 }],
+        ["f32", { classification: "primitive", name: "f32", sizeof: 4, binaryen_type: binaryen.i32 }],
+        ["f64", { classification: "primitive", name: "f64", sizeof: 8, binaryen_type: binaryen.i64 }],
+        ["v128", { classification: "primitive", name: "v128", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["i8x16", { classification: "primitive", name: "i8x16", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["u8x16", { classification: "primitive", name: "u8x16", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["i16x8", { classification: "primitive", name: "i16x8", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["u16x8", { classification: "primitive", name: "u16x8", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["i32x4", { classification: "primitive", name: "i32x4", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["u32x4", { classification: "primitive", name: "u32x4", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["f32x4", { classification: "primitive", name: "f32x4", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["i64x2", { classification: "primitive", name: "i64x2", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["u64x2", { classification: "primitive", name: "u64x2", sizeof: 16, binaryen_type: binaryen.v128 }],
+        ["f64x2", { classification: "primitive", name: "f64x2", sizeof: 16, binaryen_type: binaryen.v128 }]
     ]);
     static sizeof(type: string) {
         if (!Primitive.primitives.has(type)) throw new Error(`Invalid primitive type ${type}`);
         return Primitive.primitives.get(type)!.sizeof;
     }
-    protected binaryenType: binaryen.Type;
 
     constructor(
         protected readonly ctx: Context,
         public readonly type: InstancePrimitiveTypeInformation,
         public readonly is_global: boolean
     ) {
-        if (!Primitive.primitiveToBinaryen.has(type.name))
+        if (!Primitive.primitives.has(type.name))
             throw new Error(`Invalid primitive type ${type.name}`);
-
-        this.binaryenType = Primitive.primitiveToBinaryen.get(type.name)!;
     }
 
     sizeof(): number {
@@ -779,7 +752,7 @@ export class LinearMemoryPrimitive extends Primitive {
     get(): Primitive {
         const ptr = this.pointer.get_expression_ref();
         let expr;
-        if (this.binaryenType === binaryen.i32) {
+        if (this.type.binaryen_type === binaryen.i32) {
             if (this.type.name == "bool") {
                 expr = this.ctx.mod.i32.gt_u(
                     this.ctx.mod.i32.load(0, 0, ptr, "main_memory"),
@@ -796,13 +769,13 @@ export class LinearMemoryPrimitive extends Primitive {
             } else {
                 expr = this.ctx.mod.i32.load(0, 0, ptr, "main_memory");
             }
-        } else if (this.binaryenType === binaryen.i64) {
+        } else if (this.type.binaryen_type === binaryen.i64) {
             expr = this.ctx.mod.i64.load(0, 0, ptr, "main_memory");
-        } else if (this.binaryenType === binaryen.f32) {
+        } else if (this.type.binaryen_type === binaryen.f32) {
             expr = this.ctx.mod.f32.load(0, 0, ptr, "main_memory");
-        } else if (this.binaryenType === binaryen.f64) {
+        } else if (this.type.binaryen_type === binaryen.f64) {
             expr = this.ctx.mod.f64.load(0, 0, ptr, "main_memory");
-        } else if (this.binaryenType === binaryen.v128) {
+        } else if (this.type.binaryen_type === binaryen.v128) {
             expr = this.ctx.mod.v128.load(0, 0, ptr, "main_memory");
         } else {
             throw new Error("unreachable");
@@ -820,7 +793,7 @@ export class LinearMemoryPrimitive extends Primitive {
         const params = [0, 0, ptr, value.get_expression_ref(), "main_memory"] as const;
         // replicate tee behavior
         // TODO: ensure binaryen optimizes out the extra load
-        if (this.binaryenType === binaryen.i32) {
+        if (this.type.binaryen_type === binaryen.i32) {
             if (this.type.name == "bool") {
                 expr = this.ctx.mod.block(null, [
                     this.ctx.mod.i32.store(
@@ -861,22 +834,22 @@ export class LinearMemoryPrimitive extends Primitive {
                     this.ctx.mod.i32.load(0, 0, ptr, "main_memory")
                 ]);
             }
-        } else if (this.binaryenType === binaryen.i64) {
+        } else if (this.type.binaryen_type === binaryen.i64) {
             expr = this.ctx.mod.block(null, [
                 this.ctx.mod.i64.store(...params),
                 this.ctx.mod.i64.load(0, 0, ptr, "main_memory")
             ]);
-        } else if (this.binaryenType === binaryen.f32) {
+        } else if (this.type.binaryen_type === binaryen.f32) {
             expr = this.ctx.mod.block(null, [
                 this.ctx.mod.f32.store(...params),
                 this.ctx.mod.f32.load(0, 0, ptr, "main_memory")
             ]);
-        } else if (this.binaryenType === binaryen.f64) {
+        } else if (this.type.binaryen_type === binaryen.f64) {
             expr = this.ctx.mod.block(null, [
                 this.ctx.mod.f64.store(...params),
                 this.ctx.mod.f64.load(0, 0, ptr, "main_memory")
             ]);
-        } else if (this.binaryenType === binaryen.v128) {
+        } else if (this.type.binaryen_type === binaryen.v128) {
             expr = this.ctx.mod.block(null, [
                 this.ctx.mod.v128.store(...params),
                 this.ctx.mod.v128.load(0, 0, ptr, "main_memory")
@@ -902,7 +875,7 @@ export class LocalPrimitive extends Primitive {
     }
 
     get(): Primitive {
-        let expr = this.ctx.mod.local.get(this.local_index, this.binaryenType);
+        let expr = this.ctx.mod.local.get(this.local_index, this.type.binaryen_type);
         if (this.type.name == "bool") {
             expr = this.ctx.mod.i32.gt_u(expr, this.ctx.mod.i32.const(0));
         } else if (this.type.name === "i8") {
@@ -937,7 +910,7 @@ export class LocalPrimitive extends Primitive {
         return new TransientPrimitive(
             this.ctx,
             this.type,
-            this.ctx.mod.local.tee(this.local_index, expr, this.binaryenType)
+            this.ctx.mod.local.tee(this.local_index, expr, this.type.binaryen_type)
         );
     }
 }
@@ -949,22 +922,23 @@ export class GlobalPrimitive extends Primitive {
         private readonly global_name: string
     ) {
         super(ctx, type, true);
-        const zero =
-            this.binaryenType === binaryen.i32
-                ? ctx.mod.i32.const(0)
-                : this.binaryenType === binaryen.i64
-                  ? ctx.mod.i64.const(0, 0)
-                  : this.binaryenType === binaryen.f32
-                    ? ctx.mod.f32.const(0)
-                    : this.binaryenType === binaryen.f64
-                      ? ctx.mod.f64.const(0)
-                      : this.binaryenType === binaryen.v128
-                        ? ctx.mod.v128.const(new Uint8Array(16))
-                        : (() => {
-                              throw new Error("invalid binaryen type");
-                          })();
 
-        ctx.mod.addGlobal(global_name, this.binaryenType, true, zero);
+        let zero;
+        if (this.type.binaryen_type === binaryen.i32) {
+            zero = ctx.mod.i32.const(0);
+        } else if (this.type.binaryen_type === binaryen.i64) {
+            zero = ctx.mod.i64.const(0, 0);
+        } else if (this.type.binaryen_type === binaryen.f32) {
+            zero = ctx.mod.f32.const(0);
+        } else if (this.type.binaryen_type === binaryen.f64) {
+            zero = ctx.mod.f64.const(0);
+        } else if (this.type.binaryen_type === binaryen.v128) {
+            zero = ctx.mod.v128.const(new Uint8Array(16));
+        } else {
+            throw new Error(`Invalid binaryen type ${this.type.binaryen_type}`);
+        }
+
+        ctx.mod.addGlobal(global_name, this.type.binaryen_type, true, zero);
     }
 
     get_expression_ref(): binaryen.ExpressionRef {
@@ -972,7 +946,7 @@ export class GlobalPrimitive extends Primitive {
     }
 
     get(): Primitive {
-        let expr = this.ctx.mod.global.get(this.global_name, this.binaryenType);
+        let expr = this.ctx.mod.global.get(this.global_name, this.type.binaryen_type);
         if (this.type.name == "bool") {
             expr = this.ctx.mod.i32.gt_u(expr, this.ctx.mod.i32.const(0));
         } else if (this.type.name === "i8") {
@@ -1009,7 +983,7 @@ export class GlobalPrimitive extends Primitive {
             this.type,
             this.ctx.mod.block(null, [
                 this.ctx.mod.global.set(this.global_name, expr),
-                this.ctx.mod.global.get(this.global_name, this.binaryenType)
+                this.ctx.mod.global.get(this.global_name, this.type.binaryen_type)
             ])
         );
     }
@@ -1199,7 +1173,10 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
     }
 
     index(index: MiteType): MiteType {
-        if (index.type.name !== "i32" && index.type.name !== "u32") {
+        if (
+            index.type.classification !== "primitive" ||
+            index.type.binaryen_type !== binaryen.i32
+        ) {
             throw new Error(
                 `Array index must be an ${Pointer.type.name}, not whatever this is: ${index.type.name}`
             );
