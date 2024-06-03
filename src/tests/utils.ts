@@ -194,8 +194,7 @@ const AsyncFunction = async function () {}.constructor as FunctionConstructor;
 export function getModule(
     source: string,
     imports: Record<string, Record<string, unknown>> = {}
-): Promise<Record<string, unknown>> {
+): Promise<Record<string, (...args: unknown[]) => unknown>> {
     const adapted_for_function = adaptImportsExports(source);
-    console.log(adapted_for_function);
     return new AsyncFunction("$$imports", adapted_for_function)(imports);
 }
