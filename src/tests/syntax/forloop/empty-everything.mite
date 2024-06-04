@@ -1,0 +1,16 @@
+export fn instabreak(): i32 {
+    let sum = 0;
+    for (;;) {break;};
+    return sum;
+}
+
+export fn laterbreak(): i32 {
+    let sum = 0;
+    for (;;) {
+        sum = sum + 1;
+        if (sum == 10) {
+            break;
+        };
+    };
+    return sum;
+}

@@ -1,0 +1,44 @@
+export fn simplecontinue(): i32 {
+    let sum = 0;
+    for (let i = 0; i < 10; i = i + 1) {
+        if (i == 5) {
+            continue;
+        };
+        sum = sum + i;
+    };
+    return sum;
+}
+
+export fn latercontinue(): i32 {
+    let sum = 0;
+    for (let i = 0; i < 100; i = i + 1) {
+        if (i % 10) {
+            continue;
+        };
+        sum = sum + i;
+    };
+    return sum;
+}
+
+export fn complexcontinue(): i32 {
+    let sum = 0;
+    for (let i = 0; i < 100; i = i + 1) {
+        if (i % 10) {
+            continue;
+        };
+        sum = sum + i;
+        for (let j = 0; j < 100; j = j + 1) {
+            if (j % 10) {
+                continue;
+            };
+            sum = sum + j;
+            if (sum >= 20) {
+                break;
+            };
+        };
+        if (sum >= 20) {
+            break;
+        };
+    };
+    return sum;
+}

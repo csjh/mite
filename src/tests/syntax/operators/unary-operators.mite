@@ -1,0 +1,15 @@
+export fn neg(): i32 {
+    return -5;
+}
+
+export fn not(): i32 {
+    return ~5;
+}
+
+export fn lnot(): i32 {
+    return !0;
+}
+
+export fn doublelnot(): i32 {
+    return !!0;
+}

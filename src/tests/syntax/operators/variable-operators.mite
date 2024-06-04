@@ -1,0 +1,38 @@
+export fn muladd(): i32 {
+    let x = 5 * 3 + 2;
+    return x;
+}
+
+export fn pluseqmod(): i32 {
+    let y = 0;
+    return y += 4 % 2;
+}
+
+export fn shrassign(): i32 {
+    let z = 63;
+    z >>= 2 & 3;
+    return z;
+}
+
+export fn shlassign(): i32 {
+    let a = 3;
+    a <<= 2 | 3;
+    return a;
+}
+
+export fn orassign(): i32 {
+    let b = 234;
+    b |= 6 ^ 1;
+    return b;
+}
+
+export fn xorassign(): i32 {
+    let c = 2394;
+    c ^= 3 & 5;
+    return c;
+}
+
+export fn doubleassign(): i32 {
+    let d = 31;
+    return d += d &= 7 | 2;
+}

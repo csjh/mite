@@ -1,0 +1,44 @@
+fn add2(a: [i32; 2], b: [i32; 2]): [i32; 2] {
+    return [a[0] + b[0], a[1] + b[1]];
+}
+
+fn add2_proxy(a: [i32; 2], b: [i32; 2]): [i32; 2] {
+    return add2(a, b);
+}
+
+export fn single_layer(): i32 {
+    let a = [5, 6];
+    let b = [3, 2];
+    let c = add2_proxy(a, b);
+    return c[0] + c[1];
+}
+
+fn add3(a: [i32; 2], b: [i32; 2], c: [i32; 2]): [i32; 2] {
+    return [a[0] + b[0] + c[0], a[1] + b[1] + c[1]];
+}
+
+fn add3_proxy(a: [i32; 2], b: [i32; 2]): [i32; 2] {
+    let z = [1, 2];
+    return add3(a, b, z);
+}
+
+export fn double_layer(): i32 {
+    let a = [5, 6];
+    let b = [3, 2];
+    let c = add3_proxy(a, b);
+    return c[0] + c[1];
+}
+
+export fn double_layer_indexed(): i32 {
+    let a = [5, 6];
+    let b = [3, 2];
+    return add3_proxy(a, b)[0] + add3_proxy(a, b)[1];
+}
+
+fn add3_inline(a: [i32; 2], b: [i32; 2]): [i32; 2] {
+    return add3(a, b, [1, 2]);
+}
+
+export fn double_layer_inlined(): i32 {
+    return add3_inline([5, 6], [3, 2])[0] + add3_inline([5, 6], [3, 2])[1];
+}

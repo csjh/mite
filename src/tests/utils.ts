@@ -151,7 +151,7 @@ export function getModule(
 }
 
 export async function getSingleModule(
-    filename: string
+    filename: string | URL
 ): Promise<Record<string, (...args: unknown[]) => unknown>> {
     const source = await readFile(filename, "utf-8");
 

@@ -1,0 +1,11 @@
+struct Foo {
+    x: i32,
+    y: i32
+}
+
+export fn main(): i32 {
+    let a = Foo { x: 5, y: 6 };
+    let b: ref Foo = a;
+    b.x = 3;
+    return a.x;
+}

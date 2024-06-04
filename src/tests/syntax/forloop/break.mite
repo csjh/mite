@@ -1,0 +1,38 @@
+export fn laterbreak(): i32 {
+    let sum = 0;
+    for (let i = 0; i < 10; i = i + 1) {
+        sum = sum + i;
+        if (i == 5) {
+            break;
+        };
+    };
+    return sum;
+}
+
+export fn infinibreak(): i32 {
+    let sum = 0;
+    for (;;) {
+        sum = sum + 1;
+        if (sum == 10) {
+            break;
+        };
+    };
+    return sum;
+}
+
+export fn complexbreak(): i32 {
+    let sum = 0;
+    for (;;) {
+        sum = sum + 1;
+        for (;;) {
+            sum = sum + 1;
+            if (sum >= 10) {
+                break;
+            };
+        };
+        if (sum >= 20) {
+            break;
+        };
+    };
+    return sum;
+}

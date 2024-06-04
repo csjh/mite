@@ -1,0 +1,56 @@
+export fn five(): i32 {
+    return 5;
+}
+
+export fn zero(): i32 {
+    return 0;
+}
+
+export fn hexzero(): i32 {
+    return 0x0;
+}
+
+export fn hexfive(): i32 {
+    return 0x5;
+}
+
+export fn hexzerosfive(): i32 {
+    return 0x0000005;
+}
+
+export fn binoneohone(): i32 {
+    return 0b101;
+}
+
+export fn manyf(): i64 {
+    return 0xFFFFFFFFFFFFFFF;
+}
+
+export fn manybinones(): i64 {
+    return 0b1111111;
+}
+
+export fn simdint(): i32 {
+    let simd = { 1, 2, 3, 4 };
+    return extract(simd, 0);
+}
+
+export fn simdlong(): i64 {
+    let simd = { 1, 2 };
+    return extract(simd, 1);
+}
+
+export fn simdfloat(): f32 {
+    let simd = { 1.0, 2.1, 3.4, 4.1 };
+    return extract(simd, 2);
+}
+
+export fn simddouble(): f64 {
+    let simd = { 1.0, 2.1 };
+    return extract(simd, 1);
+}
+
+export fn simdint2(): i32 {
+    let simd = { 1, 2, 3, 4 };
+    return extract(simd, 3);
+}

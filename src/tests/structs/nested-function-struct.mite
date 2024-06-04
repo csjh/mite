@@ -1,0 +1,56 @@
+struct coord {
+    x: i32,
+    y: i32
+}
+
+fn add2(a: coord, b: coord): coord {
+    return coord {
+        x: a.x + b.x,
+        y: a.y + b.y
+    };
+}
+
+fn proxy_add2(a: coord, b: coord): coord {
+    return add2(a, b);
+}
+
+export fn single_layer(): i32 {
+    let a = coord { x: 5, y: 6 };
+    let b = coord { x: 3, y: 2 };
+    let c = proxy_add2(a, b);
+    return c.x + c.y;
+}
+
+fn add3(a: coord, b: coord, c: coord): coord {
+    return coord {
+        x: a.x + b.x + c.x,
+        y: a.y + b.y + c.y
+    };
+}
+
+fn proxy_add3(a: coord, b: coord): coord {
+    let z = coord { x: 1, y: 2 };
+    return add3(a, b, z);
+}
+
+export fn double_layer(): i32 {
+    let a = coord { x: 5, y: 6 };
+    let b = coord { x: 3, y: 2 };
+    let c = proxy_add3(a, b);
+    return c.x + c.y;
+}
+
+export fn double_layer_deref(): i32 {
+    let a = coord { x: 5, y: 6 };
+    let b = coord { x: 3, y: 2 };
+    return proxy_add3(a, b).x + proxy_add3(a, b).y;
+}
+
+fn proxy_add3_inline(a: coord, b: coord): coord {
+    return add3(a, b, coord { x: 1, y: 2 });
+}
+
+export fn double_layer_inlined(): i32 {
+    return proxy_add3_inline(coord { x: 5, y: 6 }, coord { x: 3, y: 2 }).x + 
+            proxy_add3_inline(coord { x: 5, y: 6 }, coord { x: 3, y: 2 }).y;
+}

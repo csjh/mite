@@ -1,0 +1,4 @@
+export fn main(): i32 {
+    let x: [i32; 3] = [1, 2, 3];
+    return x[0] + x[1] + x[2];
+}

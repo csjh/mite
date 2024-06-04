@@ -1,0 +1,9 @@
+export fn neg(): i32 {
+    let simd = { 1, 2, 3, 4 };
+    return extract(-simd, 0);
+}
+
+export fn not(): i64 {
+    let simd = { 1, 2 };
+    return extract(~simd, 1);
+}

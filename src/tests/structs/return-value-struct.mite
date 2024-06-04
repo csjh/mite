@@ -1,0 +1,18 @@
+struct coord {
+    x: i32,
+    y: i32
+}
+
+fn add(a: coord, b: coord): coord {
+    return coord {
+        x: a.x + b.x,
+        y: a.y + b.y
+    };
+}
+
+export fn main(): i32 {
+    let a = coord { x: 5, y: 6 };
+    let b = coord { x: 3, y: 2 };
+    let c = add(a, b);
+    return c.x + c.y;
+}

@@ -1,0 +1,52 @@
+export fn simple(): i32 {
+    let sum = 0;
+    let i = 0;
+    do {
+        sum = sum + i;
+        i = i + 1;
+        if (i == 5) {
+            continue;
+        };
+    } while (i < 10);
+    return sum;
+}
+
+export fn withskip(): i32 {
+    let sum = 0;
+    let i = 0;
+    do {
+        i = i + 1;
+        if (i % 10) {
+            continue;
+        };
+        sum = sum + i;
+    } while (i < 100);
+    return sum;
+}
+
+export fn complex(): i32 {
+    let sum = 0;
+    let i = 0;
+    do {
+        i = i + 1;
+        if (i % 10) {
+            continue;
+        };
+        sum = sum + i;
+        let j = 0;
+        do {
+            j = j + 1;
+            if (j % 10) {
+                continue;
+            };
+            sum = sum + j;
+            if (sum >= 20) {
+                break;
+            };
+        } while (j < 100);
+        if (sum >= 20) {
+            break;
+        };
+    } while (i < 100);
+    return sum;
+}

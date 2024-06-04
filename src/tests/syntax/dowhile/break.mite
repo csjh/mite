@@ -1,0 +1,40 @@
+export fn incrementing(): i32 {
+    let sum = 0;
+    let i = 0;
+    do {
+        sum = sum + i;
+        if (i == 5) {
+            break;
+        };
+        i = i + 1;
+    } while (i < 10);
+    return sum;
+}
+
+export fn infinite(): i32 {
+    let sum = 0;
+    do {
+        sum = sum + 1;
+        if (sum == 10) {
+            break;
+        };
+    } while (1);
+    return sum;
+}
+
+export fn nested(): i32 {
+    let sum = 0;
+    do {
+        sum = sum + 1;
+        do {
+            sum = sum + 1;
+            if (sum >= 10) {
+                break;
+            };
+        } while (1);
+        if (sum >= 20) {
+            break;
+        };
+    } while (1);
+    return sum;
+}

@@ -1,0 +1,35 @@
+export fn muladd(): i32 {
+    return 5 * 2 + 10;
+}
+
+export fn divmod(): i32 {
+    return 15 / 3 % 2;
+}
+
+export fn addsub(): i32 {
+    return 8 + 4 - 2;
+}
+
+export fn shlshr(): i32 {
+    return 16 << 2 >> 1;
+}
+
+export fn andxor(): i32 {
+    return 9 & 6 ^ 3;
+}
+
+export fn oreq(): i32 {
+    return 7 | 3 == 10;
+}
+
+export fn nelt(): i32 {
+    return 8 != 8 < 5;
+}
+
+export fn gelandlt(): i32 {
+    return 7 >= 3 && 4 < 9;
+}
+
+export fn lorland(): i32 {
+    return 1 || 0 && 0;
+}
