@@ -115,7 +115,7 @@ export function addBuiltins(ctx: Context) {
     );
 
     const LENGTH = enhanced_local(mod, 2);
-    const CLZ = enhanced_local(mod, 3);
+    const CTZ = enhanced_local(mod, 3);
     const IF_ALL_ELSE = enhanced_local(mod, 4);
     // prettier-ignore
     const string_cmp = mod.block(null, [
@@ -135,7 +135,8 @@ export function addBuiltins(ctx: Context) {
                 "cmp_loop",
                 mod.block(null, [
                     mod.if(
-                        CLZ.tee(
+                        // todo: check if it's faster to use v128.any_true and bitmask inside the if
+                        CTZ.tee(
                             i8x16.bitmask(
                                 i8x16.ne(
                                     v128.load(4, 0, STRING_1.get(), "main_memory"),
@@ -143,8 +144,8 @@ export function addBuiltins(ctx: Context) {
                         mod.block(null, [
                             mod.return(
                                 i32.sub(
-                                    i32.load8_u(4, 0, i32.add(STRING_1.get(), CLZ.tee(i32.ctz(CLZ.get()))), "main_memory"),
-                                    i32.load8_u(4, 0, i32.add(STRING_2.get(), CLZ.get(                  )), "main_memory")))])),
+                                    i32.load8_u(4, 0, i32.add(STRING_1.get(), CTZ.tee(i32.ctz(CTZ.get()))), "main_memory"),
+                                    i32.load8_u(4, 0, i32.add(STRING_2.get(), CTZ.get(                  )), "main_memory")))])),
 
                     STRING_1.set(i32.add(STRING_1.get(), i32.const(16))),
                     STRING_2.set(i32.add(STRING_2.get(), i32.const(16))),
@@ -154,23 +155,24 @@ export function addBuiltins(ctx: Context) {
                             LENGTH.tee(i32.sub(LENGTH.get(), i32.const(16))),
                             i32.const(16)))]))),
 
-        mod.loop(
-            "tail_cmp_loop",
-            mod.block(null, [
-                mod.if(
-                    CLZ.tee(
-                        i32.sub(
-                            i32.load8_u(4, 0, STRING_1.get(), "main_memory"),
-                            i32.load8_u(4, 0, STRING_2.get(), "main_memory"))),
-                    mod.return(CLZ.get())),
+        CTZ.set(
+            i8x16.bitmask(
+                v128.and(
+                    i8x16.ne(
+                        v128.load(4, 0, STRING_1.get(), "main_memory"),
+                        v128.load(4, 0, STRING_2.get(), "main_memory")),
+                    // only compare up to LENGTH
+                    i8x16.lt_u(
+                        v128.const(new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])),
+                        i8x16.splat(LENGTH.get()))))),
 
-                STRING_1.set(i32.add(STRING_1.get(), i32.const(1))),
-                STRING_2.set(i32.add(STRING_2.get(), i32.const(1))),
-
-                mod.br_if("tail_cmp_loop",
-                    LENGTH.tee(i32.sub(LENGTH.get(), i32.const(1))))])),
-
-        IF_ALL_ELSE.get()
+        mod.select(
+            CTZ.get(),
+            i32.sub(
+                // using LENGTH here because it's unused after, and CLZ can't be overwritten (select condition runs after args)
+                i32.load8_u(4, 0, i32.add(STRING_1.get(), LENGTH.tee(i32.ctz(CTZ.get()))), "main_memory"),
+                i32.load8_u(4, 0, i32.add(STRING_2.get(), LENGTH.get(                  )), "main_memory")),
+            IF_ALL_ELSE.get()),
     ]);
 
     mod.addFunction(
@@ -180,4 +182,6 @@ export function addBuiltins(ctx: Context) {
         [binaryen.i32, binaryen.i32, binaryen.i32],
         string_cmp
     );
+
+    mod.addFunctionExport("String.cmp", "cmp");
 }
