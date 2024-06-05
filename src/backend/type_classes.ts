@@ -1175,12 +1175,17 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
     index(index: MiteType): MiteType {
         if (
             index.type.classification !== "primitive" ||
-            index.type.binaryen_type !== binaryen.i32
+            (index.type.binaryen_type !== binaryen.i32 && index.type.binaryen_type !== binaryen.i64)
         ) {
             throw new Error(
                 `Array index must be an ${Pointer.type.name}, not whatever this is: ${index.type.name}`
             );
         }
+
+        const idx =
+            index.type.binaryen_type === binaryen.i64
+                ? this.ctx.mod.i32.wrap(index.get_expression_ref())
+                : index.get_expression_ref();
 
         const offset = this.address.sizeof();
 
@@ -1192,7 +1197,7 @@ export class Array_ extends AggregateType<InstanceArrayTypeInformation> {
                 this.ctx.mod.i32.add(
                     this.get_expression_ref(),
                     this.ctx.mod.i32.mul(
-                        index.get_expression_ref(),
+                        idx,
                         this.type.element_type.is_ref
                             ? this.ctx.mod.i32.const(Pointer.type.sizeof)
                             : this.ctx.mod.i32.const(this.type.element_type.sizeof)
@@ -1499,7 +1504,11 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
     }
 
     index(index: MiteType): MiteType {
-        return new TransientPrimitive(this.ctx, this.ctx.types.u32, this.array.index(index).get_expression_ref());
+        return new TransientPrimitive(
+            this.ctx,
+            this.ctx.types.u32,
+            this.array.index(index).get_expression_ref()
+        );
     }
 
     sizeof(): number {
