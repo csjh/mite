@@ -1514,4 +1514,134 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
     sizeof(): number {
         return this.array.sizeof();
     }
+
+    operator(operator: UnaryOperator): UnaryOperatorHandler;
+    operator(operator: BinaryOperator): BinaryOperatorHandler;
+    operator(
+        operator: UnaryOperator | BinaryOperator
+    ): UnaryOperatorHandler | BinaryOperatorHandler {
+        if (operator === TokenType.PLUS) {
+            return (this_: MiteType, other: MiteType) => {
+                return new String_(
+                    this.ctx,
+                    new Pointer(
+                        new TransientPrimitive(
+                            this.ctx,
+                            Pointer.type,
+                            this.ctx.mod.call(
+                                "String.concat",
+                                [this_.get_expression_ref(), other.get_expression_ref()],
+                                binaryen.i32
+                            )
+                        )
+                    )
+                );
+            };
+        } else if (operator === TokenType.EQUALS) {
+            return (this_: MiteType, other: MiteType) => {
+                return new TransientPrimitive(
+                    this.ctx,
+                    this.ctx.types.bool,
+                    this.ctx.mod.if(
+                        this.ctx.mod.i32.eq(
+                            this.ctx.mod.i32.load(0, 0, this_.get_expression_ref(), "main_memory"),
+                            this.ctx.mod.i32.load(0, 0, other.get_expression_ref(), "main_memory")
+                        ),
+                        this.ctx.mod.i32.eqz(
+                            this.ctx.mod.call(
+                                "String.cmp",
+                                [this_.get_expression_ref(), other.get_expression_ref()],
+                                binaryen.i32
+                            )
+                        ),
+                        this.ctx.mod.i32.const(0)
+                    )
+                );
+            };
+        } else if (operator === TokenType.NOT_EQUALS) {
+            return (this_: MiteType, other: MiteType) => {
+                return new TransientPrimitive(
+                    this.ctx,
+                    this.ctx.types.bool,
+                    this.ctx.mod.if(
+                        this.ctx.mod.i32.eq(
+                            this.ctx.mod.i32.load(0, 0, this_.get_expression_ref(), "main_memory"),
+                            this.ctx.mod.i32.load(0, 0, other.get_expression_ref(), "main_memory")
+                        ),
+                        this.ctx.mod.i32.gt_u(
+                            this.ctx.mod.call(
+                                "String.cmp",
+                                [this_.get_expression_ref(), other.get_expression_ref()],
+                                binaryen.i32
+                            ),
+                            this.ctx.mod.i32.const(0)
+                        ),
+                        this.ctx.mod.i32.const(1)
+                    )
+                );
+            };
+        } else if (operator === TokenType.LESS_THAN) {
+            return (this_: MiteType, other: MiteType) => {
+                return new TransientPrimitive(
+                    this.ctx,
+                    this.ctx.types.bool,
+                    this.ctx.mod.i32.lt_s(
+                        this.ctx.mod.call(
+                            "String.cmp",
+                            [this_.get_expression_ref(), other.get_expression_ref()],
+                            binaryen.i32
+                        ),
+                        this.ctx.mod.i32.const(0)
+                    )
+                );
+            };
+        } else if (operator === TokenType.LESS_THAN_EQUALS) {
+            return (this_: MiteType, other: MiteType) => {
+                return new TransientPrimitive(
+                    this.ctx,
+                    this.ctx.types.bool,
+                    this.ctx.mod.i32.le_s(
+                        this.ctx.mod.call(
+                            "String.cmp",
+                            [this_.get_expression_ref(), other.get_expression_ref()],
+                            binaryen.i32
+                        ),
+                        this.ctx.mod.i32.const(0)
+                    )
+                );
+            };
+        } else if (operator === TokenType.GREATER_THAN) {
+            return (this_: MiteType, other: MiteType) => {
+                return new TransientPrimitive(
+                    this.ctx,
+                    this.ctx.types.bool,
+                    this.ctx.mod.i32.gt_s(
+                        this.ctx.mod.call(
+                            "String.cmp",
+                            [this_.get_expression_ref(), other.get_expression_ref()],
+                            binaryen.i32
+                        ),
+                        this.ctx.mod.i32.const(0)
+                    )
+                );
+            };
+        } else if (operator === TokenType.GREATER_THAN_EQUALS) {
+            return (this_: MiteType, other: MiteType) => {
+                return new TransientPrimitive(
+                    this.ctx,
+                    this.ctx.types.bool,
+                    this.ctx.mod.i32.ge_s(
+                        this.ctx.mod.call(
+                            "String.cmp",
+                            [this_.get_expression_ref(), other.get_expression_ref()],
+                            binaryen.i32
+                        ),
+                        this.ctx.mod.i32.const(0)
+                    )
+                );
+            };
+        }
+
+        throw new Error(`Invalid operator ${operator} for strings`);
+    }
 }

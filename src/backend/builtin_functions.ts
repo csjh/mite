@@ -146,8 +146,6 @@ export function addBuiltins(ctx: Context) {
                                     i32.load8_u(4, 0, i32.add(STRING_1.get(), CLZ.tee(i32.ctz(CLZ.get()))), "main_memory"),
                                     i32.load8_u(4, 0, i32.add(STRING_2.get(), CLZ.get(                  )), "main_memory")))])),
 
-                    mod.call('log_i32', [CLZ.get()], binaryen.none),
-
                     STRING_1.set(i32.add(STRING_1.get(), i32.const(16))),
                     STRING_2.set(i32.add(STRING_2.get(), i32.const(16))),
 
