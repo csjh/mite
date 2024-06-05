@@ -46,10 +46,18 @@ const compiled = new WebAssembly.Module(output);
 const instance = new WebAssembly.Instance(compiled, {
     // @ts-expect-error this works
     console,
-    $mite: new Proxy({}, {
-        get(_, prop) {
+    $mite: new Proxy({
+        $memory: new WebAssembly.Memory({ initial: 256 }),
+        $table: new WebAssembly.Table({ initial: 0, element: "anyfunc" }),
+        $heap_pointer: new WebAssembly.Global({ value: "i32", mutable: true }, 0),
+        $heap_offset: new WebAssembly.Global({ value: "i32", mutable: true }, 0),
+        $fn_ptrs_start: new WebAssembly.Global({ value: "i32" }, 0),
+        $update_dataview: () => {}
+    }, {
+        get(target, prop) {
             // @ts-expect-error this works
             if (prop.startsWith("wrap_")) { return function (ptr, ...args) { return $funcs[ptr](...args); }; }
+            return Reflect.get(target, prop);
         }
     })
 });
