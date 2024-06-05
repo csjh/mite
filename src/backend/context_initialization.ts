@@ -52,14 +52,14 @@ export function createConversions(ctx: Context): Context["conversions"] {
             i32: (value) => value,
             u32: (value) => new TransientPrimitive(ctx, ctx.types.u32, value.get_expression_ref()),
             // TODO: make sure extend_s is proper, should be though
-            i64: unary_op(ctx.mod.i64.extend_s, Primitive.primitives.get("i64")!),
-            u64: unary_op(ctx.mod.i64.extend_u, Primitive.primitives.get("u64")!),
-            f32: unary_op(ctx.mod.f32.convert_s.i32, Primitive.primitives.get("f32")!),
-            f64: unary_op(ctx.mod.f64.convert_s.i32, Primitive.primitives.get("f64")!),
-            i32x4: unary_op(ctx.mod.i32x4.splat, Primitive.primitives.get("i32x4")!),
+            i64: unary_op(ctx.mod.i64.extend_s, ctx.types.i64),
+            u64: unary_op(ctx.mod.i64.extend_u, ctx.types.u64),
+            f32: unary_op(ctx.mod.f32.convert_s.i32, ctx.types.f32),
+            f64: unary_op(ctx.mod.f64.convert_s.i32, ctx.types.f64),
+            i32x4: unary_op(ctx.mod.i32x4.splat, ctx.types.i32x4),
             // TODO: remove these when i8, i16 are implemented
-            i16x8: unary_op(ctx.mod.i16x8.splat, Primitive.primitives.get("i16x8")!),
-            i8x16: unary_op(ctx.mod.i8x16.splat, Primitive.primitives.get("i8x16")!)
+            i16x8: unary_op(ctx.mod.i16x8.splat, ctx.types.i16x8),
+            i8x16: unary_op(ctx.mod.i8x16.splat, ctx.types.i8x16)
         },
         u32: {
             i8: wrap_op("i32", "i8"),
@@ -68,58 +68,58 @@ export function createConversions(ctx: Context): Context["conversions"] {
             u16: wrap_op("i32", "u16"),
             i32: (value) => new TransientPrimitive(ctx, ctx.types.i32, value.get_expression_ref()),
             u32: (value) => value,
-            i64: unary_op(ctx.mod.i64.extend_s, Primitive.primitives.get("i64")!),
-            u64: unary_op(ctx.mod.i64.extend_u, Primitive.primitives.get("u64")!),
-            f32: unary_op(ctx.mod.f32.convert_u.i32, Primitive.primitives.get("f32")!),
-            f64: unary_op(ctx.mod.f64.convert_u.i32, Primitive.primitives.get("f64")!),
-            u32x4: unary_op(ctx.mod.i32x4.splat, Primitive.primitives.get("u32x4")!),
+            i64: unary_op(ctx.mod.i64.extend_s, ctx.types.i64),
+            u64: unary_op(ctx.mod.i64.extend_u, ctx.types.u64),
+            f32: unary_op(ctx.mod.f32.convert_u.i32, ctx.types.f32),
+            f64: unary_op(ctx.mod.f64.convert_u.i32, ctx.types.f64),
+            u32x4: unary_op(ctx.mod.i32x4.splat, ctx.types.u32x4),
             // TODO: remove these when u8, u16 are implemented
-            u16x8: unary_op(ctx.mod.i16x8.splat, Primitive.primitives.get("u16x8")!),
-            u8x16: unary_op(ctx.mod.i8x16.splat, Primitive.primitives.get("u8x16")!)
+            u16x8: unary_op(ctx.mod.i16x8.splat, ctx.types.u16x8),
+            u8x16: unary_op(ctx.mod.i8x16.splat, ctx.types.u8x16)
         },
         i64: {
             i8: wrap_op("i64", "i8"),
             u8: wrap_op("i64", "u8"),
             i16: wrap_op("i64", "i16"),
             u16: wrap_op("i64", "u16"),
-            i32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("i32")!),
-            u32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("u32")!),
+            i32: unary_op(ctx.mod.i32.wrap, ctx.types.i32),
+            u32: unary_op(ctx.mod.i32.wrap, ctx.types.u32),
             i64: (value) => value,
             u64: (value) => new TransientPrimitive(ctx, ctx.types.u64, value.get_expression_ref()),
-            f32: unary_op(ctx.mod.f32.convert_s.i64, Primitive.primitives.get("f32")!),
-            f64: unary_op(ctx.mod.f64.convert_s.i64, Primitive.primitives.get("f64")!),
-            i64x2: unary_op(ctx.mod.i64x2.splat, Primitive.primitives.get("i64x2")!)
+            f32: unary_op(ctx.mod.f32.convert_s.i64, ctx.types.f32),
+            f64: unary_op(ctx.mod.f64.convert_s.i64, ctx.types.f64),
+            i64x2: unary_op(ctx.mod.i64x2.splat, ctx.types.i64x2)
         },
         u64: {
             i8: wrap_op("i64", "i8"),
             u8: wrap_op("i64", "u8"),
             i16: wrap_op("i64", "i16"),
             u16: wrap_op("i64", "u16"),
-            i32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("i32")!),
-            u32: unary_op(ctx.mod.i32.wrap, Primitive.primitives.get("u32")!),
+            i32: unary_op(ctx.mod.i32.wrap, ctx.types.i32),
+            u32: unary_op(ctx.mod.i32.wrap, ctx.types.u32),
             i64: (value) => new TransientPrimitive(ctx, ctx.types.i64, value.get_expression_ref()),
             u64: (value) => value,
-            f32: unary_op(ctx.mod.f32.convert_u.i64, Primitive.primitives.get("f32")!),
-            f64: unary_op(ctx.mod.f64.convert_u.i64, Primitive.primitives.get("f64")!),
-            u64x2: unary_op(ctx.mod.i64x2.splat, Primitive.primitives.get("u64x2")!)
+            f32: unary_op(ctx.mod.f32.convert_u.i64, ctx.types.f32),
+            f64: unary_op(ctx.mod.f64.convert_u.i64, ctx.types.f64),
+            u64x2: unary_op(ctx.mod.i64x2.splat, ctx.types.u64x2)
         },
         f32: {
-            i32: unary_op(ctx.mod.i32.trunc_s_sat.f32, Primitive.primitives.get("i32")!),
-            u32: unary_op(ctx.mod.i32.trunc_u_sat.f32, Primitive.primitives.get("u32")!),
-            i64: unary_op(ctx.mod.i64.trunc_s_sat.f32, Primitive.primitives.get("i64")!),
-            u64: unary_op(ctx.mod.i64.trunc_u_sat.f32, Primitive.primitives.get("u64")!),
+            i32: unary_op(ctx.mod.i32.trunc_s_sat.f32, ctx.types.i32),
+            u32: unary_op(ctx.mod.i32.trunc_u_sat.f32, ctx.types.u32),
+            i64: unary_op(ctx.mod.i64.trunc_s_sat.f32, ctx.types.i64),
+            u64: unary_op(ctx.mod.i64.trunc_u_sat.f32, ctx.types.u64),
             f32: (value) => value,
-            f64: unary_op(ctx.mod.f64.promote, Primitive.primitives.get("f64")!),
-            f32x4: unary_op(ctx.mod.f32x4.splat, Primitive.primitives.get("f32x4")!)
+            f64: unary_op(ctx.mod.f64.promote, ctx.types.f64),
+            f32x4: unary_op(ctx.mod.f32x4.splat, ctx.types.f32x4)
         },
         f64: {
-            i32: unary_op(ctx.mod.i32.trunc_s_sat.f64, Primitive.primitives.get("i32")!),
-            u32: unary_op(ctx.mod.i32.trunc_u_sat.f64, Primitive.primitives.get("u32")!),
-            i64: unary_op(ctx.mod.i64.trunc_s_sat.f64, Primitive.primitives.get("i64")!),
-            u64: unary_op(ctx.mod.i64.trunc_u_sat.f64, Primitive.primitives.get("u64")!),
-            f32: unary_op(ctx.mod.f32.demote, Primitive.primitives.get("f32")!),
+            i32: unary_op(ctx.mod.i32.trunc_s_sat.f64, ctx.types.i32),
+            u32: unary_op(ctx.mod.i32.trunc_u_sat.f64, ctx.types.u32),
+            i64: unary_op(ctx.mod.i64.trunc_s_sat.f64, ctx.types.i64),
+            u64: unary_op(ctx.mod.i64.trunc_u_sat.f64, ctx.types.u64),
+            f32: unary_op(ctx.mod.f32.demote, ctx.types.f32),
             f64: (value) => value,
-            f64x2: unary_op(ctx.mod.f64x2.splat, Primitive.primitives.get("f64x2")!)
+            f64x2: unary_op(ctx.mod.f64x2.splat, ctx.types.f64x2)
         },
         v128: {
             v128: (value) => value,
@@ -346,7 +346,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             copysign: bin_op(ctx.mod.f32.copysign),
             min: bin_op(ctx.mod.f32.min),
             max: bin_op(ctx.mod.f32.max),
-            reinterpret: unary_op(ctx.mod.i32.reinterpret, Primitive.primitives.get("i32")!)
+            reinterpret: unary_op(ctx.mod.i32.reinterpret, ctx.types.i32)
         },
         f64: {
             sqrt: unary_op(ctx.mod.f64.sqrt),
@@ -358,7 +358,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             copysign: bin_op(ctx.mod.f64.copysign),
             min: bin_op(ctx.mod.f64.min),
             max: bin_op(ctx.mod.f64.max),
-            reinterpret: unary_op(ctx.mod.i64.reinterpret, Primitive.primitives.get("i64")!)
+            reinterpret: unary_op(ctx.mod.i64.reinterpret, ctx.types.i64)
         },
         i32: {
             clz: unary_op(ctx.mod.i32.clz),
@@ -366,7 +366,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             popcnt: unary_op(ctx.mod.i32.popcnt),
             rotl: bin_op(ctx.mod.i32.rotl),
             rotr: bin_op(ctx.mod.i32.rotr),
-            reinterpret: unary_op(ctx.mod.f32.reinterpret, Primitive.primitives.get("f32")!)
+            reinterpret: unary_op(ctx.mod.f32.reinterpret, ctx.types.f32)
         },
         u32: {
             clz: unary_op(ctx.mod.i32.clz),
@@ -374,7 +374,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             popcnt: unary_op(ctx.mod.i32.popcnt),
             rotl: bin_op(ctx.mod.i32.rotl),
             rotr: bin_op(ctx.mod.i32.rotr),
-            reinterpret: unary_op(ctx.mod.f32.reinterpret, Primitive.primitives.get("f32")!)
+            reinterpret: unary_op(ctx.mod.f32.reinterpret, ctx.types.f32)
         },
         i64: {
             clz: unary_op(ctx.mod.i64.clz),
@@ -382,7 +382,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             popcnt: unary_op(ctx.mod.i64.popcnt),
             rotl: bin_op(ctx.mod.i64.rotl),
             rotr: bin_op(ctx.mod.i64.rotr),
-            reinterpret: unary_op(ctx.mod.f64.reinterpret, Primitive.primitives.get("f64")!)
+            reinterpret: unary_op(ctx.mod.f64.reinterpret, ctx.types.f64)
         },
         u64: {
             clz: unary_op(ctx.mod.i64.clz),
@@ -390,20 +390,20 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             popcnt: unary_op(ctx.mod.i64.popcnt),
             rotl: bin_op(ctx.mod.i64.rotl),
             rotr: bin_op(ctx.mod.i64.rotr),
-            reinterpret: unary_op(ctx.mod.f64.reinterpret, Primitive.primitives.get("f64")!)
+            reinterpret: unary_op(ctx.mod.f64.reinterpret, ctx.types.f64)
         },
         v128: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!)
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32)
         },
         i8x16: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
             swizzle: bin_op(ctx.mod.i8x16.swizzle),
-            all_true: unary_op(ctx.mod.i8x16.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i8x16.bitmask, Primitive.primitives.get("i32")),
+            all_true: unary_op(ctx.mod.i8x16.all_true, ctx.types.i32),
+            bitmask: unary_op(ctx.mod.i8x16.bitmask, ctx.types.i32),
             popcnt: unary_op(ctx.mod.i8x16.popcnt),
             add_sat: bin_op(ctx.mod.i8x16.add_saturate_s),
             sub_sat: bin_op(ctx.mod.i8x16.sub_saturate_s),
@@ -415,8 +415,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extadd_pairwise: unary_op(ctx.mod.i16x8.extadd_pairwise_i8x16_s),
             extend_low: unary_op(ctx.mod.i16x8.extend_low_i8x16_s),
             extend_high: unary_op(ctx.mod.i16x8.extend_high_i8x16_s),
-            extract: extract_op(ctx.mod.i8x16.extract_lane_s, Primitive.primitives.get("i32")!),
-            replace: replace_op(ctx.mod.i8x16.replace_lane, Primitive.primitives.get("i8x16")!),
+            extract: extract_op(ctx.mod.i8x16.extract_lane_s, ctx.types.i32),
+            replace: replace_op(ctx.mod.i8x16.replace_lane, ctx.types.i8x16),
             shuffle(left, right, mask) {
                 const info = binaryen.getExpressionInfo(mask.get_expression_ref());
                 const mask_values = (info as binaryen.ConstInfo).value;
@@ -430,7 +430,7 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
 
                 return new TransientPrimitive(
                     ctx,
-                    Primitive.primitives.get("i8x16")!,
+                    ctx.types.i8x16,
                     ctx.mod.i8x16.shuffle(
                         left.get_expression_ref(),
                         right.get_expression_ref(),
@@ -442,10 +442,10 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
         u8x16: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
             swizzle: bin_op(ctx.mod.i8x16.swizzle),
-            all_true: unary_op(ctx.mod.i8x16.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i8x16.bitmask, Primitive.primitives.get("i32")),
+            all_true: unary_op(ctx.mod.i8x16.all_true, ctx.types.i32),
+            bitmask: unary_op(ctx.mod.i8x16.bitmask, ctx.types.i32),
             popcnt: unary_op(ctx.mod.i8x16.popcnt),
             add_sat: bin_op(ctx.mod.i8x16.add_saturate_u),
             sub_sat: bin_op(ctx.mod.i8x16.sub_saturate_u),
@@ -457,15 +457,15 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extadd_pairwise: unary_op(ctx.mod.i16x8.extadd_pairwise_i8x16_u),
             extend_low: unary_op(ctx.mod.i16x8.extend_low_i8x16_u),
             extend_high: unary_op(ctx.mod.i16x8.extend_high_i8x16_u),
-            extract: extract_op(ctx.mod.i8x16.extract_lane_u, Primitive.primitives.get("u8")!),
-            replace: replace_op(ctx.mod.i8x16.replace_lane, Primitive.primitives.get("u8x16")!)
+            extract: extract_op(ctx.mod.i8x16.extract_lane_u, ctx.types.u8),
+            replace: replace_op(ctx.mod.i8x16.replace_lane, ctx.types.u8x16)
         },
         i16x8: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
-            all_true: unary_op(ctx.mod.i16x8.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i16x8.bitmask, Primitive.primitives.get("i32")),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
+            all_true: unary_op(ctx.mod.i16x8.all_true, ctx.types.i32),
+            bitmask: unary_op(ctx.mod.i16x8.bitmask, ctx.types.i32),
             add_sat: bin_op(ctx.mod.i16x8.add_saturate_s),
             sub_sat: bin_op(ctx.mod.i16x8.sub_saturate_s),
             min: bin_op(ctx.mod.i16x8.min_s),
@@ -477,15 +477,15 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extend_low: unary_op(ctx.mod.i32x4.extend_low_i16x8_s),
             extend_high: unary_op(ctx.mod.i32x4.extend_high_i16x8_s),
             narrow: bin_op(ctx.mod.i8x16.narrow_i16x8_s),
-            extract: extract_op(ctx.mod.i16x8.extract_lane_s, Primitive.primitives.get("i16")!),
-            replace: replace_op(ctx.mod.i16x8.replace_lane, Primitive.primitives.get("i16x8")!)
+            extract: extract_op(ctx.mod.i16x8.extract_lane_s, ctx.types.i16),
+            replace: replace_op(ctx.mod.i16x8.replace_lane, ctx.types.i16x8)
         },
         u16x8: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
-            all_true: unary_op(ctx.mod.i16x8.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i16x8.bitmask, Primitive.primitives.get("i32")),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
+            all_true: unary_op(ctx.mod.i16x8.all_true, ctx.types.i32),
+            bitmask: unary_op(ctx.mod.i16x8.bitmask, ctx.types.i32),
             add_sat: bin_op(ctx.mod.i16x8.add_saturate_u),
             sub_sat: bin_op(ctx.mod.i16x8.sub_saturate_u),
             min: bin_op(ctx.mod.i16x8.min_u),
@@ -497,15 +497,15 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extend_low: unary_op(ctx.mod.i32x4.extend_low_i16x8_u),
             extend_high: unary_op(ctx.mod.i32x4.extend_high_i16x8_u),
             narrow: bin_op(ctx.mod.i8x16.narrow_i16x8_u),
-            extract: extract_op(ctx.mod.i16x8.extract_lane_u, Primitive.primitives.get("u16")!),
-            replace: replace_op(ctx.mod.i16x8.replace_lane, Primitive.primitives.get("u16x8")!)
+            extract: extract_op(ctx.mod.i16x8.extract_lane_u, ctx.types.u16),
+            replace: replace_op(ctx.mod.i16x8.replace_lane, ctx.types.u16x8)
         },
         i32x4: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
-            all_true: unary_op(ctx.mod.i32x4.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i32x4.bitmask, Primitive.primitives.get("i32")),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
+            all_true: unary_op(ctx.mod.i32x4.all_true, ctx.types.i32),
+            bitmask: unary_op(ctx.mod.i32x4.bitmask, ctx.types.i32),
             abs: unary_op(ctx.mod.i32x4.abs),
             min: bin_op(ctx.mod.i32x4.min_s),
             max: bin_op(ctx.mod.i32x4.max_s),
@@ -514,15 +514,15 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extend_high: unary_op(ctx.mod.i64x2.extend_high_i32x4_s),
             extend_low: unary_op(ctx.mod.i64x2.extend_low_i32x4_s),
             narrow: bin_op(ctx.mod.i16x8.narrow_i32x4_s),
-            extract: extract_op(ctx.mod.i32x4.extract_lane, Primitive.primitives.get("i32")!),
-            replace: replace_op(ctx.mod.i32x4.replace_lane, Primitive.primitives.get("i32x4")!)
+            extract: extract_op(ctx.mod.i32x4.extract_lane, ctx.types.i32),
+            replace: replace_op(ctx.mod.i32x4.replace_lane, ctx.types.i32x4)
         },
         u32x4: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
-            all_true: unary_op(ctx.mod.i32x4.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i32x4.bitmask, Primitive.primitives.get("i32")),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
+            all_true: unary_op(ctx.mod.i32x4.all_true, ctx.types.i32),
+            bitmask: unary_op(ctx.mod.i32x4.bitmask, ctx.types.i32),
             abs: unary_op(ctx.mod.i32x4.abs),
             min: bin_op(ctx.mod.i32x4.min_u),
             max: bin_op(ctx.mod.i32x4.max_u),
@@ -531,33 +531,33 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             extend_high: unary_op(ctx.mod.i64x2.extend_high_i32x4_u),
             extend_low: unary_op(ctx.mod.i64x2.extend_low_i32x4_u),
             narrow: bin_op(ctx.mod.i16x8.narrow_i32x4_u),
-            extract: extract_op(ctx.mod.i32x4.extract_lane, Primitive.primitives.get("u32")!),
-            replace: replace_op(ctx.mod.i32x4.replace_lane, Primitive.primitives.get("u32x4")!)
+            extract: extract_op(ctx.mod.i32x4.extract_lane, ctx.types.u32),
+            replace: replace_op(ctx.mod.i32x4.replace_lane, ctx.types.u32x4)
         },
         i64x2: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
-            all_true: unary_op(ctx.mod.i64x2.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i64x2.bitmask, Primitive.primitives.get("i32")),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
+            all_true: unary_op(ctx.mod.i64x2.all_true, ctx.types.i32),
+            bitmask: unary_op(ctx.mod.i64x2.bitmask, ctx.types.i32),
             abs: unary_op(ctx.mod.i64x2.abs),
-            extract: extract_op(ctx.mod.i64x2.extract_lane, Primitive.primitives.get("i64")!),
-            replace: replace_op(ctx.mod.i64x2.replace_lane, Primitive.primitives.get("i64x2")!)
+            extract: extract_op(ctx.mod.i64x2.extract_lane, ctx.types.i64),
+            replace: replace_op(ctx.mod.i64x2.replace_lane, ctx.types.i64x2)
         },
         u64x2: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
-            all_true: unary_op(ctx.mod.i64x2.all_true, Primitive.primitives.get("i32")!),
-            bitmask: unary_op(ctx.mod.i64x2.bitmask, Primitive.primitives.get("i32")),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
+            all_true: unary_op(ctx.mod.i64x2.all_true, ctx.types.i32),
+            bitmask: unary_op(ctx.mod.i64x2.bitmask, ctx.types.i32),
             abs: unary_op(ctx.mod.i64x2.abs),
-            extract: extract_op(ctx.mod.i64x2.extract_lane, Primitive.primitives.get("u64")!),
-            replace: replace_op(ctx.mod.i64x2.replace_lane, Primitive.primitives.get("u64x2")!)
+            extract: extract_op(ctx.mod.i64x2.extract_lane, ctx.types.u64),
+            replace: replace_op(ctx.mod.i64x2.replace_lane, ctx.types.u64x2)
         },
         f32x4: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
             abs: unary_op(ctx.mod.f32x4.abs),
             sqrt: unary_op(ctx.mod.f32x4.sqrt),
             min: bin_op(ctx.mod.f32x4.min),
@@ -571,13 +571,13 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             trunc_sat_s: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_s),
             trunc_sat_u: unary_op(ctx.mod.i32x4.trunc_sat_f32x4_u),
             promote_low: unary_op(ctx.mod.f64x2.promote_low_f32x4),
-            extract: extract_op(ctx.mod.f32x4.extract_lane, Primitive.primitives.get("f32")!),
-            replace: replace_op(ctx.mod.f32x4.replace_lane, Primitive.primitives.get("f32x4")!)
+            extract: extract_op(ctx.mod.f32x4.extract_lane, ctx.types.f32),
+            replace: replace_op(ctx.mod.f32x4.replace_lane, ctx.types.f32x4)
         },
         f64x2: {
             bitselect: ternary_op(ctx.mod.v128.bitselect),
             andnot: bin_op(ctx.mod.v128.andnot),
-            any_true: unary_op(ctx.mod.v128.any_true, Primitive.primitives.get("i32")!),
+            any_true: unary_op(ctx.mod.v128.any_true, ctx.types.i32),
             abs: unary_op(ctx.mod.f64x2.abs),
             sqrt: unary_op(ctx.mod.f64x2.sqrt),
             min: bin_op(ctx.mod.f64x2.min),
@@ -591,8 +591,8 @@ export function createIntrinsics(ctx: Context): Context["intrinsics"] {
             trunc_sat_zero_s: unary_op(ctx.mod.i32x4.trunc_sat_f64x2_s_zero),
             trunc_sat_zero_u: unary_op(ctx.mod.i32x4.trunc_sat_f64x2_u_zero),
             demote_zero: unary_op(ctx.mod.f32x4.demote_f64x2_zero),
-            extract: extract_op(ctx.mod.f64x2.extract_lane, Primitive.primitives.get("f64")!),
-            replace: replace_op(ctx.mod.f64x2.replace_lane, Primitive.primitives.get("f64x2")!)
+            extract: extract_op(ctx.mod.f64x2.extract_lane, ctx.types.f64),
+            replace: replace_op(ctx.mod.f64x2.replace_lane, ctx.types.f64x2)
         }
     };
 }
