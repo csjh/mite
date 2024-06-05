@@ -39,7 +39,7 @@ function enhanced_local(mod: binaryen.Module, idx: number) {
 
 export function addBuiltins(ctx: Context) {
     const mod = ctx.mod;
-    const i32 = mod.i32;
+    const { i32, v128, i8x16 } = mod;
 
     const ARENA_HEAP_OFFSET = enhanced_global(mod, AHO);
     const ARENA_HEAP_POINTER = enhanced_global(mod, AHP);
@@ -114,4 +114,72 @@ export function addBuiltins(ctx: Context) {
         string_concat
     );
 
+    const LENGTH = enhanced_local(mod, 2);
+    const CLZ = enhanced_local(mod, 3);
+    const IF_ALL_ELSE = enhanced_local(mod, 4);
+    // prettier-ignore
+    const string_cmp = mod.block(null, [
+        // return value if they're both equal up to shorter length
+        // this probably isn't the best way to do this
+        IF_ALL_ELSE.set(i32.sub(STRING_1.deref.get(), STRING_2.deref.get())),
+
+        LENGTH.set(
+            mod.select(
+                i32.lt_u(STRING_1.deref.get(), STRING_2.deref.get()),
+                STRING_1.deref.get(),
+                STRING_2.deref.get())),
+
+        mod.if(
+            i32.ge_u(LENGTH.get(), i32.const(16)),
+            mod.loop(
+                "cmp_loop",
+                mod.block(null, [
+                    mod.if(
+                        CLZ.tee(
+                            i8x16.bitmask(
+                                i8x16.ne(
+                                    v128.load(4, 0, STRING_1.get(), "main_memory"),
+                                    v128.load(4, 0, STRING_2.get(), "main_memory")))),
+                        mod.block(null, [
+                            mod.return(
+                                i32.sub(
+                                    i32.load8_u(4, 0, i32.add(STRING_1.get(), CLZ.tee(i32.ctz(CLZ.get()))), "main_memory"),
+                                    i32.load8_u(4, 0, i32.add(STRING_2.get(), CLZ.get(                  )), "main_memory")))])),
+
+                    mod.call('log_i32', [CLZ.get()], binaryen.none),
+
+                    STRING_1.set(i32.add(STRING_1.get(), i32.const(16))),
+                    STRING_2.set(i32.add(STRING_2.get(), i32.const(16))),
+
+                    mod.br_if("cmp_loop",
+                        i32.ge_u(
+                            LENGTH.tee(i32.sub(LENGTH.get(), i32.const(16))),
+                            i32.const(16)))]))),
+
+        mod.loop(
+            "tail_cmp_loop",
+            mod.block(null, [
+                mod.if(
+                    CLZ.tee(
+                        i32.sub(
+                            i32.load8_u(4, 0, STRING_1.get(), "main_memory"),
+                            i32.load8_u(4, 0, STRING_2.get(), "main_memory"))),
+                    mod.return(CLZ.get())),
+
+                STRING_1.set(i32.add(STRING_1.get(), i32.const(1))),
+                STRING_2.set(i32.add(STRING_2.get(), i32.const(1))),
+
+                mod.br_if("tail_cmp_loop",
+                    LENGTH.tee(i32.sub(LENGTH.get(), i32.const(1))))])),
+
+        IF_ALL_ELSE.get()
+    ]);
+
+    mod.addFunction(
+        "String.cmp",
+        binaryen.createType([binaryen.i32, binaryen.i32]),
+        binaryen.i32,
+        [binaryen.i32, binaryen.i32, binaryen.i32],
+        string_cmp
+    );
 }
