@@ -76,4 +76,42 @@ export function addBuiltins(ctx: Context) {
 
     const arena_heap_reset = mod.block(null, [ARENA_HEAP_OFFSET.set(i32.const(0))]);
     mod.addFunction("arena_heap_reset", binaryen.none, binaryen.none, [], arena_heap_reset);
+
+    const STRING_1 = enhanced_local(mod, 0);
+    const STRING_2 = enhanced_local(mod, 1);
+    const STRING_OUT = enhanced_local(mod, 2);
+    // prettier-ignore
+    const string_concat = mod.block(null, [
+        STRING_OUT.set(
+            mod.call(
+                "arena_heap_malloc",
+                [i32.add(STRING_1.deref.get(), STRING_2.deref.get())],
+                binaryen.i32)),
+
+        STRING_OUT.deref.set(i32.add(STRING_1.deref.get(), STRING_2.deref.get())),
+
+        mod.memory.copy(
+            i32.add(STRING_OUT.get(), i32.const(4)),
+            i32.add(STRING_1.get(), i32.const(4)),
+            STRING_1.deref.get(),
+            "main_memory",
+            "main_memory"),
+        mod.memory.copy(
+            i32.add(STRING_OUT.get(), i32.add(i32.const(4), STRING_1.deref.get())),
+            i32.add(STRING_2.get(), i32.const(4)),
+            STRING_2.deref.get(),
+            "main_memory",
+            "main_memory"),
+
+        STRING_OUT.get()
+    ]);
+
+    mod.addFunction(
+        "String.concat",
+        binaryen.createType([binaryen.i32, binaryen.i32]),
+        binaryen.i32,
+        [binaryen.i32, binaryen.i32, binaryen.i32],
+        string_concat
+    );
+
 }
