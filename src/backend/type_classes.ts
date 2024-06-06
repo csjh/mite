@@ -1515,13 +1515,22 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
         return this.array.sizeof();
     }
 
-    operator(operator: UnaryOperator): UnaryOperatorHandler;
-    operator(operator: BinaryOperator): BinaryOperatorHandler;
-    operator(
-        operator: UnaryOperator | BinaryOperator
-    ): UnaryOperatorHandler | BinaryOperatorHandler {
+        const cmp = (op: "lt_s" | "gt_s" | "le_s" | "ge_s") => (other: MiteType) =>
+            new TransientPrimitive(
+                this.ctx,
+                this.ctx.types.bool,
+                this.ctx.mod.i32[op](
+                    this.ctx.mod.call(
+                        "String.cmp",
+                        [this.get_expression_ref(), other.get_expression_ref()],
+                        binaryen.i32
+                    ),
+                    this.ctx.mod.i32.const(0)
+                )
+            );
+
         if (operator === TokenType.PLUS) {
-            return (this_: MiteType, other: MiteType) => {
+            return (other: MiteType) => {
                 return new String_(
                     this.ctx,
                     new Pointer(
@@ -1530,7 +1539,7 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
                             Pointer.type,
                             this.ctx.mod.call(
                                 "String.concat",
-                                [this_.get_expression_ref(), other.get_expression_ref()],
+                                [this.get_expression_ref(), other.get_expression_ref()],
                                 binaryen.i32
                             )
                         )
@@ -1538,19 +1547,19 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
                 );
             };
         } else if (operator === TokenType.EQUALS) {
-            return (this_: MiteType, other: MiteType) => {
+            return (other: MiteType) => {
                 return new TransientPrimitive(
                     this.ctx,
                     this.ctx.types.bool,
                     this.ctx.mod.if(
                         this.ctx.mod.i32.eq(
-                            this.ctx.mod.i32.load(0, 0, this_.get_expression_ref(), "main_memory"),
+                            this.ctx.mod.i32.load(0, 0, this.get_expression_ref(), "main_memory"),
                             this.ctx.mod.i32.load(0, 0, other.get_expression_ref(), "main_memory")
                         ),
                         this.ctx.mod.i32.eqz(
                             this.ctx.mod.call(
                                 "String.cmp",
-                                [this_.get_expression_ref(), other.get_expression_ref()],
+                                [this.get_expression_ref(), other.get_expression_ref()],
                                 binaryen.i32
                             )
                         ),
@@ -1559,87 +1568,16 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
                 );
             };
         } else if (operator === TokenType.NOT_EQUALS) {
-            return (this_: MiteType, other: MiteType) => {
-                return new TransientPrimitive(
-                    this.ctx,
-                    this.ctx.types.bool,
-                    this.ctx.mod.if(
-                        this.ctx.mod.i32.eq(
-                            this.ctx.mod.i32.load(0, 0, this_.get_expression_ref(), "main_memory"),
-                            this.ctx.mod.i32.load(0, 0, other.get_expression_ref(), "main_memory")
-                        ),
-                        this.ctx.mod.i32.gt_u(
-                            this.ctx.mod.call(
-                                "String.cmp",
-                                [this_.get_expression_ref(), other.get_expression_ref()],
-                                binaryen.i32
-                            ),
-                            this.ctx.mod.i32.const(0)
-                        ),
-                        this.ctx.mod.i32.const(1)
-                    )
-                );
-            };
+            const op = this.operator(TokenType.EQUALS);
+            return () => this.operator(TokenType.NOT)();
         } else if (operator === TokenType.LESS_THAN) {
-            return (this_: MiteType, other: MiteType) => {
-                return new TransientPrimitive(
-                    this.ctx,
-                    this.ctx.types.bool,
-                    this.ctx.mod.i32.lt_s(
-                        this.ctx.mod.call(
-                            "String.cmp",
-                            [this_.get_expression_ref(), other.get_expression_ref()],
-                            binaryen.i32
-                        ),
-                        this.ctx.mod.i32.const(0)
-                    )
-                );
-            };
+            return cmp("lt_s");
         } else if (operator === TokenType.LESS_THAN_EQUALS) {
-            return (this_: MiteType, other: MiteType) => {
-                return new TransientPrimitive(
-                    this.ctx,
-                    this.ctx.types.bool,
-                    this.ctx.mod.i32.le_s(
-                        this.ctx.mod.call(
-                            "String.cmp",
-                            [this_.get_expression_ref(), other.get_expression_ref()],
-                            binaryen.i32
-                        ),
-                        this.ctx.mod.i32.const(0)
-                    )
-                );
-            };
+            return cmp("le_s");
         } else if (operator === TokenType.GREATER_THAN) {
-            return (this_: MiteType, other: MiteType) => {
-                return new TransientPrimitive(
-                    this.ctx,
-                    this.ctx.types.bool,
-                    this.ctx.mod.i32.gt_s(
-                        this.ctx.mod.call(
-                            "String.cmp",
-                            [this_.get_expression_ref(), other.get_expression_ref()],
-                            binaryen.i32
-                        ),
-                        this.ctx.mod.i32.const(0)
-                    )
-                );
-            };
+            return cmp("gt_s");
         } else if (operator === TokenType.GREATER_THAN_EQUALS) {
-            return (this_: MiteType, other: MiteType) => {
-                return new TransientPrimitive(
-                    this.ctx,
-                    this.ctx.types.bool,
-                    this.ctx.mod.i32.ge_s(
-                        this.ctx.mod.call(
-                            "String.cmp",
-                            [this_.get_expression_ref(), other.get_expression_ref()],
-                            binaryen.i32
-                        ),
-                        this.ctx.mod.i32.const(0)
-                    )
-                );
-            };
+            return cmp("ge_s");
         }
 
         throw new Error(`Invalid operator ${operator} for strings`);
