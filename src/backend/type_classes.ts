@@ -148,7 +148,7 @@ export abstract class Primitive implements MiteType {
                     this.type.name !== other.type.name ||
                     this.type.classification !== "primitive"
                 ) {
-                    throw new Error(`Cannot operate on ${this.type.name} with ${right.type.name}`);
+                    throw new Error(`Cannot operate on ${this.type.name} with ${other.type.name}`);
                 }
                 return new TransientPrimitive(
                     this.ctx,
