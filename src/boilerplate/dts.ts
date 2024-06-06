@@ -57,19 +57,16 @@ export function programToBoilerplate(program: Program, _: Options) {
         }
     }
 
-    const var_exports = program.body
-        .filter(
-            (x): x is ExportNamedDeclaration =>
-                x.type === "ExportNamedDeclaration" && x.declaration.type === "VariableDeclaration"
-        )
-        .map((x) => x.declaration as VariableDeclaration);
+    const export_declarations = program.body
+        .filter((x): x is ExportNamedDeclaration => x.type === "ExportNamedDeclaration")
+        .map((x) => x.declaration);
+    const var_exports = export_declarations.filter(
+        (x): x is VariableDeclaration => x.type === "VariableDeclaration"
+    );
 
-    const function_exports = program.body
-        .filter(
-            (x): x is ExportNamedDeclaration =>
-                x.type === "ExportNamedDeclaration" && x.declaration.type === "FunctionDeclaration"
-        )
-        .map((x) => x.declaration as FunctionDeclaration);
+    const function_exports = export_declarations.filter(
+        (x): x is FunctionDeclaration => x.type === "FunctionDeclaration"
+    );
 
     let code = dedent`
         ${imports.map((x) => `import { ${x.specifiers.map((x) => (x.local.name !== x.imported.name ? `${x.imported.name} as ${x.local.name}` : x.imported.name)).join(", ")} } from "${x.source.value}";`).join("\n")}

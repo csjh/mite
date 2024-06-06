@@ -318,11 +318,9 @@ function functionDeclarationToString(types: Context["types"], func: FunctionDecl
 
 export function getCallbacks(types: Context["types"], program: Program): string[] {
     const exports = program.body
-        .filter(
-            (x): x is ExportNamedDeclaration =>
-                x.type === "ExportNamedDeclaration" && x.declaration.type === "FunctionDeclaration"
-        )
-        .map((x) => x.declaration as FunctionDeclaration);
+        .filter((x): x is ExportNamedDeclaration => x.type === "ExportNamedDeclaration")
+        .map((x) => x.declaration)
+        .filter((x): x is FunctionDeclaration => x.type === "FunctionDeclaration");
     const methods = Object.fromEntries(
         program.body
             .filter((x): x is StructDeclaration => x.type === "StructDeclaration")

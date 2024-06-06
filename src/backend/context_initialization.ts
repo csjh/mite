@@ -8,7 +8,12 @@ import {
     PrimitiveTypeInformation,
     StructTypeInformation
 } from "../types/code_gen.js";
-import { ExportNamedDeclaration, Program, StructDeclaration } from "../types/nodes.js";
+import {
+    ExportNamedDeclaration,
+    Program,
+    StructDeclaration,
+    TypeIdentifier
+} from "../types/nodes.js";
 import { MiteType, Pointer, Primitive, String_, TransientPrimitive } from "./type_classes.js";
 import binaryen from "binaryen";
 import { i64const, parseType } from "./utils.js";
@@ -616,13 +621,16 @@ export function identifyStructs(program: Program): StructTypeInformation[] {
             id,
             new Set(
                 fields
-                    .filter((x) => x.typeAnnotation._type.type === "Identifier")
-                    // @ts-expect-error we know this is an identifier
-                    .map(({ typeAnnotation }) => typeAnnotation._type.name)
+                    .map((x) => x.typeAnnotation._type)
+                    .filter(
+                        (x): x is Extract<TypeIdentifier["_type"], { type: "Identifier" }> =>
+                            x.type === "Identifier"
+                    )
+                    .map((x) => x.name)
                     .filter((x) => !Primitive.primitives.has(x))
             )
         ])
-    ) as Map<string, Set<string>>;
+    );
 
     // detect cycles
     detectCycles(adj_list);
