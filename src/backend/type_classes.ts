@@ -15,8 +15,8 @@ import {
     InstanceArrayTypeInformation,
     InstanceStructTypeInformation,
     InstanceTypeInformation,
+    NullaryOperator,
     UnaryOperator as UnaryOperatorHandler,
-    BinaryOperator as BinaryOperatorHandler,
     PrimitiveTypeInformation,
     InstancePrimitiveTypeInformation,
     InstanceFunctionTypeInformation,
@@ -50,8 +50,8 @@ export abstract class MiteType {
     // abstract call(args: MiteType[]): MiteType;
     abstract sizeof(): number;
     // operators
-    abstract operator(operator: UnaryOperator): UnaryOperatorHandler;
-    abstract operator(operator: BinaryOperator): BinaryOperatorHandler;
+    abstract operator(operator: UnaryOperator): NullaryOperator;
+    abstract operator(operator: BinaryOperator): UnaryOperatorHandler;
     // if it's a global
     abstract readonly is_global: boolean;
     // the type information of the value
@@ -121,20 +121,18 @@ export abstract class Primitive implements MiteType {
         throw new Error("Unable to call a primitive.");
     }
 
-    operator(operator: UnaryOperator): UnaryOperatorHandler;
-    operator(operator: BinaryOperator): BinaryOperatorHandler;
-    operator(
-        operator: UnaryOperator | BinaryOperator
-    ): UnaryOperatorHandler | BinaryOperatorHandler {
+    operator(operator: UnaryOperator): NullaryOperator;
+    operator(operator: BinaryOperator): UnaryOperatorHandler;
+    operator(operator: UnaryOperator | BinaryOperator): NullaryOperator | UnaryOperatorHandler {
         const un_op = ((
                 operation: (value: binaryen.ExpressionRef) => binaryen.ExpressionRef,
                 result?: PrimitiveTypeInformation
             ) =>
-            (value: MiteType): MiteType => {
+            (): MiteType => {
                 return new TransientPrimitive(
                     this.ctx,
-                    result ?? (value as Primitive).type,
-                    operation(value.get_expression_ref())
+                    result ?? this.type,
+                    operation(this.get_expression_ref())
                 );
             }).bind(this);
 
@@ -145,14 +143,17 @@ export abstract class Primitive implements MiteType {
                 ) => binaryen.ExpressionRef,
                 result?: PrimitiveTypeInformation
             ) =>
-            (left: MiteType, right: MiteType): MiteType => {
-                if (left.type.name !== this.type.name || this.type.classification !== "primitive") {
-                    throw new Error(`Cannot operate on ${this.type.name} with ${left.type.name}`);
+            (other: MiteType): MiteType => {
+                if (
+                    this.type.name !== other.type.name ||
+                    this.type.classification !== "primitive"
+                ) {
+                    throw new Error(`Cannot operate on ${this.type.name} with ${right.type.name}`);
                 }
                 return new TransientPrimitive(
                     this.ctx,
-                    result ?? (left as Primitive).type,
-                    operation(left.get_expression_ref(), right.get_expression_ref())
+                    result ?? this.type,
+                    operation(this.get_expression_ref(), other.get_expression_ref())
                 );
             }).bind(this);
 
@@ -191,9 +192,11 @@ export abstract class Primitive implements MiteType {
                     case TokenType.GREATER_THAN_EQUALS:
                         return bin_op(mod.f32.ge, this.ctx.types.bool);
                     case TokenType.NOT:
-                        return (x: MiteType) =>
-                            bin_op(mod.f32.eq, this.ctx.types.bool)(
-                                x,
+                        return () =>
+                            bin_op(
+                                mod.f32.eq,
+                                this.ctx.types.bool
+                            )(
                                 new TransientPrimitive(
                                     this.ctx,
                                     this.ctx.types.f32,
@@ -226,9 +229,11 @@ export abstract class Primitive implements MiteType {
                     case TokenType.GREATER_THAN_EQUALS:
                         return bin_op(mod.f64.ge, this.ctx.types.bool);
                     case TokenType.NOT:
-                        return (x: MiteType) =>
-                            bin_op(mod.f64.eq, this.ctx.types.bool)(
-                                x,
+                        return () =>
+                            bin_op(
+                                mod.f64.eq,
+                                this.ctx.types.bool
+                            )(
                                 new TransientPrimitive(
                                     this.ctx,
                                     this.ctx.types.f64,
@@ -1029,11 +1034,9 @@ export class Pointer implements MiteType {
         return this.pointer.sizeof();
     }
 
-    operator(operator: UnaryOperator): UnaryOperatorHandler;
-    operator(operator: BinaryOperator): BinaryOperatorHandler;
-    operator(
-        operator: UnaryOperator | BinaryOperator
-    ): UnaryOperatorHandler | BinaryOperatorHandler {
+    operator(operator: UnaryOperator): NullaryOperator;
+    operator(operator: BinaryOperator): UnaryOperatorHandler;
+    operator(operator: UnaryOperator | BinaryOperator): NullaryOperator | UnaryOperatorHandler {
         throw new Error(`Invalid operator ${operator} for pointer`);
     }
 }
@@ -1110,11 +1113,9 @@ export abstract class AggregateType<T extends InstanceTypeInformation> implement
         throw new Error("Method not implemented.");
     }
 
-    operator(operator: UnaryOperator): UnaryOperatorHandler;
-    operator(operator: BinaryOperator): BinaryOperatorHandler;
-    operator(
-        operator: UnaryOperator | BinaryOperator
-    ): UnaryOperatorHandler | BinaryOperatorHandler {
+    operator(operator: UnaryOperator): NullaryOperator;
+    operator(operator: BinaryOperator): UnaryOperatorHandler;
+    operator(operator: UnaryOperator | BinaryOperator): NullaryOperator | UnaryOperatorHandler {
         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
     }
 }
@@ -1331,11 +1332,9 @@ export class DirectFunction implements MiteType {
         return this.ctx.mod.i32.const(0);
     }
 
-    operator(operator: UnaryOperator): UnaryOperatorHandler;
-    operator(operator: BinaryOperator): BinaryOperatorHandler;
-    operator(
-        operator: UnaryOperator | BinaryOperator
-    ): UnaryOperatorHandler | BinaryOperatorHandler {
+    operator(operator: UnaryOperator): NullaryOperator;
+    operator(operator: BinaryOperator): UnaryOperatorHandler;
+    operator(operator: UnaryOperator | BinaryOperator): NullaryOperator | UnaryOperatorHandler {
         throw new Error(`Invalid operator ${operator} for function`);
     }
 }
@@ -1470,11 +1469,9 @@ export class StructMethod implements MiteType {
         return this.ctx.mod.i32.const(0);
     }
 
-    operator(operator: UnaryOperator): UnaryOperatorHandler;
-    operator(operator: BinaryOperator): BinaryOperatorHandler;
-    operator(
-        operator: UnaryOperator | BinaryOperator
-    ): UnaryOperatorHandler | BinaryOperatorHandler {
+    operator(operator: UnaryOperator): NullaryOperator;
+    operator(operator: BinaryOperator): UnaryOperatorHandler;
+    operator(operator: UnaryOperator | BinaryOperator): NullaryOperator | UnaryOperatorHandler {
         throw new Error(`Invalid operator ${operator} for function`);
     }
 }
@@ -1515,6 +1512,9 @@ export class String_ extends AggregateType<InstanceStringTypeInformation> {
         return this.array.sizeof();
     }
 
+    operator(operator: UnaryOperator): NullaryOperator;
+    operator(operator: BinaryOperator): UnaryOperatorHandler;
+    operator(operator: UnaryOperator | BinaryOperator): NullaryOperator | UnaryOperatorHandler {
         const cmp = (op: "lt_s" | "gt_s" | "le_s" | "ge_s") => (other: MiteType) =>
             new TransientPrimitive(
                 this.ctx,

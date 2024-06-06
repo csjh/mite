@@ -146,6 +146,7 @@ export interface Context {
 export type TernaryOperator = (left: MiteType, middle: MiteType, right: MiteType) => MiteType;
 export type BinaryOperator = (left: MiteType, right: MiteType) => MiteType;
 export type UnaryOperator = (expr: MiteType) => MiteType;
+export type NullaryOperator = () => MiteType;
 
 export type ConversionHandlers = Record<string, UnaryOperator>;
 

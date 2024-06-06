@@ -703,8 +703,7 @@ function binaryExpressionToExpression(ctx: Context, value: BinaryExpression): Mi
     const left = expressionToExpression(updateExpected(ctx, undefined), value.left);
     const right = expressionToExpression(updateExpected(ctx, left.type), value.right);
 
-    const operator = left.operator(value.operator);
-    return operator(left, right);
+    return left.operator(value.operator)(right);
 }
 
 function logicalExpressionToExpression(ctx: Context, value: LogicalExpression): MiteType {
@@ -742,13 +741,13 @@ function assignmentExpressionToExpression(ctx: Context, value: AssignmentExpress
 
     const expr = expressionToExpression(updateExpected(ctx, variable.type), value.right);
     if (value.operator === "=") return variable.set(expr);
-    if (variable.type.classification !== "primitive")
-        throw new Error("Cannot use operator assignment on non-primitive type");
+    if (variable.type.classification !== "primitive" && variable.type.classification !== "string") {
+        throw new Error("Cannot use operator assignment on non-primitive/string types");
+    }
 
     const operation = value.operator.slice(0, -1) as BinaryOperator;
-    const operator = variable.operator(operation);
 
-    return variable.set(operator(variable, expr));
+    return variable.set(variable.operator(operation)(expr));
 }
 
 function callExpressionToExpression(ctx: Context, value: CallExpression): MiteType {
@@ -1139,7 +1138,7 @@ function unaryExpressionToExpression(ctx: Context, value: UnaryExpression): Mite
     } else if (value.operator === "!") {
         const expr = expressionToExpression(updateExpected(ctx, undefined), value.argument);
 
-        return expr.operator(TokenType.NOT)(expr);
+        return expr.operator(TokenType.NOT)();
     }
 
     throw new Error(`Unknown unary operator: ${value.operator}`);
