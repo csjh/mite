@@ -55,7 +55,8 @@ import type {
     IndexExpression,
     ObjectExpression,
     UnaryExpression,
-    ImportDeclaration
+    ImportDeclaration,
+    SequenceExpression
 } from "../types/nodes.js";
 import { BinaryOperator, TokenType } from "../types/tokens.js";
 import {
@@ -590,7 +591,7 @@ function expressionToExpression(ctx: Context, value: Expression | Statement): Mi
     } else if (value.type === "UnaryExpression") {
         return unaryExpressionToExpression(ctx, value);
     } else if (value.type === "SequenceExpression") {
-        return expressionToExpression(ctx, value.expressions[0]);
+        return sequenceExpressionToExpression(ctx, value);
     } else {
         switch (value.type) {
             case "AwaitExpression":
@@ -741,12 +742,8 @@ function assignmentExpressionToExpression(ctx: Context, value: AssignmentExpress
 
     const expr = expressionToExpression(updateExpected(ctx, variable.type), value.right);
     if (value.operator === "=") return variable.set(expr);
-    if (variable.type.classification !== "primitive" && variable.type.classification !== "string") {
-        throw new Error("Cannot use operator assignment on non-primitive/string types");
-    }
 
     const operation = value.operator.slice(0, -1) as BinaryOperator;
-
     return variable.set(variable.operator(operation)(expr));
 }
 
@@ -1077,7 +1074,6 @@ function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): M
         )
             throw new Error("Cannot unwrap non-identifier");
         const mite_type = unwrapVariable(ctx, inner);
-        if (mite_type.type.classification !== "struct") throw new Error("Cannot unwrap non-struct");
         return mite_type.access(variable.property.name);
     } else if (variable.type === "IndexExpression") {
         const inner = variable.object;
@@ -1088,7 +1084,6 @@ function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): M
         )
             throw new Error("Cannot unwrap non-identifier");
         const mite_type = unwrapVariable(ctx, inner);
-        if (mite_type.type.classification !== "array") throw new Error("Cannot unwrap non-array");
         return mite_type.index(
             expressionToExpression(updateExpected(ctx, Pointer.type), variable.index)
         );
@@ -1100,4 +1095,8 @@ function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): M
 function unaryExpressionToExpression(ctx: Context, value: UnaryExpression): MiteType {
     const expr = expressionToExpression(updateExpected(ctx, undefined), value.argument);
     return expr.operator(value.operator)();
+}
+
+function sequenceExpressionToExpression(ctx: Context, value: SequenceExpression): MiteType {
+    return expressionToExpression(ctx, value.expressions[0]);
 }
