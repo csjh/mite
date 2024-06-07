@@ -124,6 +124,22 @@ export abstract class Primitive implements MiteType {
     operator(operator: UnaryOperator): NullaryOperator;
     operator(operator: BinaryOperator): UnaryOperatorHandler;
     operator(operator: UnaryOperator | BinaryOperator): NullaryOperator | UnaryOperatorHandler {
+        const type_name = getBinaryenDescriptor(this.type.binaryen_type);
+        const empty = new TransientPrimitive(
+            this.ctx,
+            this.type,
+            type_name === "v128"
+                ? this.ctx.mod.v128.const(Array(16).fill(0x00))
+                : this.ctx.mod[type_name].const(0, 0)
+        );
+        const full = new TransientPrimitive(
+            this.ctx,
+            this.type,
+            type_name === "v128"
+                ? this.ctx.mod.v128.const(Array(16).fill(-1))
+                : this.ctx.mod[type_name].const(-1, -1)
+        );
+
         const un_op = ((
                 operation: (value: binaryen.ExpressionRef) => binaryen.ExpressionRef,
                 result?: PrimitiveTypeInformation
@@ -172,9 +188,12 @@ export abstract class Primitive implements MiteType {
             case "f32":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.f32.add);
+                        return (other) => (other ? bin_op(mod.f32.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.f32.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.f32.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.f32.mul);
                     case TokenType.SLASH:
@@ -192,26 +211,19 @@ export abstract class Primitive implements MiteType {
                     case TokenType.GREATER_THAN_EQUALS:
                         return bin_op(mod.f32.ge, this.ctx.types.bool);
                     case TokenType.NOT:
-                        return () =>
-                            bin_op(
-                                mod.f32.eq,
-                                this.ctx.types.bool
-                            )(
-                                new TransientPrimitive(
-                                    this.ctx,
-                                    this.ctx.types.f32,
-                                    mod.f32.const(0)
-                                )
-                            );
+                        return () => bin_op(mod.f32.eq, this.ctx.types.bool)(empty);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "f64":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.f64.add);
+                        return (other) => (other ? bin_op(mod.f64.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.f64.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.f64.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.f64.mul);
                     case TokenType.SLASH:
@@ -229,17 +241,7 @@ export abstract class Primitive implements MiteType {
                     case TokenType.GREATER_THAN_EQUALS:
                         return bin_op(mod.f64.ge, this.ctx.types.bool);
                     case TokenType.NOT:
-                        return () =>
-                            bin_op(
-                                mod.f64.eq,
-                                this.ctx.types.bool
-                            )(
-                                new TransientPrimitive(
-                                    this.ctx,
-                                    this.ctx.types.f64,
-                                    mod.f64.const(0)
-                                )
-                            );
+                        return () => bin_op(mod.f64.eq, this.ctx.types.bool)(empty);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -248,9 +250,12 @@ export abstract class Primitive implements MiteType {
             case "i32":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i32.add);
+                        return (other) => (other ? bin_op(mod.i32.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i32.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i32.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i32.mul);
                     case TokenType.SLASH:
@@ -281,6 +286,8 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.i32.xor);
                     case TokenType.NOT:
                         return un_op(mod.i32.eqz, this.ctx.types.bool);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.i32.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -289,9 +296,12 @@ export abstract class Primitive implements MiteType {
             case "u32":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i32.add);
+                        return (other) => (other ? bin_op(mod.i32.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i32.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i32.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i32.mul);
                     case TokenType.SLASH:
@@ -322,15 +332,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.i32.xor);
                     case TokenType.NOT:
                         return un_op(mod.i32.eqz, this.ctx.types.bool);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.i32.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "i64":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i64.add);
+                        return (other) => (other ? bin_op(mod.i64.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i64.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i64.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i64.mul);
                     case TokenType.SLASH:
@@ -361,15 +376,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.i64.xor);
                     case TokenType.NOT:
                         return un_op(mod.i64.eqz, this.ctx.types.bool);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.i64.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "u64":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i64.add);
+                        return (other) => (other ? bin_op(mod.i64.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i64.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i64.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i64.mul);
                     case TokenType.SLASH:
@@ -400,15 +420,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.i64.xor);
                     case TokenType.NOT:
                         return un_op(mod.i64.eqz, this.ctx.types.bool);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.i64.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "i8x16":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i8x16.add);
+                        return (other) => (other ? bin_op(mod.i8x16.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i8x16.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i8x16.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i8x16.mul);
                     case TokenType.EQUALS:
@@ -433,15 +458,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.v128.or);
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.v128.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "u8x16":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i8x16.add);
+                        return (other) => (other ? bin_op(mod.i8x16.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i8x16.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i8x16.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i8x16.mul);
                     case TokenType.EQUALS:
@@ -466,15 +496,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.v128.or);
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.v128.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "i16x8":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i16x8.add);
+                        return (other) => (other ? bin_op(mod.i16x8.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i16x8.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i16x8.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i16x8.mul);
                     case TokenType.EQUALS:
@@ -499,15 +534,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.v128.or);
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.v128.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "u16x8":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i16x8.add);
+                        return (other) => (other ? bin_op(mod.i16x8.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i16x8.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i16x8.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i16x8.mul);
                     case TokenType.EQUALS:
@@ -532,15 +572,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.v128.or);
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.v128.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "i32x4":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i32x4.add);
+                        return (other) => (other ? bin_op(mod.i32x4.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i32x4.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i32x4.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i32x4.mul);
                     case TokenType.EQUALS:
@@ -565,15 +610,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.v128.or);
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.v128.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "u32x4":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i32x4.add);
+                        return (other) => (other ? bin_op(mod.i32x4.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i32x4.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i32x4.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i32x4.mul);
                     case TokenType.EQUALS:
@@ -598,15 +648,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.v128.or);
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.v128.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "i64x2":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i64x2.add);
+                        return (other) => (other ? bin_op(mod.i64x2.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i64x2.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i64x2.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i64x2.mul);
                     case TokenType.EQUALS:
@@ -631,15 +686,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.v128.or);
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.v128.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "u64x2":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.i64x2.add);
+                        return (other) => (other ? bin_op(mod.i64x2.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.i64x2.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.i64x2.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.i64x2.mul);
                     case TokenType.EQUALS:
@@ -656,15 +716,20 @@ export abstract class Primitive implements MiteType {
                         return bin_op(mod.v128.or);
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
+                    case TokenType.BITWISE_NOT:
+                        return () => bin_op(mod.v128.xor)(full);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
             case "f32x4":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.f32x4.add);
+                        return (other) => (other ? bin_op(mod.f32x4.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.f32x4.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.f32x4.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.f32x4.mul);
                     case TokenType.SLASH:
@@ -687,9 +752,12 @@ export abstract class Primitive implements MiteType {
             case "f64x2":
                 switch (operator) {
                     case TokenType.PLUS:
-                        return bin_op(mod.f64x2.add);
+                        return (other) => (other ? bin_op(mod.f64x2.add)(other) : this);
                     case TokenType.MINUS:
-                        return bin_op(mod.f64x2.sub);
+                        return (other) =>
+                            other
+                                ? bin_op(mod.f64x2.sub)(other)
+                                : (empty.operator("-") as UnaryOperatorHandler)(this);
                     case TokenType.STAR:
                         return bin_op(mod.f64x2.mul);
                     case TokenType.SLASH:

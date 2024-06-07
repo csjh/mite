@@ -1099,47 +1099,5 @@ function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): M
 
 function unaryExpressionToExpression(ctx: Context, value: UnaryExpression): MiteType {
     const expr = expressionToExpression(updateExpected(ctx, undefined), value.argument);
-    if (expr.type.classification !== "primitive") {
-        throw new Error(`Unary operator cannot be applied to non-primitive type`);
-    }
-    const empty =
-        expr.type.name === "v128" || expr.type.name.includes("x")
-            ? ({
-                  type: "Literal",
-                  literalType: expr.type.name,
-                  value: Array(16).fill(0x00)
-              } as const)
-            : ({ type: "Literal", literalType: "i32", value: 0 } as const);
-    const full =
-        expr.type.name === "v128" || expr.type.name.includes("x")
-            ? ({
-                  type: "Literal",
-                  literalType: expr.type.name,
-                  value: Array(16).fill(0xff)
-              } as const)
-            : ({ type: "Literal", literalType: "i32", value: -1 } as const);
-
-    if (value.operator === "-") {
-        return binaryExpressionToExpression(ctx, {
-            type: "BinaryExpression",
-            operator: TokenType.MINUS,
-            left: empty,
-            right: value.argument
-        });
-    } else if (value.operator === "+") {
-        return expressionToExpression(updateExpected(ctx, undefined), value.argument);
-    } else if (value.operator === "~") {
-        return binaryExpressionToExpression(ctx, {
-            type: "BinaryExpression",
-            operator: TokenType.BITWISE_XOR,
-            left: value.argument,
-            right: full
-        });
-    } else if (value.operator === "!") {
-        const expr = expressionToExpression(updateExpected(ctx, undefined), value.argument);
-
-        return expr.operator(TokenType.NOT)();
-    }
-
-    throw new Error(`Unknown unary operator: ${value.operator}`);
+    return expr.operator(value.operator)();
 }
