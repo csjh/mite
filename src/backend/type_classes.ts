@@ -1069,12 +1069,11 @@ export abstract class AggregateType<T extends InstanceTypeInformation> implement
             return this.address.set(value);
         }
 
-        const value_type = value.type as InstanceTypeInformation;
         if (
-            value_type.classification !== this.type.classification ||
-            value_type.name !== this.type.name
+            value.type.classification !== this.type.classification ||
+            value.type.name !== this.type.name
         ) {
-            throw new Error(`Unable to assign ${value_type.name} to ${this.type.name}`);
+            throw new Error(`Unable to assign ${value.type.name} to ${this.type.name}`);
         }
 
         if (this.type.is_ref) {
