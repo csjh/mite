@@ -375,3 +375,13 @@ export function assumeStructs(types: Context["types"]): Context["types"] {
         }
     });
 }
+
+export function getBinaryenDescriptor(x: binaryen.Type): "i32" | "f32" | "i64" | "f64" | "v128" {
+    if (x === binaryen.i32) return "i32";
+    if (x === binaryen.f32) return "f32";
+    if (x === binaryen.i64) return "i64";
+    if (x === binaryen.f64) return "f64";
+    if (x === binaryen.v128) return "v128";
+    throw new Error(`Unknown binaryen type: ${x}`);
+}
+

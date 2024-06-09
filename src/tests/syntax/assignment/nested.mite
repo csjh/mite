@@ -1,0 +1,20 @@
+struct coord {
+    x: f64,
+    y: f64
+}
+
+struct addresses {
+    home: coord,
+    work: coord
+}
+
+export fn main(): f64 {
+    let addrs = addresses {
+        home: coord { x: 3.0, y: 4.0 },
+        work: coord { x: 5.0, y: 6.0 }
+    };
+
+    addrs.home.x = 5.6;
+
+    return addrs.home.x;
+}

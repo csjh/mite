@@ -742,7 +742,7 @@ function logicalExpressionToExpression(ctx: Context, value: LogicalExpression): 
 }
 
 function assignmentExpressionToExpression(ctx: Context, value: AssignmentExpression): MiteType {
-    const variable = unwrapVariable(ctx, value.left);
+    const variable = expressionToExpression(ctx, value.left, ctx.expected);
 
     const expr = expressionToExpression(ctx, value.right, variable.type);
     if (value.operator === "=") return variable.set(expr);
@@ -1077,34 +1077,6 @@ function objectExpressionToExpression(ctx: Context, value: ObjectExpression): Mi
     }
 
     return struct;
-}
-
-function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): MiteType {
-    if (variable.type === "Identifier") {
-        return lookForVariable(ctx, variable.name);
-    } else if (variable.type === "MemberExpression") {
-        const inner = variable.object;
-        if (
-            inner.type !== "Identifier" &&
-            inner.type !== "MemberExpression" &&
-            inner.type !== "IndexExpression"
-        )
-            throw new Error("Cannot unwrap non-identifier");
-        const mite_type = unwrapVariable(ctx, inner);
-        return mite_type.access(variable.property.name);
-    } else if (variable.type === "IndexExpression") {
-        const inner = variable.object;
-        if (
-            inner.type !== "Identifier" &&
-            inner.type !== "MemberExpression" &&
-            inner.type !== "IndexExpression"
-        )
-            throw new Error("Cannot unwrap non-identifier");
-        const mite_type = unwrapVariable(ctx, inner);
-        return mite_type.index(expressionToExpression(ctx, variable.index, Pointer.type));
-    } else {
-        throw new Error(`Unknown variable type: ${variable}`);
-    }
 }
 
 function unaryExpressionToExpression(ctx: Context, value: UnaryExpression): MiteType {

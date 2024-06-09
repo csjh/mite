@@ -27,6 +27,7 @@ import {
     createMiteType,
     FN_PTRS_START,
     fromExpressionRef,
+    getBinaryenDescriptor,
     miteSignatureToBinaryenSignature,
     typeInformationToBinaryen,
     VIRTUALIZED_FUNCTIONS
