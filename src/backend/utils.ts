@@ -34,10 +34,6 @@ export const VIRTUALIZED_FUNCTIONS = "virtualized_functions";
 export const FN_PTRS_START = "$fn_ptrs_start";
 export const STRING_SECTION_START = "$string_section_start";
 
-export function updateExpected(ctx: Context, expected: Context["expected"]) {
-    return { ...ctx, expected };
-}
-
 export function i64const(ctx: Context, num: bigint | number) {
     if (typeof num === "number") num = BigInt(Math.floor(num));
     num = BigInt.asUintN(64, num);

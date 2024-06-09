@@ -3,7 +3,6 @@ import {
     i64const,
     lookForVariable,
     miteSignatureToBinaryenSignature,
-    updateExpected,
     newBlock,
     parseType,
     allocate,
@@ -418,7 +417,7 @@ async function handleDeclaration(
                 }
 
                 const type = parseType(ctx, typeAnnotation);
-                const expr = init && expressionToExpression(updateExpected(ctx, type), init);
+                const expr = init && expressionToExpression(ctx, init, type);
 
                 const global = createMiteType(ctx, type, id.name);
 
@@ -505,7 +504,7 @@ function statementToExpression(ctx: Context, value: Statement): void {
         case "ReturnStatement":
             return returnStatementToExpression(ctx, value);
         case "ExpressionStatement":
-            ctx.current_block.push(expressionToExpression(ctx, value.expression));
+            ctx.current_block.push(expressionToExpression(ctx, value.expression, undefined));
             return;
     }
 
@@ -518,11 +517,11 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
         let type: InstanceTypeInformation;
         if (typeAnnotation && init) {
             type = parseType(ctx, typeAnnotation);
-            expr = expressionToExpression(updateExpected(ctx, type), init);
+            expr = expressionToExpression(ctx, init, type);
         } else if (typeAnnotation) {
             type = parseType(ctx, typeAnnotation);
         } else if (init) {
-            expr = expressionToExpression(ctx, init);
+            expr = expressionToExpression(ctx, init, undefined);
             type = expr.type;
         } else {
             throw new Error("Variable declaration must have type or initializer");
@@ -543,15 +542,20 @@ function variableDeclarationToExpression(ctx: Context, value: VariableDeclaratio
 
 function returnStatementToExpression(ctx: Context, value: ReturnStatement): void {
     const expr =
-        value.argument &&
-        expressionToExpression(updateExpected(ctx, ctx.current_function.results), value.argument);
+        value.argument && expressionToExpression(ctx, value.argument, ctx.current_function.results);
 
     ctx.current_block.push(
         new TransientPrimitive(ctx, ctx.types.void, ctx.mod.return(expr?.get_expression_ref()))
     );
 }
 
-function expressionToExpression(ctx: Context, value: Expression | Statement): MiteType {
+function expressionToExpression(
+    ctx_: Context,
+    value: Expression | Statement,
+    expected: InstanceTypeInformation | undefined
+): MiteType {
+    const ctx = { ...ctx_, expected };
+
     if (value.type === "Literal") {
         return literalToExpression(ctx, value);
     } else if (value.type === "Identifier") {
@@ -701,15 +705,15 @@ function identifierToExpression(ctx: Context, { name }: Identifier): MiteType {
 }
 
 function binaryExpressionToExpression(ctx: Context, value: BinaryExpression): MiteType {
-    const left = expressionToExpression(updateExpected(ctx, undefined), value.left);
-    const right = expressionToExpression(updateExpected(ctx, left.type), value.right);
+    const left = expressionToExpression(ctx, value.left, ctx.expected);
+    const right = expressionToExpression(ctx, value.right, left.type);
 
     return left.operator(value.operator)(right);
 }
 
 function logicalExpressionToExpression(ctx: Context, value: LogicalExpression): MiteType {
-    const left = expressionToExpression(updateExpected(ctx, ctx.types.bool), value.left),
-        right = expressionToExpression(updateExpected(ctx, ctx.types.bool), value.right);
+    const left = expressionToExpression(ctx, value.left, ctx.types.bool);
+    const right = expressionToExpression(ctx, value.right, ctx.types.bool);
 
     switch (value.operator) {
         case TokenType.LOGICAL_OR:
@@ -740,7 +744,7 @@ function logicalExpressionToExpression(ctx: Context, value: LogicalExpression): 
 function assignmentExpressionToExpression(ctx: Context, value: AssignmentExpression): MiteType {
     const variable = unwrapVariable(ctx, value.left);
 
-    const expr = expressionToExpression(updateExpected(ctx, variable.type), value.right);
+    const expr = expressionToExpression(ctx, value.right, variable.type);
     if (value.operator === "=") return variable.set(expr);
 
     const operation = value.operator.slice(0, -1) as BinaryOperator;
@@ -753,7 +757,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
     if (value.callee.type === "Identifier") {
         const name = value.callee.name;
         if (intrinsic_names.has(name)) {
-            args = value.arguments.map((arg) => expressionToExpression(ctx, arg));
+            args = value.arguments.map((arg) => expressionToExpression(ctx, arg, undefined));
             const primary_argument = args[0]?.type.name;
 
             if (!primary_argument) throw new Error("Intrinsic must have primary argument");
@@ -763,7 +767,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
             // @ts-expect-error this is fine
             return intrinsic(...args);
         } else if (!Object.values(ctx.conversions).every((x) => !Object.hasOwn(x, name))) {
-            args = value.arguments.map((arg) => expressionToExpression(ctx, arg));
+            args = value.arguments.map((arg) => expressionToExpression(ctx, arg, undefined));
             const primary_argument = args[0]?.type.name;
 
             if (ctx.conversions[primary_argument]?.[name]) {
@@ -772,7 +776,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
         }
     }
 
-    const fn = expressionToExpression(ctx, value.callee);
+    const fn = expressionToExpression(ctx, value.callee, undefined);
     if (fn.type.classification !== "function") {
         throw new Error(`Cannot call non-function type ${fn.type.name}`);
     }
@@ -789,16 +793,17 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
     }
 
     args ??= thisless_params.map((type, i) =>
-        expressionToExpression(updateExpected(ctx, type.type), value.arguments[i])
+        expressionToExpression(ctx, value.arguments[i], type.type)
     );
 
     return fn.call(args);
 }
 
 function ifExpressionToExpression(ctx: Context, value: IfExpression): MiteType {
-    const condition = expressionToExpression(updateExpected(ctx, ctx.types.bool), value.test);
-    const true_branch = expressionToExpression(ctx, value.consequent);
-    const false_branch = value.alternate && expressionToExpression(ctx, value.alternate);
+    const condition = expressionToExpression(ctx, value.test, ctx.types.bool);
+    const true_branch = expressionToExpression(ctx, value.consequent, ctx.expected);
+    const false_branch =
+        value.alternate && expressionToExpression(ctx, value.alternate, ctx.expected);
 
     if (false_branch && true_branch.type.name !== false_branch.type.name) {
         throw new Error(
@@ -837,7 +842,7 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): MiteType
                 if (value.init.type === "VariableDeclaration") {
                     variableDeclarationToExpression(ctx, value.init);
                 } else {
-                    expressionToExpression(ctx, value.init);
+                    expressionToExpression(ctx, value.init, undefined);
                 }
             }
 
@@ -847,19 +852,21 @@ function forExpressionToExpression(ctx: Context, value: ForExpression): MiteType
                     ? ctx.mod.i32.const(1)
                     : newBlock(
                           ctx,
-                          () =>
-                              expressionToExpression(
-                                  updateExpected(ctx, ctx.types.bool),
-                                  value.test!
-                              ),
+                          () => expressionToExpression(ctx, value.test!, ctx.types.bool),
                           { type: binaryen.i32 }
                       ).get_expression_ref());
 
             const update =
-                value.update && newBlock(ctx, () => expressionToExpression(ctx, value.update!));
-            const body = newBlock(ctx, () => expressionToExpression(ctx, value.body), {
-                name: for_loop_user_body_label
-            });
+                value.update &&
+                newBlock(ctx, () => expressionToExpression(ctx, value.update!, undefined));
+
+            const body = newBlock(
+                ctx,
+                () => expressionToExpression(ctx, value.body, ctx.expected),
+                {
+                    name: for_loop_user_body_label
+                }
+            );
 
             if (test) {
                 // if test fails, don't even start the loop
@@ -905,13 +912,11 @@ function doWhileExpressionToExpression(ctx: Context, value: DoWhileExpression): 
     ctx.stacks.continue.push(do_while_loop_body_block);
     ctx.stacks.depth++;
 
-    const body = newBlock(ctx, () => expressionToExpression(ctx, value.body));
+    const body = newBlock(ctx, () => expressionToExpression(ctx, value.body, ctx.expected));
     const test = value.test
-        ? newBlock(
-              ctx,
-              () => expressionToExpression(updateExpected(ctx, ctx.types.bool), value.test),
-              { type: binaryen.i32 }
-          )
+        ? newBlock(ctx, () => expressionToExpression(ctx, value.test, ctx.types.bool), {
+              type: binaryen.i32
+          })
         : new TransientPrimitive(ctx, ctx.types.bool, ctx.mod.i32.const(0));
 
     const ref = ctx.mod.loop(
@@ -935,12 +940,10 @@ function whileExpressionToExpression(ctx: Context, value: WhileExpression): Mite
     ctx.stacks.continue.push(while_loop_body_block);
     ctx.stacks.depth++;
 
-    const test = newBlock(
-        ctx,
-        () => expressionToExpression(updateExpected(ctx, ctx.types.bool), value.test),
-        { type: binaryen.i32 }
-    );
-    const body = newBlock(ctx, () => expressionToExpression(ctx, value.body));
+    const test = newBlock(ctx, () => expressionToExpression(ctx, value.test, ctx.types.bool), {
+        type: binaryen.i32
+    });
+    const body = newBlock(ctx, () => expressionToExpression(ctx, value.body, ctx.expected));
 
     const ref = ctx.mod.if(
         test.get_expression_ref(), // if test.ref tries to continue or break it might be weird
@@ -991,7 +994,7 @@ function emptyExpressionToExpression(ctx: Context, _: EmptyExpression): MiteType
 }
 
 function memberExpressionToExpression(ctx: Context, value: MemberExpression): MiteType {
-    const struct = expressionToExpression(ctx, value.object);
+    const struct = expressionToExpression(ctx, value.object, undefined);
     return struct.access(value.property.name);
 }
 
@@ -1002,7 +1005,11 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
         throw new Error(`Expected array type, got ${ctx.expected.classification}`);
     }
 
-    const first_element = expressionToExpression(updateExpected(ctx, undefined), value.elements[0]);
+    const first_element = expressionToExpression(
+        ctx,
+        value.elements[0],
+        ctx.expected?.element_type
+    );
     const element_type = first_element.type;
 
     const type = {
@@ -1022,7 +1029,7 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
             .set(first_element)
     );
     for (let i = 1; i < value.elements.length; i++) {
-        const expr = expressionToExpression(updateExpected(ctx, element_type), value.elements[i]);
+        const expr = expressionToExpression(ctx, value.elements[i], element_type);
         ctx.current_block.push(
             array.index(new TransientPrimitive(ctx, Pointer.type, ctx.mod.i32.const(i))).set(expr)
         );
@@ -1032,8 +1039,18 @@ function arrayExpressionToExpression(ctx: Context, value: ArrayExpression): Mite
 }
 
 function indexExpressionToExpression(ctx: Context, value: IndexExpression): MiteType {
-    const array = expressionToExpression(ctx, value.object);
-    const index = expressionToExpression(updateExpected(ctx, Pointer.type), value.index);
+    const array = expressionToExpression(
+        ctx,
+        value.object,
+        ctx.expected && {
+            classification: "array",
+            name: `[${ctx.expected.name}]`,
+            is_ref: false,
+            sizeof: 0,
+            element_type: ctx.expected
+        }
+    );
+    const index = expressionToExpression(ctx, value.index, Pointer.type);
 
     return array.index(index);
 }
@@ -1050,7 +1067,7 @@ function objectExpressionToExpression(ctx: Context, value: ObjectExpression): Mi
         if (!field) throw new Error(`Struct ${type.name} has no field ${property.key.name}`);
         fields.delete(property.key.name);
 
-        const expr = expressionToExpression(updateExpected(ctx, field.type), property.value);
+        const expr = expressionToExpression(ctx, property.value, field.type);
         ctx.current_block.push(struct.access(property.key.name).set(expr));
     }
 
@@ -1084,19 +1101,17 @@ function unwrapVariable(ctx: Context, variable: AssignmentExpression["left"]): M
         )
             throw new Error("Cannot unwrap non-identifier");
         const mite_type = unwrapVariable(ctx, inner);
-        return mite_type.index(
-            expressionToExpression(updateExpected(ctx, Pointer.type), variable.index)
-        );
+        return mite_type.index(expressionToExpression(ctx, variable.index, Pointer.type));
     } else {
         throw new Error(`Unknown variable type: ${variable}`);
     }
 }
 
 function unaryExpressionToExpression(ctx: Context, value: UnaryExpression): MiteType {
-    const expr = expressionToExpression(updateExpected(ctx, undefined), value.argument);
+    const expr = expressionToExpression(ctx, value.argument, ctx.expected);
     return expr.operator(value.operator)();
 }
 
 function sequenceExpressionToExpression(ctx: Context, value: SequenceExpression): MiteType {
-    return expressionToExpression(ctx, value.expressions[0]);
+    return expressionToExpression(ctx, value.expressions[0], ctx.expected);
 }
