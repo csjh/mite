@@ -19,14 +19,14 @@ Mite was made to accompany my learning during my introduction to C university co
 
 > In no particular order
 
--   [ ] 0-copy Mite -> Javascript Interop
--   [ ] Javascript Helper Mode
+-   [x] 0-copy Mite -> Javascript Interop (other than strings)
+-   [x] Javascript Helper Mode
 -   [ ] Standard Library
 -   [ ] Closures
 -   [ ] C++ Port
--   [ ] Heap [^1]
+-   [x] Heap [^1]
 -   [ ] (Graph-based?) IR for optimzations
--   [ ] Strings [^2]
+-   [x] Strings [^2]
 
 [^1]: A traditional heap (with malloc and free and stuff) is kinda iffy right now, unsure of where it will land atm.
 [^2]: This might be pending for the WebAssembly story for strings to be figured out. Right now it seems like one of `stringref` or `JS String Builtins`. String builtins could be polyfilled (albeit possibly slowly), so for now they might be what I go with.
