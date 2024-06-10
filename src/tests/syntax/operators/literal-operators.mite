@@ -19,7 +19,11 @@ export fn andxor(): i32 {
 }
 
 export fn oreq(): i32 {
-    return (7 | 3) == 10;
+    return 7 | 3 == 10;
+}
+
+export fn nelt(): i32 {
+    return 8 != 8 < 5;
 }
 
 export fn gelandlt(): i32 {

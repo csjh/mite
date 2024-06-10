@@ -12,7 +12,8 @@ describe("operator precendence", async () => {
         expect(module.addsub()).toBe(10);
         expect(module.shlshr()).toBe(32);
         expect(module.andxor()).toBe(3);
-        expect(module.oreq()).toBe(0);
+        expect(module.oreq()).toBe(7);
+        expect(module.nelt()).toBe(1);
         expect(module.gelandlt()).toBe(1);
         expect(module.lorland()).toBe(1);
     });
