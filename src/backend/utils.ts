@@ -4,6 +4,7 @@ import {
     FunctionInformation,
     InstanceArrayTypeInformation,
     InstanceFunctionTypeInformation,
+    InstancePrimitiveTypeInformation,
     InstanceTypeInformation,
     TypeInformation
 } from "../types/code_gen.js";
@@ -385,3 +386,28 @@ export function getBinaryenDescriptor(x: binaryen.Type): "i32" | "f32" | "i64" |
     throw new Error(`Unknown binaryen type: ${x}`);
 }
 
+const seniority = ["f64", "f32", "i64", "i32", "i16", "i8", "bool"];
+
+// binary expressions should allow for type promotion (not demotion though)
+export function promotePrimitive(
+    ctx: Context,
+    primitive: Primitive,
+    to: InstancePrimitiveTypeInformation
+): MiteType {
+    const from = primitive.type;
+    if (from.name === to.name) return primitive;
+    if (from.binaryen_type !== binaryen.v128) {
+        for (const type of seniority) {
+            const unsigned = /^i\d*$/.test(type) ? "u" + type.slice(1) : null;
+
+            if (to.name === type || to.name === unsigned) {
+                if (!(from.name in ctx.conversions[to.name])) break;
+                return ctx.conversions[to.name][from.name](primitive);
+            }
+
+            if (from.name === type || from.name === unsigned) break;
+        }
+    }
+
+    throw new Error(`Cannot promote ${from.name} to ${to.name}`);
+}

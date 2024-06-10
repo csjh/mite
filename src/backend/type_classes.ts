@@ -29,6 +29,7 @@ import {
     fromExpressionRef,
     getBinaryenDescriptor,
     miteSignatureToBinaryenSignature,
+    promotePrimitive,
     typeInformationToBinaryen,
     VIRTUALIZED_FUNCTIONS
 } from "./utils.js";
@@ -158,19 +159,19 @@ export abstract class Primitive implements MiteType {
                     left: binaryen.ExpressionRef,
                     right: binaryen.ExpressionRef
                 ) => binaryen.ExpressionRef,
-                result?: PrimitiveTypeInformation
+                result: PrimitiveTypeInformation = this.type
             ) =>
             (other: MiteType): MiteType => {
-                if (
-                    this.type.name !== other.type.name ||
-                    this.type.classification !== "primitive"
-                ) {
-                    throw new Error(`Cannot operate on ${this.type.name} with ${other.type.name}`);
+                if (other.type.classification !== "primitive") {
+                    throw new Error(`Cannot operate on primitives with non-primitives`);
                 }
+
+                const other_expr = promotePrimitive(this.ctx, other as Primitive, this.type);
+
                 return new TransientPrimitive(
                     this.ctx,
-                    result ?? this.type,
-                    operation(this.get_expression_ref(), other.get_expression_ref())
+                    result,
+                    operation(this.get_expression_ref(), other_expr.get_expression_ref())
                 );
             }).bind(this);
 
@@ -179,13 +180,6 @@ export abstract class Primitive implements MiteType {
         switch (this.type.name) {
             case "void":
                 throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
-            case "bool":
-                switch (operator) {
-                    case TokenType.NOT:
-                        return un_op(mod.i32.eqz, this.ctx.types.bool);
-                    default:
-                        throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
-                }
             case "f32":
                 switch (operator) {
                     case TokenType.PLUS:
@@ -292,6 +286,7 @@ export abstract class Primitive implements MiteType {
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
+            case "bool":
             case "u8":
             case "u16":
             case "u32":
