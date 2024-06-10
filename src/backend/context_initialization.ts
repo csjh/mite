@@ -33,7 +33,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
         };
 
     const wrap_op = (from: "i32" | "i64", to: string) => {
-        const to_bits = parseInt(to.slice(1));
+        const to_bits = to === "bool" ? 1 : parseInt(to.slice(1));
         if (from === "i32") {
             return unary_op(
                 (expr) => ctx.mod.i32.and(expr, ctx.mod.i32.const(2 ** to_bits - 1)),
@@ -49,7 +49,77 @@ export function createConversions(ctx: Context): Context["conversions"] {
 
     // convert from type1 to type2 is obj[type1][type2]
     return {
+        bool: {
+            bool: (x) => x,
+            i8: unary_op((x) => x, ctx.types.i8),
+            u8: unary_op((x) => x, ctx.types.u8),
+            i16: unary_op((x) => x, ctx.types.i16),
+            u16: unary_op((x) => x, ctx.types.u16),
+            i32: unary_op((x) => x, ctx.types.i32),
+            u32: unary_op((x) => x, ctx.types.u32),
+            i64: unary_op(ctx.mod.i64.extend_u, ctx.types.i64),
+            u64: unary_op(ctx.mod.i64.extend_u, ctx.types.u64),
+            f32: unary_op(ctx.mod.f32.convert_u.i32, ctx.types.f32),
+            f64: unary_op(ctx.mod.f64.convert_u.i32, ctx.types.f64)
+        },
+        i8: {
+            bool: unary_op((x) => ctx.mod.i32.ne(x, ctx.mod.i32.const(0)), ctx.types.bool),
+            i8: (value) => value,
+            u8: wrap_op("i32", "u8"),
+            i16: unary_op(ctx.mod.i32.extend8_s, ctx.types.i16),
+            u16: unary_op((x) => x, ctx.types.u16),
+            i32: unary_op(ctx.mod.i32.extend8_s, ctx.types.i32),
+            u32: unary_op((x) => x, ctx.types.u32),
+            i64: unary_op(ctx.mod.i64.extend8_s, ctx.types.i64),
+            u64: unary_op(ctx.mod.i64.extend_u, ctx.types.u64),
+            f32: unary_op(ctx.mod.f32.convert_s.i32, ctx.types.f32),
+            f64: unary_op(ctx.mod.f64.convert_s.i32, ctx.types.f64),
+            i8x16: unary_op(ctx.mod.i8x16.splat, ctx.types.i8x16)
+        },
+        u8: {
+            bool: unary_op((x) => ctx.mod.i32.ne(x, ctx.mod.i32.const(0)), ctx.types.bool),
+            i8: wrap_op("i32", "i8"),
+            u8: (value) => value,
+            i16: unary_op((x) => x, ctx.types.i16),
+            u16: unary_op((x) => x, ctx.types.u16),
+            i32: unary_op((x) => x, ctx.types.i32),
+            u32: unary_op((x) => x, ctx.types.u32),
+            i64: unary_op(ctx.mod.i64.extend_s, ctx.types.i64),
+            u64: unary_op(ctx.mod.i64.extend_u, ctx.types.u64),
+            f32: unary_op(ctx.mod.f32.convert_u.i32, ctx.types.f32),
+            f64: unary_op(ctx.mod.f64.convert_u.i32, ctx.types.f64),
+            u8x16: unary_op(ctx.mod.i8x16.splat, ctx.types.u8x16)
+        },
+        i16: {
+            bool: unary_op((x) => ctx.mod.i32.ne(x, ctx.mod.i32.const(0)), ctx.types.bool),
+            i8: wrap_op("i32", "i8"),
+            u8: wrap_op("i32", "u8"),
+            i16: (value) => value,
+            u16: unary_op((x) => x, ctx.types.u16),
+            i32: unary_op(ctx.mod.i32.extend16_s, ctx.types.i32),
+            u32: unary_op((x) => x, ctx.types.u32),
+            i64: unary_op(ctx.mod.i64.extend16_s, ctx.types.i64),
+            u64: unary_op(ctx.mod.i64.extend_u, ctx.types.u64),
+            f32: unary_op(ctx.mod.f32.convert_s.i32, ctx.types.f32),
+            f64: unary_op(ctx.mod.f64.convert_s.i32, ctx.types.f64),
+            i16x8: unary_op(ctx.mod.i16x8.splat, ctx.types.i16x8)
+        },
+        u16: {
+            bool: unary_op((x) => ctx.mod.i32.ne(x, ctx.mod.i32.const(0)), ctx.types.bool),
+            i8: wrap_op("i32", "i8"),
+            u8: wrap_op("i32", "u8"),
+            i16: unary_op((x) => x, ctx.types.i16),
+            u16: (value) => value,
+            i32: unary_op((x) => x, ctx.types.i32),
+            u32: unary_op((x) => x, ctx.types.u32),
+            i64: unary_op(ctx.mod.i64.extend_s, ctx.types.i64),
+            u64: unary_op(ctx.mod.i64.extend_u, ctx.types.u64),
+            f32: unary_op(ctx.mod.f32.convert_u.i32, ctx.types.f32),
+            f64: unary_op(ctx.mod.f64.convert_u.i32, ctx.types.f64),
+            u16x8: unary_op(ctx.mod.i16x8.splat, ctx.types.u16x8)
+        },
         i32: {
+            bool: unary_op((x) => ctx.mod.i32.ne(x, ctx.mod.i32.const(0)), ctx.types.bool),
             i8: wrap_op("i32", "i8"),
             u8: wrap_op("i32", "u8"),
             i16: wrap_op("i32", "i16"),
@@ -67,6 +137,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
             i8x16: unary_op(ctx.mod.i8x16.splat, ctx.types.i8x16)
         },
         u32: {
+            bool: unary_op((x) => ctx.mod.i32.ne(x, ctx.mod.i32.const(0)), ctx.types.bool),
             i8: wrap_op("i32", "i8"),
             u8: wrap_op("i32", "u8"),
             i16: wrap_op("i32", "i16"),
@@ -83,6 +154,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
             u8x16: unary_op(ctx.mod.i8x16.splat, ctx.types.u8x16)
         },
         i64: {
+            bool: unary_op((x) => ctx.mod.i64.ne(x, ctx.mod.i64.const(0, 0)), ctx.types.bool),
             i8: wrap_op("i64", "i8"),
             u8: wrap_op("i64", "u8"),
             i16: wrap_op("i64", "i16"),
@@ -96,6 +168,7 @@ export function createConversions(ctx: Context): Context["conversions"] {
             i64x2: unary_op(ctx.mod.i64x2.splat, ctx.types.i64x2)
         },
         u64: {
+            bool: unary_op((x) => ctx.mod.i64.ne(x, ctx.mod.i64.const(0, 0)), ctx.types.bool),
             i8: wrap_op("i64", "i8"),
             u8: wrap_op("i64", "u8"),
             i16: wrap_op("i64", "i16"),
@@ -109,6 +182,13 @@ export function createConversions(ctx: Context): Context["conversions"] {
             u64x2: unary_op(ctx.mod.i64x2.splat, ctx.types.u64x2)
         },
         f32: {
+            bool: unary_op((x) => ctx.mod.f32.ne(x, ctx.mod.f32.const(0)), ctx.types.bool),
+            i8: (x) => wrap_op("i32", "i8")(unary_op(ctx.mod.i32.trunc_s_sat.f32, ctx.types.i8)(x)),
+            u8: (x) => wrap_op("i32", "u8")(unary_op(ctx.mod.i32.trunc_u_sat.f32, ctx.types.u8)(x)),
+            i16: (x) =>
+                wrap_op("i32", "i16")(unary_op(ctx.mod.i32.trunc_s_sat.f32, ctx.types.i16)(x)),
+            u16: (x) =>
+                wrap_op("i32", "u16")(unary_op(ctx.mod.i32.trunc_u_sat.f32, ctx.types.u16)(x)),
             i32: unary_op(ctx.mod.i32.trunc_s_sat.f32, ctx.types.i32),
             u32: unary_op(ctx.mod.i32.trunc_u_sat.f32, ctx.types.u32),
             i64: unary_op(ctx.mod.i64.trunc_s_sat.f32, ctx.types.i64),
@@ -118,6 +198,13 @@ export function createConversions(ctx: Context): Context["conversions"] {
             f32x4: unary_op(ctx.mod.f32x4.splat, ctx.types.f32x4)
         },
         f64: {
+            bool: unary_op((x) => ctx.mod.f64.ne(x, ctx.mod.f64.const(0)), ctx.types.bool),
+            i8: (x) => wrap_op("i32", "i8")(unary_op(ctx.mod.i32.trunc_s_sat.f64, ctx.types.i8)(x)),
+            u8: (x) => wrap_op("i32", "u8")(unary_op(ctx.mod.i32.trunc_u_sat.f64, ctx.types.u8)(x)),
+            i16: (x) =>
+                wrap_op("i32", "i16")(unary_op(ctx.mod.i32.trunc_s_sat.f64, ctx.types.i16)(x)),
+            u16: (x) =>
+                wrap_op("i32", "u16")(unary_op(ctx.mod.i32.trunc_u_sat.f64, ctx.types.u16)(x)),
             i32: unary_op(ctx.mod.i32.trunc_s_sat.f64, ctx.types.i32),
             u32: unary_op(ctx.mod.i32.trunc_u_sat.f64, ctx.types.u32),
             i64: unary_op(ctx.mod.i64.trunc_s_sat.f64, ctx.types.i64),
