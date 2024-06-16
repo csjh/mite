@@ -50,7 +50,8 @@ export async function compile(
             binaryen.Features.MutableGlobals |
             binaryen.Features.NontrappingFPToInt |
             binaryen.Features.SIMD128 |
-            binaryen.Features.ReferenceTypes
+            binaryen.Features.ReferenceTypes |
+            binaryen.Features.SignExt
     );
     // this might be icky
     mod.autoDrop();
