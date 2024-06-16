@@ -17,7 +17,7 @@ describe("struct declarations", async () => {
         }
         `;
 
-        expect(() =>
+        expect(
             compile(program, {
                 resolveImport: async () => ({
                     isMite: false,
@@ -25,7 +25,7 @@ describe("struct declarations", async () => {
                     code: ""
                 })
             })
-        ).toThrow();
+        ).rejects.toThrow();
 
         const program2 = `
         struct x {
@@ -42,7 +42,7 @@ describe("struct declarations", async () => {
         }
         `;
 
-        expect(() =>
+        expect(
             compile(program2, {
                 resolveImport: async () => ({
                     isMite: false,
@@ -50,7 +50,7 @@ describe("struct declarations", async () => {
                     code: ""
                 })
             })
-        ).toThrow();
+        ).rejects.toThrow();
 
         const program3 = `
         struct z {
@@ -66,7 +66,7 @@ describe("struct declarations", async () => {
             uses: z
         }`;
 
-        expect(() =>
+        expect(
             compile(program3, {
                 resolveImport: async () => ({
                     isMite: false,
@@ -74,14 +74,14 @@ describe("struct declarations", async () => {
                     code: ""
                 })
             })
-        ).toThrow();
+        ).rejects.toThrow();
 
         const program4 = `
         struct x {
             uses: x
         }`;
 
-        expect(() =>
+        expect(
             compile(program4, {
                 resolveImport: async () => ({
                     isMite: false,
@@ -89,14 +89,14 @@ describe("struct declarations", async () => {
                     code: ""
                 })
             })
-        ).toThrow();
+        ).rejects.toThrow();
 
         const program5 = `
         struct x {
             uses: y
         }`;
 
-        expect(() =>
+        expect(
             compile(program5, {
                 resolveImport: async () => ({
                     isMite: false,
@@ -104,7 +104,7 @@ describe("struct declarations", async () => {
                     code: ""
                 })
             })
-        ).toThrow();
+        ).rejects.toThrow();
     });
 
     it("shouldn't throw on valid structs", async () => {
