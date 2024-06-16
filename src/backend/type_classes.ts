@@ -455,7 +455,7 @@ export abstract class Primitive implements MiteType {
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
                     case TokenType.BITWISE_NOT:
-                        return bin_op(mod.v128.not);
+                        return un_op(mod.v128.not);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -493,7 +493,7 @@ export abstract class Primitive implements MiteType {
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
                     case TokenType.BITWISE_NOT:
-                        return bin_op(mod.v128.not);
+                        return un_op(mod.v128.not);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -531,7 +531,7 @@ export abstract class Primitive implements MiteType {
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
                     case TokenType.BITWISE_NOT:
-                        return bin_op(mod.v128.not);
+                        return un_op(mod.v128.not);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -569,7 +569,7 @@ export abstract class Primitive implements MiteType {
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
                     case TokenType.BITWISE_NOT:
-                        return bin_op(mod.v128.not);
+                        return un_op(mod.v128.not);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -607,7 +607,7 @@ export abstract class Primitive implements MiteType {
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
                     case TokenType.BITWISE_NOT:
-                        return bin_op(mod.v128.not);
+                        return un_op(mod.v128.not);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -645,7 +645,7 @@ export abstract class Primitive implements MiteType {
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
                     case TokenType.BITWISE_NOT:
-                        return bin_op(mod.v128.not);
+                        return un_op(mod.v128.not);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -683,7 +683,7 @@ export abstract class Primitive implements MiteType {
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
                     case TokenType.BITWISE_NOT:
-                        return bin_op(mod.v128.not);
+                        return un_op(mod.v128.not);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
@@ -713,7 +713,7 @@ export abstract class Primitive implements MiteType {
                     case TokenType.BITWISE_XOR:
                         return bin_op(mod.v128.xor);
                     case TokenType.BITWISE_NOT:
-                        return bin_op(mod.v128.not);
+                        return un_op(mod.v128.not);
                     default:
                         throw new Error(`Invalid operator ${operator} for ${this.type.name}`);
                 }
