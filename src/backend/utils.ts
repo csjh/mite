@@ -391,10 +391,13 @@ const seniority = ["f64", "f32", "i64", "i32", "i16", "i8", "bool"];
 // binary expressions should allow for type promotion (not demotion though)
 export function promotePrimitive(
     ctx: Context,
-    primitive: Primitive,
+    primitive: MiteType,
     to: InstancePrimitiveTypeInformation
 ): MiteType {
     const from = primitive.type;
+    if (from.classification !== "primitive") {
+        throw new Error(`Cannot promote ${from.name} to ${to.name}`);
+    }
     if (from.name === to.name) return primitive;
     if (from.binaryen_type !== binaryen.v128) {
         for (const type of seniority) {
