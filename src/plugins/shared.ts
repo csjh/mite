@@ -107,3 +107,11 @@ export function $setup$miteImports($table_start, $wrapper_func) {
     });
 }
 `.trim();
+
+const test = `
+export fn test_log(i: i32): void {
+    log_i32(i);
+}
+`.trim();
+
+export const mite_stl = { test };

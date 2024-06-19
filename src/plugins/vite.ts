@@ -4,7 +4,7 @@ import { compile } from "../compiler.js";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
-import { mite_shared } from "./shared.js";
+import { mite_shared, mite_stl } from "./shared.js";
 
 const dev = process.env.NODE_ENV === "development";
 
@@ -74,17 +74,24 @@ export async function mite(): Promise<Plugin<never>> {
             }
         },
         resolveId(id) {
+            const un_mited = id.slice("mite:".length);
             if (id === mite_shared_id) {
                 return resolved_mite_shared_id;
+            } else if (Object.keys(mite_stl).includes(un_mited)) {
+                return `\0${id}`;
             }
         },
         load(id) {
+            const un_mited = id.slice("\0mite:".length);
             if (id === resolved_mite_shared_id) {
                 return mite_shared;
+            } else if (Object.keys(mite_stl).includes(un_mited)) {
+                // @ts-expect-error blah blah blah
+                return mite_stl[un_mited];
             }
         },
         async transform(code, id, opts = {}) {
-            if (!id.endsWith(".mite")) return null;
+            if (!id.endsWith(".mite") && !(id.slice("\0mite:".length) in mite_stl)) return null;
 
             if (dev) {
                 const source = await compile(code, {
