@@ -160,15 +160,11 @@ export function newBlock(
     }
 }
 
-function isCtx(obj: Context | Context["types"]): obj is Context {
-    return !("i32" in obj);
-}
-
 export function parseType(
     ctx: Context | Context["types"],
     type: TypeIdentifier
 ): InstanceTypeInformation {
-    if (isCtx(ctx)) return parseType(ctx.types, type);
+    if (!("i32" in ctx)) ctx = ctx.types;
 
     const { isRef, _type } = type;
 
