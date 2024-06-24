@@ -238,6 +238,9 @@ export async function programToModule(
         addDataSegment(ctx, "string_data", "main_memory", string_data);
     }
 
+    ctx.mod.addGlobalImport(ARENA_HEAP_OFFSET, "$mite", "$heap_offset", binaryen.i32, true);
+    ctx.mod.addGlobalImport(ARENA_HEAP_POINTER, "$mite", "$heap_pointer", binaryen.i32, true);
+
     const fns = [...callbacks, ...ctx.captured_functions];
 
     mod.addTableImport(VIRTUALIZED_FUNCTIONS, "$mite", "$table");
