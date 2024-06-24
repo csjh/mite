@@ -17,7 +17,8 @@ import {
     typeInformationToBinaryen,
     FN_PTRS_START,
     STRING_SECTION_START,
-    assumeStructs
+    assumeStructs,
+    promote
 } from "./utils.js";
 import {
     Context,
@@ -786,7 +787,7 @@ function callExpressionToExpression(ctx: Context, value: CallExpression): MiteTy
     }
 
     args ??= thisless_params.map((type, i) =>
-        expressionToExpression(ctx, value.arguments[i], type.type)
+        promote(ctx, expressionToExpression(ctx, value.arguments[i], type.type), type.type)
     );
 
     return fn.call(args);

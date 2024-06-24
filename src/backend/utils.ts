@@ -410,3 +410,13 @@ export function promotePrimitive(
 
     throw new Error(`Cannot promote ${from.name} to ${to.name}`);
 }
+
+export function promote(ctx: Context, current: MiteType, to: InstanceTypeInformation): MiteType {
+    if (to.classification === "primitive") {
+        return promotePrimitive(ctx, current, to);
+    }
+    if (to.classification !== current.type.classification) {
+        throw new Error(`Cannot promote ${current.type.name} to ${to.name}`);
+    }
+    return current;
+}
