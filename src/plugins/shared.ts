@@ -91,7 +91,7 @@ export function $arena_heap_reset() {
     $heap_offset.value = 0;
 }
 
-export function $setup$miteImports($table_start, $wrapper_func) {
+export function $setup_mite_imports($table_start, $wrapper_func) {
     return new Proxy({
         $memory,
         $table,

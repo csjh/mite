@@ -117,12 +117,12 @@ export function programToBoilerplate(program: Program, { createInstance }: Optio
 
     const { setup = "", instantiation } = createInstance(`{
             console,
-            $mite: $setup$miteImports($table_start, (ptr, ...args) => $funcs[ptr](...args))${wasm_import_strings.join(",\n            ")}
+            $mite: $setup_mite_imports($table_start, (ptr, ...args) => $funcs[ptr](...args))${wasm_import_strings.join(",\n            ")}
         }`);
 
     let code = dedent`
         import {
-            $memory, $table, $setup$miteImports,
+            $memory, $table, $setup_mite_imports,
             $toJavascriptFunction, $toJavascriptString, $fromJavascriptString, $arena_heap_malloc, $arena_heap_reset,
             $GetBigInt64, $GetBigUint64, $GetFloat32, $GetFloat64, $GetInt16, $GetInt32, $GetInt8, $GetUint16, $GetUint32, $GetUint8, $SetBigInt64, $SetBigUint64, $SetFloat32, $SetFloat64, $SetInt16, $SetInt32, $SetInt8, $SetUint16, $SetUint32, $SetUint8
         } from "mite:shared";
